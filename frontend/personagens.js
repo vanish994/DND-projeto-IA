@@ -194,7 +194,7 @@
       for (const [circulo, total] of Object.entries(slotsEsperados)) {
         const id = `sheet-level-${circulo}-slots`;
         const campo = el("input", {id, type: "number", min: "0", max: "20",
-          value: String((conj.espacos_totais || {})[circulo] ?? total), inputMode: "numeric",
+          value: String(progresso ? total : ((conj.espacos_totais || {})[circulo] ?? total)), inputMode: "numeric",
           readOnly: Boolean(progresso)});
         slotInputs[circulo] = campo;
         slotsContainer.append(el("label", {htmlFor: id, textContent: `Espaços de magia de ${circulo}º círculo (total)`}), campo);
@@ -318,7 +318,7 @@
         status.textContent = `Escolha ${limite} perícias de classe. Selecionadas: ${atuais.size}/${limite}.`;
       });
       lista.append(el('li', {}, el('label', {className: 'choice'}, caixa,
-        el('span', {className: 'choice-text'}, el('span', {className: 'choice-title', textContent: nome(pericia)}))));
+        el('span', {className: 'choice-text'}, el('span', {className: 'choice-title', textContent: nome(pericia)})))));
     }
     return [el('fieldset', {}, el('legend', {textContent: `Perícias de ${nome(dados.classe)}`}),
       el('p', {className: 'choice-meta', textContent: 'Essas escolhas são validadas pelo motor e somadas às perícias do antecedente, sem duplicar bônus.'}),
