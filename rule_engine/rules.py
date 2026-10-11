@@ -9,6 +9,10 @@ from .combat_special import (
     resolver_escape_agarramento,
 )
 from .engine import Rule, RuleEngine
+from .combat_geometry import (
+    resolver_ataque_geometria, resolver_alcance, resolver_cobertura,
+    resolver_queda, resolver_linha_de_visao, espaco_por_tamanho,
+)
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -437,5 +441,51 @@ def build_default_engine() -> RuleEngine:
         when=lambda f: f["type"] == "long_rest",
         resolve=lambda f: resolver_descanso({**f, "rest_type": "longo"}),
         source="D&D 2024 — Descanso Longo",
+    ))
+    engine.register(Rule(
+        rule_id="combat.attack-geometry",
+        description="Valida distância, alcance, linha de visão e cobertura antes do ataque.",
+        priority=50,
+        when=lambda f: f["type"] == "attack_geometry",
+        resolve=resolver_ataque_geometria,
+        source="D&D 2024 — Combate: alcance e cobertura",
+    ))
+    engine.register(Rule(
+        rule_id="combat.range",
+        description="Verifica alcance normal e alcance máximo de um ataque.",
+        priority=50,
+        when=lambda f: f["type"] == "range",
+        resolve=lambda f: resolver_alcance(
+            f["distance"], alcance=f["range"], alcance_maximo=f.get("maximum_range"),
+            ataque_a_distancia=bool(f.get("ranged_attack", False)),
+            alcance_estendido=bool(f.get("extended_range", False)),
+        ),
+        source="D&D 2024 — alcance",
+    ))
+    engine.register(Rule(
+        rule_id="combat.cover",
+        description="Aplica o bônus de CA da cobertura ou bloqueia Cobertura Total.",
+        priority=50,
+        when=lambda f: f["type"] == "cover",
+        resolve=lambda f: resolver_cobertura(f["cover"], linha_de_visao=bool(f.get("line_of_sight", True))),
+        source="D&D 2024 — cobertura",
+    ))
+    engine.register(Rule(
+        rule_id="combat.line-of-sight",
+        description="Verifica se há linha de visão até o alvo.",
+        priority=50,
+        when=lambda f: f["type"] == "line_of_sight",
+        resolve=lambda f: resolver_linha_de_visao(
+            bloqueada=bool(f.get("blocked", False)), cobertura=f.get("cover", "nenhuma")
+        ),
+        source="D&D 2024 — linha de visão",
+    ))
+    engine.register(Rule(
+        rule_id="combat.fall",
+        description="Aplica dano de queda e a condição Caído.",
+        priority=50,
+        when=lambda f: f["type"] == "fall",
+        resolve=lambda f: resolver_queda(f["distance"], rolagens=f.get("rolls")),
+        source="D&D 2024 — queda",
     ))
     return engine

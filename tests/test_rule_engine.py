@@ -365,6 +365,48 @@ class RuleEngineTests(unittest.TestCase):
         })
         self.assertEqual(result.outcome["recursos_recuperados"]["espacos_de_magia"], "todos")
 
+    def test_grid_distance_and_creature_space(self):
+        from rule_engine import distancia_grade, espaco_por_tamanho
+        self.assertEqual(distancia_grade(3, 2), 3)
+        self.assertEqual(distancia_grade(3, 2, diagonal_alternada=True), 4)
+        self.assertEqual(espaco_por_tamanho("médio"), 1)
+        self.assertEqual(espaco_por_tamanho("grande"), 2)
+
+    def test_range_allows_normal_and_extended_ranged_attack(self):
+        normal = self.engine.evaluate({
+            "type": "range", "distance": 9, "range": 18,
+            "maximum_range": 72, "ranged_attack": True,
+        })
+        self.assertFalse(normal.outcome["desvantagem_por_alcance"])
+        extended = self.engine.evaluate({
+            "type": "range", "distance": 36, "range": 18,
+            "maximum_range": 72, "ranged_attack": True,
+        })
+        self.assertTrue(extended.outcome["desvantagem_por_alcance"])
+
+    def test_cover_adds_ac_bonus_and_total_cover_blocks(self):
+        meia = self.engine.evaluate({"type": "cover", "cover": "meia"})
+        self.assertEqual(meia.outcome["bonus_ca"], 2)
+        total = self.engine.evaluate({"type": "cover", "cover": "total"})
+        self.assertEqual(total.outcome["resultado"], "bloqueado")
+
+    def test_attack_geometry_checks_range_line_of_sight_and_cover(self):
+        result = self.engine.evaluate({
+            "type": "attack_geometry", "distance": 12, "range": 18,
+            "maximum_range": 72, "attack_a_distancia": True,
+            "cover": "tres_quartos",
+        })
+        self.assertEqual(result.outcome["resultado"], "permitido")
+        self.assertEqual(result.outcome["bonus_ca_por_cobertura"], 5)
+
+    def test_fall_deals_one_d6_per_three_meters_and_knocks_prone(self):
+        result = self.engine.evaluate({
+            "type": "fall", "distance": 6, "rolls": [3, 4],
+        })
+        self.assertEqual(result.outcome["dados_d6"], 2)
+        self.assertEqual(result.outcome["dano"], 7)
+        self.assertEqual(result.outcome["condicao"], "caido")
+
 
 if __name__ == "__main__":
     unittest.main()

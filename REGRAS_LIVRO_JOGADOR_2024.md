@@ -12,6 +12,10 @@ O núcleo de sobrevivência foi implementado: Estado Vital, Pontos de Vida, Pont
 
 O **Bloco 1 está encerrado no nível do núcleo**. A recuperação de uma característica específica de classe só será aplicada quando o módulo de classes fornecer seu contrato de recursos; o descanso já retorna os recursos declarados para essa integração futura.
 
+## Bloco 2 — geometria de combate
+
+O núcleo geométrico foi iniciado com distância em grade, espaço por tamanho, alcance normal e máximo, Desvantagem por alcance estendido, cobertura, linha de visão, combinação de validações antes do ataque e queda com dano de 1d6 por 3 metros e condição Caído. Ainda faltam as regras completas de sentidos, movimento especial, montaria, combate subaquático e resolução de objetos.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.
