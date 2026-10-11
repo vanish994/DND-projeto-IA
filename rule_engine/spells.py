@@ -85,7 +85,21 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
         encerra = fatos["concentrando"]
     else:
         encerra = None
-    resultado = {"resultado": "conjurada", "magia": magia["nome"], "circulo_base": magia["circulo"], "circulo_usado": usado, "upcasting": aumento, "escola": magia["escola"], "componentes": sorted(requeridos), "concentracao": magia["concentracao"], "duracao": magia["duracao"], "encerra_concentracao": encerra, "efeito": magia.get("efeito", "efeito descrito no catálogo")}
+    resultado = {
+        "magia": magia["nome"], "circulo_base": magia["circulo"],
+        "circulo_usado": usado, "upcasting": aumento, "escola": magia["escola"],
+        "componentes": sorted(requeridos), "concentracao": magia["concentracao"],
+        "duracao": magia["duracao"], "encerra_concentracao": encerra,
+    }
+    if "efeito" not in magia:
+        # Metadados do catálogo não bastam para executar uma magia com fidelidade.
+        # Não declarar a conjuração resolvida enquanto o efeito específico não existir.
+        resultado.update({
+            "resultado": "nao_implementado",
+            "motivo": "magia_catalogada_sem_resolucao_especifica",
+        })
+        return resultado
+    resultado.update({"resultado": "conjurada", "efeito": magia["efeito"]})
     if aumento and magia.get("upcasting"):
         resultado["escalonamento"] = magia["upcasting"]
     return resultado
