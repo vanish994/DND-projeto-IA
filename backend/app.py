@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
@@ -144,11 +143,10 @@ def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) ->
     if not grupo:
         return None
     linhas = []
-    for p in grupo:
+    for indice, p in enumerate(grupo, start=1):
         atributos = ", ".join(f"{nome[:3].upper()} {valor}" for nome, valor in p["atributos"].items())
-        nome_seguro = ''.join(c for c in str(p['nome']) if c.isalnum() or c in " _-' ")[:80].strip() or 'Personagem'
         linhas.append(
-            f"- {nome_seguro}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
+            f"- Personagem {indice}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
             f"PV {p['pv_atual']}/{p['pv_maximo']}, BP +{p['bonus_proficiencia']}, {atributos}"
         )
     return (
