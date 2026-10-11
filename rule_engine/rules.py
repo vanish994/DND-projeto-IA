@@ -10,7 +10,7 @@ from .combat_special import (
 )
 from .engine import Rule, RuleEngine
 from .ability_checks import resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica, resolver_salvaguarda, resolver_iniciativa
-from .exploration_actions import resolver_acao_esconder, resolver_acao_influenciar, resolver_fim_esconderijo
+from .exploration_actions import resolver_acao_esconder, resolver_acao_influenciar, resolver_fim_esconderijo, resolver_acao_procurar, resolver_acao_ajudar
 from .combat_geometry import (
     resolver_ataque_geometria, resolver_alcance, resolver_cobertura,
     resolver_queda, resolver_linha_de_visao, espaco_por_tamanho,
@@ -967,5 +967,17 @@ def build_default_engine() -> RuleEngine:
         description="Encerra esconderijo quando ocorre som alto, descoberta, ataque ou magia verbal.",
         priority=70, when=lambda f: f["type"] == "hide_event",
         resolve=resolver_fim_esconderijo, source="D&D 2024 — Esconder-se",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.search",
+        description="Resolve Search usando as perícias sugeridas pelo PHB 2024.",
+        priority=70, when=lambda f: f["type"] == "search_action",
+        resolve=resolver_acao_procurar, source="D&D 2024 — Search",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.help",
+        description="Prepara vantagem para o próximo teste ou ataque com a ação Ajuda.",
+        priority=70, when=lambda f: f["type"] == "help_action",
+        resolve=resolver_acao_ajudar, source="D&D 2024 — Help",
     ))
     return engine
