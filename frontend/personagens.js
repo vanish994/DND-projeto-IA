@@ -153,8 +153,66 @@
         ...fato('Talentos', p.talentos.map(talentoNome).join(', ') || '—'),
         ...fato('Equipamento inicial', equip)),
       apagar);
+    carregarProficienciasClasse(p);
     carregarConjuracao(p);
     groupBody.scrollTop = 0;
+  }
+
+  async function carregarProficienciasClasse(p) {
+    const secao = el('section', {className: 'spell-sheet'});
+    secao.append(el('h3', {textContent: 'Proficiências de classe'}));
+    const status = el('p', {className: 'choice-meta', role: 'status', textContent: 'Carregando opções…'});
+    secao.append(status);
+    groupBody.append(secao);
+    try {
+      const cat = await carregarCatalogo();
+      if (!groupBody.contains(secao)) return;
+      const opcoes = cat.pericias_classe_opcoes?.[p.classe] || [];
+      const limite = Number(cat.quantidade_pericias_classe?.[p.classe] || 0);
+      const selecionadas = new Set(p.pericias_classe || []);
+      const lista = el('ul', {className: 'choice-list'});
+      const atualizarStatus = () => {
+        status.textContent = `Escolha ${limite} perícias de classe. Selecionadas: ${selecionadas.size}/${limite}.`;
+      };
+      for (const pericia of opcoes) {
+        const caixa = el('input', {type: 'checkbox', checked: selecionadas.has(pericia)});
+        caixa.addEventListener('change', () => {
+          if (caixa.checked && selecionadas.size >= limite) {
+            caixa.checked = false;
+            return;
+          }
+          if (caixa.checked) selecionadas.add(pericia); else selecionadas.delete(pericia);
+          atualizarStatus();
+        });
+        lista.append(el('li', {}, el('label', {className: 'choice'}, caixa,
+          el('span', {className: 'choice-text'},
+            el('span', {className: 'choice-title', textContent: nome(pericia)}))));
+      }
+      const salvar = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar proficiências'});
+      salvar.addEventListener('click', async () => {
+        if (selecionadas.size !== limite) {
+          status.textContent = `Escolha exatamente ${limite} perícias antes de salvar.`;
+          return;
+        }
+        salvar.disabled = true;
+        status.textContent = 'Validando no motor…';
+        try {
+          const atualizado = await api(url(`/${encodeURIComponent(p.id)}/proficiencias`), {
+            method: 'PATCH', body: JSON.stringify({pericias_classe: [...selecionadas]}),
+          });
+          Object.assign(p, atualizado);
+          mostrarFicha(p);
+        } catch (erro) {
+          status.textContent = `Não foi possível salvar: ${erro.message}`;
+          salvar.disabled = false;
+        }
+      });
+      status.remove();
+      secao.append(lista, salvar, status);
+      atualizarStatus();
+    } catch (erro) {
+      status.textContent = `Não foi possível carregar as proficiências. ${erro.message}`;
+    }
   }
 
   async function carregarConjuracao(p) {
