@@ -30,7 +30,7 @@ Ainda faltam descrições completas dos efeitos individuais das 390 magias, fabr
 
 ## Bloco 5 — criação de personagens, classes e subclasses
 
-O núcleo foi iniciado com nove espécies, doze classes, subclasses a partir do nível 3, matriz padrão, compra por pontos, validação de atributos, criação de ficha, Bônus de Proficiência, Dados de Vida, progressão de nível, escolhas de Aumento de Atributo/Talento e pré-requisitos de multiclasse. Ainda faltam os traços completos de cada espécie, antecedentes, características individuais das doze classes, subclasses, talentos completos, progressão detalhada de espaços e equipamento inicial.
+O núcleo foi iniciado com dez espécies (incluindo Tiefling), treze classes, subclasses a partir do nível 3, matriz padrão, compra por pontos, validação de atributos, criação de ficha, Bônus de Proficiência, Dados de Vida, progressão de nível, escolhas de Aumento de Atributo/Talento e pré-requisitos de multiclasse. Ainda faltam os traços completos de cada espécie, antecedentes, características individuais das doze classes, subclasses, talentos completos, progressão detalhada de espaços e equipamento inicial.
 
 Correção de cobertura: Artífice foi adicionado como décima terceira classe, com Dado de Vida d8, Inteligência como atributo principal e requisito de Inteligência 13 para multiclasse. Também foram catalogadas as sete subclasses apresentadas em *Ravenloft*: Reanimador (Artífice), Colégio dos Espíritos (Bardo), Domínio da Sepultura (Clérigo), Guardião Oculto (Guardião), Fantasma (Ladino), Feitiçaria das Sombras (Feiticeiro) e Patrono Morto-Vivo (Bruxo), todas disponíveis a partir do nível 3.
 
@@ -446,3 +446,6 @@ Corrigido o resolvedor `class_features.py`: uma característica desconhecida ou 
 ## Auditoria de falsos positivos — magias
 
 `resolver_magia` não declara mais que uma magia foi conjurada quando só existem metadados de catálogo e nenhum efeito mecânico específico. Nesses casos, retorna `nao_implementado` com motivo auditável; magias com efeito detalhado continuam sendo resolvidas, e validações de componentes/círculo permanecem ativas. Foram adicionados testes para o fallback, uma magia detalhada com escalonamento e componentes ausentes. Isso corrige uma afirmação indevida de cobertura, mas deixa explícita a necessidade de implementar os efeitos restantes das magias catalogadas.
+## Cobertura de espécie — Tiefling
+
+Adicionado Tiefling ao catálogo base de criação de personagem com tamanho Pequeno ou Médio e deslocamento de 9 m, além de teste de criação. Isso fecha a ausência do décimo nome de espécie do PHB 2024 no catálogo básico, mas não substitui a implementação dos traços completos das espécies e das linhagens de Tiefling.
