@@ -127,6 +127,8 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
             desvantagem = True
         if "amedrontado" in atacante and fatos.get("fonte_no_campo_de_visao", True):
             desvantagem = True
+        if fatos.get("alvo_esquivando", False) and fatos.get("atacante_visivel_para_alvo", True):
+            desvantagem = True
         if "caido" in alvo:
             distancia_m = fatos.get("distancia_m", fatos.get("distance_m"))
             if distancia_m is not None:
