@@ -153,6 +153,10 @@ Atualizado o rastreador de turnos: Surpresa não remove ação, ação bônus, r
 
 Testes de regressão adicionados. A validação final depende da execução da suíte no branch.
 
+## Correção de interrupções de descanso e Salvaguardas contra a Morte
+
+Descanso Longo interrompido após pelo menos uma hora agora concede os benefícios de Descanso Curto; descansos longos completos validam sono mínimo de seis horas e até duas horas de atividade leve. Salvaguardas contra a Morte rejeitam valores fora de 1–20 e não podem ser roladas por uma criatura já estável.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
