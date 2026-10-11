@@ -136,16 +136,19 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         "deslocamento": 0 if {"agarrado", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo else "normal",
         "pode_realizar_acoes": not bool(incapacitado),
         "pode_realizar_reacoes": not bool(incapacitado),
-        "pode_falar": not bool({"paralisado", "petrificado", "inconsciente"} & alvo),
+        "pode_falar": not bool({"incapacitado", "paralisado", "petrificado", "inconsciente"} & alvo),
         "pode_ver": "cego" not in alvo,
         "pode_ouvir": "surdo" not in alvo,
+        "encerra_concentracao": bool(incapacitado),
         "desvantagem_salvaguardas": False,
         "desvantagem_salvaguarda_destreza": "contido" in alvo,
         "desvantagem_testes_habilidade": ("envenenado" in alvo) or ("amedrontado" in alvo and fatos.get("fonte_no_campo_de_visao", True)),
         "falha_salvaguardas_forca_destreza": bool({"paralisado", "petrificado", "atordoado", "inconsciente"} & alvo),
     })
     if "petrificado" in alvo:
-        resultado.update({"resistencia_todos_danos": True, "imune_envenenado_e_doenca": True})
+        resultado.update({"resistencia_todos_danos": True, "imune_envenenado_e_doenca": True, "pode_falar": False})
+    if "inconsciente" in alvo:
+        resultado.update({"tambem_caido": True, "derruba_objetos_empunhados": True, "desatento_ao_ambiente": True})
     if "amedrontado" in alvo:
         resultado["não_pode_se_aproximar_da_fonte"] = True
     if "enfeiticado" in alvo:
