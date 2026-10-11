@@ -24,7 +24,7 @@
     intuicao: 'Intuição', religiao: 'Religião', investigacao: 'Investigação', persuasao: 'Persuasão', atuacao: 'Atuação', enganacao: 'Enganação', prestidigitacao: 'Prestidigitação', percepcao: 'Percepção', lidar_com_animais: 'Lidar com Animais', sobrevivencia: 'Sobrevivência', historia: 'História', intimidacao: 'Intimidação',
     forca_ou_destreza: 'Força ou Destreza', destreza_e_sabedoria: 'Destreza e Sabedoria', forca_ou_destreza_e_carisma: 'Força ou Destreza, e Carisma',
   };
-  const PASSOS = ['Nome', 'Espécie', 'Classe', 'Antecedente', 'Atributos', 'Revisão'];
+  const PASSOS = ['Nome', 'Espécie', 'Classe', 'Proficiências', 'Antecedente', 'Atributos', 'Revisão'];
 
   let catalogo = null;
   let dados = null;
@@ -159,17 +159,20 @@
 
   async function carregarConjuracao(p) {
     const secao = el("section", {className: "spell-sheet"});
-    secao.append(el("h3", {textContent: "Conjuração"}), el("p", {className: "choice-meta", textContent: "Selecione os truques e as magias da ficha. A disponibilidade por classe e nível ainda precisa ser validada pelo motor."}));
+    secao.append(el("h3", {textContent: "Conjuração"}), el("p", {className: "choice-meta", textContent: p.classe === "artifice" ? "A lista, os truques, as magias preparadas e os espaços são validados conforme a progressão do Artífice." : "A seleção é registrada no catálogo; a validação completa por classe ainda está sendo implementada."}));
     const status = el("p", {className: "choice-meta", textContent: "Carregando catálogo de magias…"});
     secao.append(status);
     groupBody.append(secao);
     try {
       const [catalogoMagias, atual] = await Promise.all([
-        api("/v1/catalogo/magias"),
+        api(`/v1/catalogo/magias?classe=${encodeURIComponent(p.classe)}&nivel=${encodeURIComponent(p.nivel)}`),
         api(url(`/${encodeURIComponent(p.id)}`)),
       ]);
       if (!groupBody.contains(secao)) return;
       const conj = atual.conjuracao || {truques: [], magias_preparadas: [], espacos_totais: {}};
+      const progresso = p.classe === "artifice"
+        ? await api(`/v1/catalogo/conjuracao?classe=artifice&nivel=${encodeURIComponent(p.nivel)}&inteligencia=${encodeURIComponent(p.atributos.inteligencia)}`)
+        : null;
       status.remove();
       const selectMagias = (id, titulo, filtro, selecionadas) => {
         const opcoes = catalogoMagias.filter(filtro);
@@ -185,8 +188,20 @@
       };
       const truques = selectMagias("sheet-cantrips", "Truques", m => m.circulo === 0, conj.truques || []);
       const preparadas = selectMagias("sheet-prepared-spells", "Magias preparadas/conhecidas", m => m.circulo != null && m.circulo > 0, conj.magias_preparadas || []);
-      const slots = el("input", {id: "sheet-level1-slots", type: "number", min: "0", max: "20", value: String((conj.espacos_totais || {})["1"] ?? 0), inputMode: "numeric"});
-      const slotField = el("div", {className: "spell-field"}, el("label", {htmlFor: slots.id, textContent: "Espaços de magia de 1º círculo (total)"}), slots);
+      const slotsContainer = el("div", {className: "spell-field"});
+      const slotInputs = {};
+      const slotsEsperados = progresso?.espacos_totais || conj.espacos_totais || {"1": 0};
+      for (const [circulo, total] of Object.entries(slotsEsperados)) {
+        const id = `sheet-level-${circulo}-slots`;
+        const campo = el("input", {id, type: "number", min: "0", max: "20",
+          value: String((conj.espacos_totais || {})[circulo] ?? total), inputMode: "numeric",
+          readOnly: Boolean(progresso)});
+        slotInputs[circulo] = campo;
+        slotsContainer.append(el("label", {htmlFor: id, textContent: `Espaços de magia de ${circulo}º círculo (total)`}), campo);
+      }
+      if (progresso) {
+        slotsContainer.append(el("p", {className: "choice-meta", textContent: `Limite do motor: ${progresso.truques} truques e ${progresso.magias_preparadas} magias preparadas. Espaços calculados automaticamente.`}));
+      }
       const salvar = el("button", {type: "button", className: "primary-button", textContent: "Salvar conjuração"});
       const feedback = el("p", {className: "choice-meta", role: "status"});
       salvar.addEventListener("click", async () => {
@@ -196,14 +211,16 @@
           const resultado = await api(url(`/${encodeURIComponent(p.id)}/magias`), {method: "PATCH", body: JSON.stringify({
             truques: Array.from(truques.select.selectedOptions, o => o.value),
             magias_preparadas: Array.from(preparadas.select.selectedOptions, o => o.value),
-            espacos_totais: {"1": Math.max(0, Math.min(20, Number(slots.value) || 0))},
+            espacos_totais: Object.fromEntries(Object.entries(slotInputs).map(([circulo, campo]) => [
+              circulo, Math.max(0, Math.min(20, Number(campo.value) || 0)),
+            ])),
           })});
           Object.assign(p, resultado);
           feedback.textContent = "Conjuração salva na ficha da campanha.";
         } catch (erro) { feedback.textContent = `Não foi possível salvar: ${erro.message}`; }
         finally { salvar.disabled = false; }
       });
-      secao.append(truques.bloco, preparadas.bloco, slotField, salvar, feedback);
+      secao.append(truques.bloco, preparadas.bloco, slotsContainer, salvar, feedback);
     } catch (erro) {
       status.textContent = `Não foi possível carregar a conjuração. ${erro.message}`;
     }
@@ -213,7 +230,7 @@
   function novoRascunho() {
     return {nome: '', especie: '', classe: '', antecedente: '', talento_antecedente: '', metodo_atributos: 'matriz_padrao',
       atributos: Object.fromEntries(ATRIBUTOS.map((a) => [a, ''])), compra: Object.fromEntries(ATRIBUTOS.map((a) => [a, 8])),
-      modo_aumento: '2-1', aumento2: '', aumento1: ''};
+      modo_aumento: '2-1', aumento2: '', aumento1: '', pericias_classe: []};
   }
 
   async function abrirCriacao() {
@@ -257,7 +274,7 @@
     charStep.textContent = `Passo ${passo + 1} de ${PASSOS.length} — ${PASSOS[passo]}`;
     prevButton.disabled = passo === 0;
     nextButton.textContent = passo === PASSOS.length - 1 ? 'Criar personagem' : 'Próximo';
-    charBody.replaceChildren(...[passoNome, passoEspecie, passoClasse, passoAntecedente, passoAtributos, passoRevisao][passo]());
+    charBody.replaceChildren(...[passoNome, passoEspecie, passoClasse, passoPericiasClasse, passoAntecedente, passoAtributos, passoRevisao][passo]());
     charBody.scrollTop = 0;
   }
 
@@ -276,7 +293,36 @@
 
   function passoClasse() {
     const opcoes = Object.entries(catalogo.classes).map(([k, v]) => [k, nome(k), `Dado de Vida d${v.dado_vida} · Atributo principal: ${nome(v.atributo_primario)}`]);
-    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a classe'}), radios('classe', opcoes, dados.classe, (v) => { dados.classe = v; }))];
+    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a classe'}), radios('classe', opcoes, dados.classe, (v) => { dados.classe = v; dados.pericias_classe = []; }))];
+  }
+
+  function passoPericiasClasse() {
+    const opcoes = catalogo.pericias_classe_opcoes?.[dados.classe] || [];
+    const limite = Number(catalogo.quantidade_pericias_classe?.[dados.classe] || 0);
+    const selecionadas = new Set(dados.pericias_classe || []);
+    const status = el('p', {className: 'choice-meta', role: 'status',
+      textContent: `Escolha ${limite} perícias de classe. Selecionadas: ${selecionadas.size}/${limite}.`});
+    const lista = el('ul', {className: 'choice-list'});
+    for (const pericia of opcoes) {
+      const caixa = el('input', {type: 'checkbox', checked: selecionadas.has(pericia)});
+      caixa.addEventListener('change', () => {
+        const atuais = new Set(dados.pericias_classe || []);
+        if (caixa.checked && atuais.size >= limite) {
+          caixa.checked = false;
+          charError.textContent = `Esta classe permite escolher apenas ${limite} perícias.`;
+          return;
+        }
+        charError.textContent = '';
+        if (caixa.checked) atuais.add(pericia); else atuais.delete(pericia);
+        dados.pericias_classe = [...atuais];
+        status.textContent = `Escolha ${limite} perícias de classe. Selecionadas: ${atuais.size}/${limite}.`;
+      });
+      lista.append(el('li', {}, el('label', {className: 'choice'}, caixa,
+        el('span', {className: 'choice-text'}, el('span', {className: 'choice-title', textContent: nome(pericia)}))));
+    }
+    return [el('fieldset', {}, el('legend', {textContent: `Perícias de ${nome(dados.classe)}`}),
+      el('p', {className: 'choice-meta', textContent: 'Essas escolhas são validadas pelo motor e somadas às perícias do antecedente, sem duplicar bônus.'}),
+      lista, status)];
   }
 
   function passoAntecedente() {
@@ -391,7 +437,8 @@
 
   function payload() {
     return {nome: dados.nome.trim(), especie: dados.especie, classe: dados.classe, nivel: 1, metodo_atributos: dados.metodo_atributos,
-      atributos: base(), antecedente: dados.antecedente, aumentos_antecedente: aumentos(), talento_antecedente: dados.talento_antecedente || null};
+      atributos: base(), antecedente: dados.antecedente, aumentos_antecedente: aumentos(), talento_antecedente: dados.talento_antecedente || null,
+      pericias_classe: dados.pericias_classe};
   }
 
   function passoRevisao() {
@@ -409,7 +456,8 @@
       el('p', {className: 'choice-meta', textContent: `${nome(dados.especie)} · ${nome(dados.classe)} nível 1 · ${bg.nome}`}),
       grade,
       el('dl', {className: 'facts'}, el('dt', {textContent: 'Talento'}), el('dd', {textContent: talentoNome(talento)}),
-        el('dt', {textContent: 'Perícias'}), el('dd', {textContent: bg.pericias.map(nome).join(', ')}),
+        el('dt', {textContent: 'Perícias do antecedente'}), el('dd', {textContent: bg.pericias.map(nome).join(', ')}),
+        el('dt', {textContent: 'Perícias de classe'}), el('dd', {textContent: (dados.pericias_classe || []).map(nome).join(', ')}),
         el('dt', {textContent: 'Ferramenta'}), el('dd', {textContent: bg.ferramenta})),
       el('p', {className: 'choice-meta', textContent: 'PV, Bônus de Proficiência e demais valores são calculados pelo motor de regras ao criar.'})];
   }
@@ -419,10 +467,14 @@
     if (passo === 1 && !dados.especie) return 'Escolha uma espécie.';
     if (passo === 2 && !dados.classe) return 'Escolha uma classe.';
     if (passo === 3) {
+      const quantidade = Number(catalogo.quantidade_pericias_classe?.[dados.classe] || 0);
+      if ((dados.pericias_classe || []).length !== quantidade) return `Escolha exatamente ${quantidade} perícias de classe.`;
+    }
+    if (passo === 4) {
       if (!dados.antecedente) return 'Escolha um antecedente.';
       if (catalogo.antecedentes[dados.antecedente].talento === 'dadiva_sombria' && !dados.talento_antecedente) return 'Escolha uma Dádiva Sombria.';
     }
-    if (passo === 4) {
+    if (passo === 5) {
       if (dados.metodo_atributos === 'matriz_padrao') {
         const usados = ATRIBUTOS.map((a) => Number(dados.atributos[a])).sort((x, y) => y - x);
         if (usados.join() !== catalogo.matriz_padrao.join()) return 'Use cada valor da matriz padrão exatamente uma vez.';
