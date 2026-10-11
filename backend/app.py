@@ -1054,7 +1054,7 @@ def mover_token_tatico(
     efeitos_movimento = resolver_efeitos_condicao({"action": "move", "target_conditions": condicoes_token})
     if not efeitos_movimento.get("pode_mover", True):
         raise HTTPException(status_code=422, detail={"motivo": "movimento_impedido_por_condicao", "efeitos_condicao": efeitos_movimento})
-    levantar_caido = "caido" in {str(c).casefold() for c in condicoes_token}
+    levantar_caido = bool(efeitos_movimento.get("movimento_para_levantar"))
     origem = (int(token["x"]), int(token["y"]))
     dx, dy = destino[0] - origem[0], destino[1] - origem[1]
     passos = max(abs(dx), abs(dy))
