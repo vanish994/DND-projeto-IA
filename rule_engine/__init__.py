@@ -10,7 +10,7 @@ from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
     EstadoVital, adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
-    descanso_curto, descanso_longo, salvaguarda_contra_morte, estabilizar,
+    descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
 )
 
 __all__ = [
@@ -21,4 +21,5 @@ __all__ = [
     "resolver_empurrar", "resolver_escape_agarramento",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
+    "resolver_descanso",
 ]

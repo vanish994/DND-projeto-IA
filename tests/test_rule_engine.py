@@ -292,6 +292,16 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(ajustar_dano(25, vulneravel=True), 50)
         self.assertEqual(ajustar_dano(25, imune=True), 0)
 
+    def test_damage_application_uses_damage_type_and_origin(self):
+        estado = EstadoVital(20, 20)
+        result = self.engine.evaluate({
+            "type": "damage_application", "estado": estado, "damage": 20,
+            "damage_type": "fogo", "source": "bola de fogo", "resistances": ["fogo"],
+        })
+        self.assertEqual(result.outcome["dano_total"], 10)
+        self.assertEqual(result.outcome["tipo_dano"], "fogo")
+        self.assertEqual(result.outcome["origem"], "bola de fogo")
+
     def test_healing_removes_unconsciousness_without_exceeding_maximum(self):
         estado = EstadoVital(20, 0, inconsciente=True)
         result = self.engine.evaluate({"type": "healing", "estado": estado, "amount": 25})
@@ -313,7 +323,7 @@ class RuleEngineTests(unittest.TestCase):
         estado = EstadoVital(20, 20)
         self.engine.evaluate({"type": "exhaustion", "estado": estado, "levels": 5})
         self.assertEqual(estado.exaustao, 5)
-        self.engine.evaluate({"type": "long_rest", "estado": estado})
+        self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 8})
         self.assertEqual(estado.exaustao, 4)
         self.engine.evaluate({"type": "exhaustion", "estado": estado, "levels": 2})
         self.assertTrue(estado.morto)
@@ -322,12 +332,38 @@ class RuleEngineTests(unittest.TestCase):
         estado = EstadoVital(20, 5)
         curto = self.engine.evaluate({
             "type": "short_rest", "estado": estado,
-            "hit_dice_rolls": [4, 6], "constitution_modifier": 2,
+            "hit_dice_rolls": [4, 6], "constitution_modifier": 2, "duration_hours": 1,
         })
         self.assertEqual(curto.outcome["pv_atuais"], 19)
         estado.pv_atuais = 10
-        self.engine.evaluate({"type": "long_rest", "estado": estado})
+        self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 8})
         self.assertEqual(estado.pv_atuais, 20)
+
+    def test_interrupted_rest_does_not_grant_benefits(self):
+        estado = EstadoVital(20, 5)
+        result = self.engine.evaluate({
+            "type": "short_rest", "estado": estado, "duration_hours": 1,
+            "interrupted": True, "hit_dice_rolls": [8],
+        })
+        self.assertEqual(result.outcome["resultado"], "interrompido_ou_invalido")
+        self.assertEqual(estado.pv_atuais, 5)
+
+    def test_long_rest_requires_sixteen_hour_interval(self):
+        estado = EstadoVital(20, 5)
+        result = self.engine.evaluate({
+            "type": "long_rest", "estado": estado, "duration_hours": 8,
+            "hours_since_last_long_rest": 8,
+        })
+        self.assertEqual(result.outcome["resultado"], "intervalo_insuficiente")
+        self.assertEqual(estado.pv_atuais, 5)
+
+    def test_long_rest_returns_declared_resources(self):
+        estado = EstadoVital(20, 5)
+        result = self.engine.evaluate({
+            "type": "long_rest", "estado": estado, "duration_hours": 8,
+            "recoverable_resources": {"dados_de_vida": "todos", "espacos_de_magia": "todos"},
+        })
+        self.assertEqual(result.outcome["recursos_recuperados"]["espacos_de_magia"], "todos")
 
 
 if __name__ == "__main__":

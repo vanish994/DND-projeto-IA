@@ -44,9 +44,22 @@ def ajustar_dano(
     return dano
 
 
-def aplicar_dano(estado: EstadoVital, dano: int, *, critico: bool = False, dano_ajustado: bool = False) -> dict[str, Any]:
+def aplicar_dano(
+    estado: EstadoVital, dano: int, *, critico: bool = False,
+    dano_ajustado: bool = False, tipo_dano: str | None = None,
+    origem: str | None = None, resistencias: Iterable[str] = (),
+    vulnerabilidades: Iterable[str] = (), imunidades: Iterable[str] = (),
+) -> dict[str, Any]:
     """Aplica dano, absorvendo PV temporários e tratando 0 PV."""
-    dano = max(0, int(dano)) if dano_ajustado else ajustar_dano(dano)
+    if dano_ajustado:
+        dano = max(0, int(dano))
+    else:
+        dano = ajustar_dano(
+            dano,
+            resistente=tipo_dano in set(resistencias),
+            vulneravel=tipo_dano in set(vulnerabilidades),
+            imune=tipo_dano in set(imunidades),
+        )
     absorvido = min(estado.pv_temporarios, dano)
     estado.pv_temporarios -= absorvido
     restante = dano - absorvido
@@ -55,6 +68,10 @@ def aplicar_dano(estado: EstadoVital, dano: int, *, critico: bool = False, dano_
         "dano_total": dano, "dano_absorvido_pv_temporarios": absorvido,
         "pv_atuais": estado.pv_atuais, "pv_temporarios": estado.pv_temporarios,
     }
+    if tipo_dano is not None:
+        resultado["tipo_dano"] = tipo_dano
+    if origem is not None:
+        resultado["origem"] = origem
     if estado.pv_atuais > 0:
         return resultado
     if restante >= estado.pv_maximos:
@@ -165,3 +182,35 @@ def descanso_longo(estado: EstadoVital) -> dict[str, Any]:
         "descanso": "longo", "pv_atuais": estado.pv_atuais,
         "pv_temporarios": estado.pv_temporarios, "exaustao": estado.exaustao,
     }
+
+
+def resolver_descanso(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Valida duração, interrupções e intervalo antes de conceder um descanso."""
+    estado = fatos["estado"]
+    tipo = fatos.get("rest_type", "curto")
+    duracao = float(fatos.get("duration_hours", 0))
+    interrompido = bool(fatos.get("interrupted", False))
+    if estado.morto:
+        raise ValueError("Uma criatura morta não recebe benefícios de descanso")
+    if estado.pv_atuais <= 0:
+        raise ValueError("É preciso ter pelo menos 1 PV para iniciar um descanso")
+    if tipo == "curto":
+        if duracao < 1 or interrompido:
+            return {"descanso": "curto", "resultado": "interrompido_ou_invalido"}
+        resultado = descanso_curto(
+            estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0)
+        )
+    elif tipo == "longo":
+        if duracao < 8:
+            return {"descanso": "longo", "resultado": "duracao_insuficiente"}
+        if float(fatos.get("hours_since_last_long_rest", 16)) < 16:
+            return {"descanso": "longo", "resultado": "intervalo_insuficiente"}
+        if interrompido:
+            return {"descanso": "longo", "resultado": "interrompido"}
+        resultado = descanso_longo(estado)
+    else:
+        raise ValueError("Tipo de descanso inválido")
+    recuperaveis = fatos.get("recoverable_resources", {})
+    if recuperaveis:
+        resultado["recursos_recuperados"] = dict(recuperaveis)
+    return resultado
