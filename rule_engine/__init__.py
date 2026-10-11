@@ -25,6 +25,7 @@ from .conditions import (
 from .magic_equipment import (
     EstadoEquipamento, EstadoMagia, calcular_ca, resolver_alvo_magia,
     resolver_area_magia, resolver_arma, resolver_carga, resolver_conjuracao,
+    resolver_salvaguarda_concentracao,
     resolver_duas_armas,
 )
 from .catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS, CATALOGO_EQUIPAMENTOS, CATALOGO_MAGIAS, buscar_catalogo, listar_catalogo
@@ -67,7 +68,7 @@ __all__ = [
     "resolver_efeitos_condicao", "resolver_estado_condicao",
     "EstadoEquipamento", "EstadoMagia", "calcular_ca", "resolver_alvo_magia",
     "resolver_area_magia", "resolver_arma", "resolver_carga", "resolver_conjuracao",
-    "resolver_duas_armas",
+    "resolver_duas_armas", "resolver_salvaguarda_concentracao",
     "CATALOGO_ARMAS", "CATALOGO_ARMADURAS", "CATALOGO_EQUIPAMENTOS", "CATALOGO_MAGIAS",
     "buscar_catalogo", "listar_catalogo",
     "CLASSES", "ESPECIES", "SUBCLASSES", "SUBCLASSES_RAVENLOFT", "TALENTOS", "Personagem", "criar_personagem",
