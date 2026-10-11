@@ -461,7 +461,7 @@ def build_default_engine() -> RuleEngine:
         description="Estabiliza uma criatura com 0 PV.",
         priority=50,
         when=lambda f: f["type"] == "stabilize",
-        resolve=lambda f: estabilizar(f["estado"], teste_medicina=f.get("medicine_test")),
+        resolve=lambda f: estabilizar(f["estado"], teste_medicina=f.get("medicine_test"), kit_medico=bool(f.get("healer_kit", False))),
         source="D&D 2024 — Estabilização",
     ))
     engine.register(Rule(
