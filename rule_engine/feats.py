@@ -1,5 +1,14 @@
 """Talentos do Livro do Jogador 2024: Origem, Gerais e Dádivas Épicas."""
 
+import unicodedata
+
+
+def _normalizar_nome(valor: object) -> str:
+    texto = unicodedata.normalize("NFKD", str(valor).strip().lower())
+    texto = "".join(char for char in texto if not unicodedata.combining(char))
+    return "_".join(texto.replace("-", " ").split())
+
+
 ORIGIN_FEATS = {
     "alerta": {"categoria": "origem", "efeitos": ["proficiência_iniciativa", "troca_iniciativa"]},
     "artifista": {"categoria": "origem", "efeitos": ["proficiência_3_ferramentas", "desconto_20_porcento", "fabricacao_rapida"]},
@@ -54,11 +63,11 @@ EPIC_FEATS = {
 }
 EPIC_FEATS = {name: {"categoria": "dadiva_epica", "nivel": 19, "efeitos": effects} for name, effects in EPIC_FEATS.items()}
 
-FEATS = {**ORIGIN_FEATS, **GENERAL_FEATS, **EPIC_FEATS}
+FEATS = {_normalizar_nome(nome): dados for nome, dados in {**ORIGIN_FEATS, **GENERAL_FEATS, **EPIC_FEATS}.items()}
 
 
 def validar_talento(fatos: dict) -> dict:
-    nome = str(fatos.get("talento", "")).lower()
+    nome = _normalizar_nome(fatos.get("talento", ""))
     dados = FEATS.get(nome)
     if not dados:
         return {"resultado": "bloqueado", "motivo": "talento_desconhecido"}
