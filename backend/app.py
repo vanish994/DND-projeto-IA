@@ -973,7 +973,7 @@ def avancar_turno_tatico(
             if condicoes.duracoes:
                 try:
                     resultado_tick = build_default_engine().evaluate({
-                        "type": "condition_state", "state": condicoes,
+                        "type": "condition_state", "estado": condicoes,
                         "operation": "tick", "units": 1,
                     }).outcome
                     duracoes_encerradas = resultado_tick.get("encerradas", [])
