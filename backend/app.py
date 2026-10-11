@@ -1099,7 +1099,12 @@ def _extrair_ataques_monstro(monstro: dict) -> list[dict]:
             r"(?:Melee|Ranged|Melee or Ranged)(?: Weapon| Spell)? Attack(?: Roll)?:\s*([+-]\d+)(?:\s+to hit)?",
             texto, re.I,
         )
-        dano_match = re.search(r"Hit:\s*\d+\s*\((\d+d\d+(?:\s*[+-]\s*\d+)?)\)\s*([A-Za-z]+)?\s*damage", texto, re.I)
+        # O SRD apresenta dano médio e expressão de dados entre parênteses;
+        # alguns ataques, porém, declaram dano fixo sem expressão de dados.
+        dano_match = re.search(
+            r"Hit:\s*(\d+)\s*(?:\((\d+d\d+(?:\s*[+-]\s*\d+)?)\))?\s*([A-Za-z]+)?\s*damage",
+            texto, re.I,
+        )
         alcance_corpo_match = re.search(r"reach\s+(\d+)\s*ft\.", texto, re.I)
         alcance_distancia_match = re.search(r"range\s+(\d+)(?:/(\d+))?\s*ft\.", texto, re.I)
         if not (nome_match and bonus_match and dano_match and (alcance_corpo_match or alcance_distancia_match)):
@@ -1110,8 +1115,10 @@ def _extrair_ataques_monstro(monstro: dict) -> list[dict]:
         resultado.append({
             "nome": nome_match.group(1).strip(),
             "bonus_ataque": int(bonus_match.group(1)),
-            "dano": dano_match.group(1).replace(" ", ""),
-            "tipo_dano": dano_match.group(2) or "desconhecido",
+            "dano": (dano_match.group(2) or dano_match.group(1)).replace(" ", ""),
+            "dano_medio": int(dano_match.group(1)),
+            "dano_fixo": dano_match.group(2) is None,
+            "tipo_dano": dano_match.group(3) or "desconhecido",
             "alcance_pes": max(reach, range_ft, max_range_ft),
             "alcance_corpo_a_corpo": reach,
             "alcance_minimo_distancia": range_ft,
@@ -1301,15 +1308,22 @@ def atacar_com_monstro_tatico(
         ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
     dados_expr = selecionado["dano"]
     import re
-    m = re.fullmatch(r"(\d+)d(\d+)(?:([+-])(\d+))?", dados_expr)
-    if not m:
+    m = re.fullmatch(r"(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?", dados_expr)
+    dano_fixo = re.fullmatch(r"\d+", dados_expr)
+    if not m and not dano_fixo:
         raise HTTPException(status_code=422, detail={"motivo": "expressao_de_dano_nao_suportada", "expressao": dados_expr})
-    quantidade, lados = int(m.group(1)), int(m.group(2))
-    modificador = int(m.group(4) or 0) * (-1 if m.group(3) == "-" else 1)
-    dados_dano = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
-    if ataque.get("critical"):
-        dados_dano += [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
-    dano = max(0, sum(dados_dano) + modificador) if ataque.get("result") == "hit" else 0
+    if dano_fixo:
+        # Dano declarado como número fixo não ganha dados extras em crítico.
+        dados_dano = []
+        modificador = int(dados_expr)
+        dano = modificador if ataque.get("result") == "hit" else 0
+    else:
+        quantidade, lados = int(m.group(1)), int(m.group(2))
+        modificador = int(m.group(4) or 0) * (-1 if m.group(3) == "-" else 1)
+        dados_dano = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+        if ataque.get("critical"):
+            dados_dano += [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+        dano = max(0, sum(dados_dano) + modificador) if ataque.get("result") == "hit" else 0
     if dano:
         repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
 
