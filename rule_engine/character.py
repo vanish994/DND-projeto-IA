@@ -57,6 +57,45 @@ SUBCLASSES_RAVENLOFT = {
 TALENTOS = set(FEATS)
 ATRIBUTOS = {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"}
 
+# Opções de perícias de classe do PHB 2024. Artífice segue a lista publicada
+# em Tasha's Cauldron of Everything, usada pelo projeto.
+PERICIAS_CLASSE_OPCOES = {
+    "barbaro": {"adestrar_animais", "atletismo", "intimidacao", "natureza", "percepcao", "sobrevivencia"},
+    "bardo": set("acrobacia adestrar_animais arcanismo atletismo atuacao enganacao furtividade historia intuicao intimidacao investigacao medicina natureza percepcao persuasao prestidigitacao religiao sobrevivencia".split()),
+    "clerigo": {"historia", "intuicao", "medicina", "persuasao", "religiao"},
+    "druida": {"arcanismo", "adestrar_animais", "intuicao", "medicina", "natureza", "percepcao", "religiao", "sobrevivencia"},
+    "guerreiro": {"acrobacia", "adestrar_animais", "atletismo", "historia", "intuicao", "intimidacao", "percepcao", "sobrevivencia"},
+    "monge": {"acrobacia", "atletismo", "historia", "intuicao", "religiao", "furtividade"},
+    "paladino": {"atletismo", "intuicao", "intimidacao", "medicina", "persuasao", "religiao"},
+    "guardiao": {"adestrar_animais", "atletismo", "intuicao", "investigacao", "natureza", "percepcao", "furtividade", "sobrevivencia"},
+    "ladino": {"acrobacia", "atletismo", "enganacao", "intuicao", "intimidacao", "investigacao", "percepcao", "persuasao", "prestidigitacao", "furtividade"},
+    "feiticeiro": {"arcanismo", "enganacao", "intuicao", "intimidacao", "persuasao", "religiao"},
+    "bruxo": {"arcanismo", "enganacao", "historia", "intimidacao", "investigacao", "natureza", "religiao"},
+    "mago": {"arcanismo", "historia", "intuicao", "investigacao", "medicina", "religiao"},
+    "artifice": {"arcanismo", "historia", "investigacao", "medicina", "natureza", "percepcao", "prestidigitacao"},
+}
+QUANTIDADE_PERICIAS_CLASSE = {
+    "barbaro": 2, "bardo": 3, "clerigo": 2, "druida": 2, "guerreiro": 2,
+    "monge": 2, "paladino": 2, "guardiao": 3, "ladino": 4,
+    "feiticeiro": 2, "bruxo": 2, "mago": 2, "artifice": 2,
+}
+PROFICIENCIAS_SALVAGUARDA_CLASSE = {
+    "barbaro": ["forca", "constituicao"], "bardo": ["destreza", "carisma"],
+    "clerigo": ["sabedoria", "carisma"], "druida": ["inteligencia", "sabedoria"],
+    "guerreiro": ["forca", "constituicao"], "monge": ["forca", "destreza"],
+    "paladino": ["sabedoria", "carisma"], "guardiao": ["forca", "destreza"],
+    "ladino": ["destreza", "inteligencia"], "feiticeiro": ["constituicao", "carisma"],
+    "bruxo": ["sabedoria", "carisma"], "mago": ["inteligencia", "sabedoria"],
+    "artifice": ["constituicao", "inteligencia"],
+}
+PROFICIENCIAS_CLASSE = {
+    "artifice": {
+        "armaduras": ["leves", "medias", "escudos"],
+        "armas": ["simples"],
+        "ferramentas": ["Ferramentas de Ladrão", "Ferramentas de Funileiro", "um tipo de Ferramentas de Artesão"],
+    },
+}
+
 
 @dataclass
 class Personagem:
@@ -70,6 +109,7 @@ class Personagem:
     talentos: set[str] = field(default_factory=set)
     classes_multiclasse: dict[str, int] = field(default_factory=dict)
     escolhas_talentos: dict[str, str] = field(default_factory=dict)
+    pericias_classe: set[str] = field(default_factory=set)
 
     @property
     def bonus_proficiencia(self) -> int:
@@ -129,6 +169,18 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
     talentos = set(fatos.get("feats", ()))
     if not talentos <= TALENTOS:
         raise ValueError("Talento inválido")
+    pericias_classe: set[str] = set()
+    if "class_skill_proficiencies" in fatos or "pericias_classe" in fatos:
+        brutas = fatos.get("class_skill_proficiencies", fatos.get("pericias_classe")) or []
+        pericias_classe = {str(p).strip().lower().replace(" ", "_") for p in brutas}
+        quantidade = QUANTIDADE_PERICIAS_CLASSE[classe]
+        if len(pericias_classe) != len(brutas):
+            raise ValueError("Não repita perícias de classe")
+        if len(pericias_classe) != quantidade:
+            raise ValueError(f"A classe {classe} exige escolher exatamente {quantidade} perícias")
+        invalidas = pericias_classe - PERICIAS_CLASSE_OPCOES[classe]
+        if invalidas:
+            raise ValueError("Perícia não disponível para esta classe: " + ", ".join(sorted(invalidas)))
     antecedente = str(fatos.get("background", "")).strip().lower()
     if antecedente in ANTECEDENTES:
         if "background_increases" in fatos:
@@ -146,6 +198,7 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         nome=str(fatos["name"]).strip(), especie=especie, classe=classe, nivel=nivel,
         atributos=atributos, antecedente=antecedente,
         subclasse=subclasse, talentos=talentos, escolhas_talentos=escolhas,
+        pericias_classe=pericias_classe,
     )
 
 
@@ -177,6 +230,9 @@ def ficha_personagem(personagem: Personagem) -> dict[str, Any]:
         pv += (personagem.nivel - 1) * (dado // 2 + 1 + modificador(personagem.atributos["constituicao"]))
     if "vigoroso" in personagem.talentos:
         pv += 2 * personagem.nivel
+    pericias_antecedente = list(antecedente["pericias"]) if antecedente else []
+    pericias_classe = sorted(personagem.pericias_classe)
+    pericias_totais = list(dict.fromkeys([*pericias_antecedente, *pericias_classe]))
     return {
         "nome": personagem.nome,
         "especie": personagem.especie,
@@ -193,7 +249,13 @@ def ficha_personagem(personagem: Personagem) -> dict[str, Any]:
         "deslocamento": ESPECIES[personagem.especie]["deslocamento"],
         "talentos": sorted(personagem.talentos),
         "escolhas_talentos": dict(personagem.escolhas_talentos),
-        "pericias": list(antecedente["pericias"]) if antecedente else [],
+        "pericias": pericias_totais,
+        "pericias_antecedente": pericias_antecedente,
+        "pericias_classe": pericias_classe,
+        "quantidade_pericias_classe": QUANTIDADE_PERICIAS_CLASSE[personagem.classe],
+        "proficiencias_salvaguarda": list(PROFICIENCIAS_SALVAGUARDA_CLASSE[personagem.classe]),
+        "proficiencias_classe": dict(PROFICIENCIAS_CLASSE.get(personagem.classe, {})),
+        "proficiencias_pendentes": len(pericias_classe) != QUANTIDADE_PERICIAS_CLASSE[personagem.classe],
         "ferramenta": antecedente["ferramenta"] if antecedente else None,
         "equipamento_antecedente": antecedente["equipamento"] if antecedente else None,
     }
