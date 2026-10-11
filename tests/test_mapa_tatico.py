@@ -406,7 +406,7 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(condicao.status_code, 200, condicao.text)
         self.save_encounter()
         response = self.client.post(self.url + "/mover", headers=self.headers, json={
-            "token_id": "heroi-vex", "destino_x": 2, "destino_y": 1,
+            "token_id": "heroi-vex", "destino_x": 3, "destino_y": 1,
         })
         self.assertEqual(response.status_code, 422, response.text)
         self.assertEqual(response.json()["detail"]["motivo"], "movimento_impedido_por_condicao")
