@@ -220,8 +220,17 @@ def resolver_iniciativa(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
         return {"resultado": "bloqueado", "motivo": "resultado_de_d20_ausente"}
     dados = dict(fatos)
-    if bool(dados.get("surpreendido", dados.get("surprised", False))):
+    condicoes = dados.get("condicoes", dados.get("conditions", [])) or []
+    if isinstance(condicoes, str):
+        condicoes = [condicoes]
+    condicoes_norm = {str(x).strip().lower().replace(" ", "_") for x in condicoes}
+    surpreendido = bool(dados.get("surpreendido", dados.get("surprised", False)))
+    incapacitado = bool(dados.get("incapacitado", dados.get("incapacitated", False))) or bool({"incapacitado", "incapacitated"} & condicoes_norm)
+    invisivel = bool(dados.get("invisivel", dados.get("invisible", False))) or bool({"invisivel", "invisible"} & condicoes_norm)
+    if surpreendido or incapacitado:
         dados["desvantagem"] = True
+    if invisivel:
+        dados["vantagem"] = True
     dados["atributo"] = "destreza"
     if "modificador_atributo" not in dados and "valor_atributo" not in dados and "ability_score" not in dados:
         dados["modificador_atributo"] = int(dados["modificador_destreza"])
