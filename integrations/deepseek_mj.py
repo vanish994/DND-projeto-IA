@@ -243,6 +243,47 @@ class DeepSeekMJ:
                 facts["character_id"] = personagem.get("id")
                 facts["proficiency_applied"] = bonus_proficiencia
                 facts["modifier_source"] = "ficha_autoritativa"
+            if facts.get("type") in {"saving_throw", "saving_throw_check"}:
+                grupo = personagens or []
+                personagem_id = facts.get("character_id")
+                personagem_salvaguarda = next((p for p in grupo if p.get("id") == personagem_id), None)
+                if personagem_salvaguarda is None and not personagem_id and len(grupo) == 1:
+                    personagem_salvaguarda = grupo[0]
+                if personagem_salvaguarda is None:
+                    return {"resultado": "bloqueado", "motivo": "personagem_ausente_ou_nao_identificado"}
+                bruto = facts.get("ability", facts.get("atributo"))
+                aliases_atributo = {
+                    "str": "forca", "strength": "forca", "for": "forca",
+                    "dex": "destreza", "dexterity": "destreza", "des": "destreza",
+                    "con": "constituicao", "constitution": "constituicao",
+                    "int": "inteligencia", "intelligence": "inteligencia",
+                    "wis": "sabedoria", "wisdom": "sabedoria", "sab": "sabedoria",
+                    "cha": "carisma", "charisma": "carisma", "car": "carisma",
+                }
+                atributo = aliases_atributo.get(str(bruto).strip().lower(), str(bruto).strip().lower()) if bruto else ""
+                atributos = personagem_salvaguarda.get("atributos") or {}
+                modificadores = personagem_salvaguarda.get("modificadores") or {}
+                if atributo not in {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"}:
+                    return {"resultado": "bloqueado", "motivo": "atributo_de_salvaguarda_ausente_ou_invalido"}
+                if atributo in modificadores:
+                    modificador_atributo = int(modificadores[atributo])
+                elif atributo in atributos:
+                    modificador_atributo = (int(atributos[atributo]) - 10) // 2
+                else:
+                    return {"resultado": "bloqueado", "motivo": "atributo_ausente_na_ficha", "atributo": atributo}
+                proficientes = set(personagem_salvaguarda.get("proficiencias_salvaguarda") or [])
+                proficiente = atributo in proficientes
+                pb = int(personagem_salvaguarda.get("bonus_proficiencia", 2))
+                facts["ability"] = atributo
+                facts["atributo"] = atributo
+                facts["proficiencias_salvaguarda"] = sorted(proficientes)
+                facts["proficiente"] = proficiente
+                facts["modificador_atributo"] = modificador_atributo
+                facts["bonus_proficiencia"] = pb
+                facts["modifier"] = modificador_atributo + (pb if proficiente else 0)
+                facts["character_id"] = personagem_salvaguarda.get("id")
+                facts["proficiency_applied"] = pb if proficiente else 0
+                facts["modifier_source"] = "ficha_autoritativa"
             if facts.get("type") in {"spell", "spell_cast"} and facts.get("magia"):
                 grupo = personagens or []
                 personagem_id = facts.get("character_id")
