@@ -109,8 +109,7 @@ class NovoPersonagem(BaseModel):
 
 
 class AtualizarPersonagem(BaseModel):
-    pv_atual: int | None = Field(default=None, ge=0)
-    ajuste_pv: int | None = Field(default=None, ge=-100, le=100)
+    ajuste_pv: int = Field(ge=-100, le=100)
 
 
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
@@ -351,12 +350,7 @@ def atualizar_pv_personagem(
     repo: RepositorioCampanhas = Depends(obter_repositorio),
 ) -> dict:
     _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
-    if dados.ajuste_pv is not None and dados.pv_atual is None:
-        atualizado = repo.ajustar_pv_personagem(jogador, campanha_id, personagem_id, dados.ajuste_pv)
-    elif dados.pv_atual is not None and dados.ajuste_pv is None:
-        atualizado = repo.atualizar_personagem(jogador, campanha_id, personagem_id, pv_atual=dados.pv_atual)
-    else:
-        raise HTTPException(status_code=422, detail="Informe exatamente pv_atual ou ajuste_pv")
+    atualizado = repo.ajustar_pv_personagem(jogador, campanha_id, personagem_id, dados.ajuste_pv)
     if atualizado is None:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
     return atualizado
