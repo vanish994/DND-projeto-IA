@@ -13,8 +13,18 @@ def _mod(value: int) -> int:
     return (int(value) - 10) // 2
 
 
+def _nivel_valido(fatos: dict) -> int | None:
+    try:
+        nivel = int(fatos.get("nivel", 0))
+    except (TypeError, ValueError):
+        return None
+    return nivel if 1 <= nivel <= 20 else None
+
+
 def resolver_bruxo(fatos: dict) -> dict:
-    nivel = int(fatos["nivel"])
+    nivel = _nivel_valido(fatos)
+    if nivel is None:
+        return {"resultado": "bloqueado", "motivo": "nivel_invalido"}
     acao = str(fatos.get("acao", "progressao")).lower()
     espacos, circulo = PACT_SLOTS[max(k for k in PACT_SLOTS if k <= nivel)]
     invocacoes = 1 if nivel == 1 else 3 if nivel < 5 else 5 if nivel < 9 else 6 if nivel < 12 else 7 if nivel < 15 else 8 if nivel < 18 else 9 if nivel < 20 else 10
@@ -29,7 +39,9 @@ def resolver_bruxo(fatos: dict) -> dict:
 
 
 def resolver_feiticeiro(fatos: dict) -> dict:
-    nivel = int(fatos["nivel"])
+    nivel = _nivel_valido(fatos)
+    if nivel is None:
+        return {"resultado": "bloqueado", "motivo": "nivel_invalido"}
     acao = str(fatos.get("acao", "progressao")).lower()
     pontos = max(0, nivel)
     if nivel < 2:
@@ -49,7 +61,9 @@ def resolver_feiticeiro(fatos: dict) -> dict:
 
 
 def resolver_guardiao(fatos: dict) -> dict:
-    nivel = int(fatos["nivel"])
+    nivel = _nivel_valido(fatos)
+    if nivel is None:
+        return {"resultado": "bloqueado", "motivo": "nivel_invalido"}
     acao = str(fatos.get("acao", "progressao")).lower()
     if acao == "progressao":
         return {"resultado": "resolvido", "espacos": HALF_CASTER_SLOTS[nivel], "atributo_conjuracao": "sabedoria", "inimigo_favorito_usos": 2 if nivel < 5 else 3 if nivel < 9 else 4 if nivel < 13 else 5 if nivel < 17 else 6}
@@ -64,3 +78,33 @@ def resolver_guardiao(fatos: dict) -> dict:
     if acao == "predador_implacavel":
         return {"resultado": "resolvido", "mantem_concentracao_ao_sofrer_dano": True}
     return {"resultado": "resolvido", "caracteristica": acao}
+
+
+def resolver_paladino(fatos: dict) -> dict:
+    """Progressão de conjuração e recursos básicos do Paladino 2024."""
+    nivel = _nivel_valido(fatos)
+    if nivel is None:
+        return {"resultado": "bloqueado", "motivo": "nivel_invalido"}
+    acao = str(fatos.get("acao", "progressao")).lower()
+    carisma = int(fatos.get("carisma", 10))
+    if acao == "progressao":
+        return {
+            "resultado": "resolvido",
+            "classe": "paladino",
+            "espacos": list(HALF_CASTER_SLOTS[nivel]),
+            "atributo_conjuracao": "carisma",
+            "magias_preparadas": max(1, nivel // 2 + _mod(carisma)),
+            "pontos_de_cura_maos_consagradas": 5 * nivel,
+        }
+    if acao == "maos_consagradas":
+        quantidade = int(fatos.get("quantidade", 0))
+        disponivel = max(0, 5 * nivel)
+        if quantidade < 0 or quantidade > disponivel:
+            return {"resultado": "bloqueado", "motivo": "quantidade_de_cura_invalida", "maximo": disponivel}
+        return {"resultado": "resolvido", "cura": quantidade, "pontos_restantes": disponivel - quantidade}
+    if acao == "destruicao_do_paladino":
+        espaco = int(fatos.get("espaco", 0))
+        if not 1 <= espaco <= 5:
+            return {"resultado": "bloqueado", "motivo": "espaco_invalido"}
+        return {"resultado": "requer_resolucao_de_dano", "dado_adicional": f"{espaco}d8", "tipo": "radiante"}
+    return {"resultado": "bloqueado", "motivo": "acao_desconhecida", "acao": acao}
