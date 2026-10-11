@@ -47,4 +47,26 @@ O motor é **somente normativo**. Ele confere a existência do monstro, os dados
 
 A restrição se aplica somente ao conteúdo mecânico apresentado como regra de D&D: o MJ não pode inventar um monstro, uma magia, uma condição, um item, uma habilidade, uma estatística ou uma regra e tratá-los como oficiais. Para isso, o conteúdo deve existir no catálogo ou nas regras implementadas. A operação `validar_uso` bloqueia alterações silenciosas em dados oficiais como CA, PV, ND, tipo ou bloco de regras; decisões narrativas continuam fora do motor.
 
+## DeepSeek como MJ
+
+O adaptador `integrations/deepseek_mj.py` transforma a API do DeepSeek no MJ conversacional. Ele mantém a conversa, conduz a narração e apresenta os resultados. Quando precisa de mecânica, chama as ferramentas `sugerir_monstros`, `consultar_monstro` ou `resolver_regra`; essas ferramentas executam o Rule Engine e devolvem a resolução oficial. O DeepSeek não recebe permissão para alterar CA, PV, ND, XP, ações ou efeitos.
+
+Configuração mínima:
+
+```bash
+export DEEPSEEK_API_KEY="sua-chave"
+export DEEPSEEK_BASE_URL="https://api.deepseek.com"
+export DEEPSEEK_MODEL="deepseek-flash"
+```
+
+Uso:
+
+```python
+from integrations.deepseek_mj import DeepSeekMJ
+
+mestre = DeepSeekMJ()
+resposta = mestre.responder("Quero opções oficiais de monstros para o próximo encontro.")
+print(resposta)
+```
+
 A estimativa de “mais de 300 monstros” não corresponde ao PDF SRD 5.2.1 presente na biblioteca ativa: a extração verificável dessa fonte resulta em 232 blocos completos. O catálogo não inventa entradas para preencher essa diferença.
