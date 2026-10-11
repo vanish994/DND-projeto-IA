@@ -189,8 +189,16 @@ class AtualizarCondicaoPersonagem(BaseModel):
     duracao: int | str | None = None
     unidades: int = Field(default=1, ge=1, le=100)
 
+class SalvaguardaFimTurno(BaseModel):
+    condicao: str = Field(min_length=1, max_length=40)
+    rolagem: int = Field(ge=1, le=20)
+    modificador: int = Field(ge=-30, le=30)
+    cd: int = Field(ge=1, le=50)
+
+
 class AcaoAvancarTurno(BaseModel):
     token_id: str | None = Field(default=None, max_length=80)
+    salvaguardas: list[SalvaguardaFimTurno] = Field(default_factory=list, max_length=15)
 
 
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
@@ -1049,6 +1057,51 @@ def avancar_turno_tatico(
         if token_bruto_atual:
             duracoes_encerradas.extend(_expirar_duracoes_textuais_token(token_bruto_atual, "fim"))
             duracoes_encerradas.extend(_reduzir_duracoes_numericas_token(token_bruto_atual))
+    # Resolve explicit saves-to-end effects at the end of the active creature's turn.
+    # The effect must request the save; ordinary timed conditions are not guessed.
+    salvaguardas_resolvidas = []
+    for tentativa in (pedido.salvaguardas if pedido else []):
+        condicao = normalizar_condicao(tentativa.condicao)
+        if token_atual and token_atual["kind"] == "hero":
+            ficha = repo.obter_personagem(jogador, campanha_id, token_atual["character_id"])
+            if not ficha:
+                continue
+            condicoes = _condicoes_da_ficha(ficha)
+            resultado_save = condicoes.encerrar_por_salvaguarda(
+                condicao, tentativa.rolagem, tentativa.modificador, tentativa.cd
+            )
+            if resultado_save.get("encerrada"):
+                _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, condicoes)
+            salvaguardas_resolvidas.append({"token_id": token_atual["id"], **resultado_save})
+        elif token_atual and token_atual["kind"] == "enemy":
+            token_bruto_atual = next((t for t in bruto.get("tokens", []) if t.get("id") == token_atual["id"]), None)
+            if not token_bruto_atual:
+                continue
+            ativas = token_bruto_atual.get("conditions") or []
+            if not any(normalizar_condicao(c) == condicao for c in ativas):
+                salvaguardas_resolvidas.append({
+                    "token_id": token_atual["id"], "condicao": condicao,
+                    "resultado": "não_ativa", "encerrada": False,
+                })
+                continue
+            total = tentativa.rolagem + tentativa.modificador
+            sucesso = total >= tentativa.cd
+            if sucesso:
+                token_bruto_atual["conditions"] = [
+                    c for c in ativas if normalizar_condicao(c) != condicao
+                ]
+                duracoes = token_bruto_atual.get("condition_durations") or {}
+                for chave in list(duracoes):
+                    if normalizar_condicao(chave) == condicao:
+                        duracoes.pop(chave, None)
+                token_bruto_atual["condition_durations"] = duracoes
+            salvaguardas_resolvidas.append({
+                "token_id": token_atual["id"], "condicao": condicao,
+                "rolagem": tentativa.rolagem, "modificador": tentativa.modificador,
+                "total": total, "cd": tentativa.cd,
+                "resultado": "encerrada" if sucesso else "continua",
+                "encerrada": sucesso,
+            })
     vivos = {t["id"] for t in estado["tokens"] if int(t.get("hp", 0)) > 0}
     iniciativa_viva = [item for item in iniciativa if item["token_id"] in vivos]
     bruto["iniciativa"] = iniciativa_viva
@@ -1087,6 +1140,7 @@ def avancar_turno_tatico(
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "turno_encerrado": atual["token_id"], "duracoes_encerradas": duracoes_encerradas,
         "duracoes_inicio_encerradas": duracoes_inicio_encerradas,
+        "salvaguardas_resolvidas": salvaguardas_resolvidas,
         "rodada": bruto.get("rodada", rodada),
     }
 
