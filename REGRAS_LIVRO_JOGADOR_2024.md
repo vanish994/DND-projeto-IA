@@ -70,6 +70,10 @@ Criado `spells.py` com consulta por escola e círculo, componentes Verbais/Somá
 
 Implementado `economy.py` com conversão entre PC, PP, PE, PO e PL; compra e venda; consulta unificada de armas, armaduras, equipamentos e itens mágicos; inventário com capacidade de carga; consumíveis; cargas; e sintonização. O sistema aplica o limite de três itens mágicos sintonizados, exige sintonização quando necessário, permite encerrar a sintonização após descanso curto e bloqueia o uso de itens com cargas esgotadas. Foram adicionados itens mágicos representativos com efeitos, raridade, cargas e requisitos de sintonização.
 
+## Condições e estados alterados
+
+Completo o módulo `conditions.py` com as 16 condições do Livro do Jogador 2024, normalização de nomes em português/inglês, imunidades, duração, aplicação repetida, remoção, redução por turnos e níveis de Exaustão. Os efeitos derivados agora abrangem vantagem/desvantagem, acertos críticos automáticos, deslocamento 0, ações e reações bloqueadas, falhas automáticas de salvaguardas de Força/Destreza, concentração, fala, sentidos, ataques contra Caído, efeitos de Cego/Invisível, Petrificado, Contido, Atordoado, Inconsciente, Envenenado, Amedrontado, Enfeitiçado, Agarrado, Lento e Exaustão.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

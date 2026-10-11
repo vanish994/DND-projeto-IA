@@ -930,6 +930,25 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "magic_item", "operation": "use", "item": "varinha_de_misseis", "cargas": 2})
         self.assertEqual(result.outcome["cargas_restantes"], 1)
 
+    def test_condition_effects_include_petrified_restraining_and_stunned_states(self):
+        result = self.engine.evaluate({"type": "condition_effect", "action": "move", "target_conditions": ["petrified"]})
+        self.assertEqual(result.outcome["deslocamento"], 0)
+        self.assertTrue(result.outcome["resistencia_todos_danos"])
+        self.assertTrue(result.outcome["imune_envenenado_e_doenca"])
+        result = self.engine.evaluate({"type": "condition_effect", "action": "move", "target_conditions": ["restrained"]})
+        self.assertEqual(result.outcome["deslocamento"], 0)
+        self.assertTrue(result.outcome["desvantagem_salvaguarda_destreza"])
+        result = self.engine.evaluate({"type": "condition_effect", "action": "move", "target_conditions": ["stunned"]})
+        self.assertFalse(result.outcome["pode_realizar_reacoes"])
+        self.assertTrue(result.outcome["falha_salvaguardas_forca_destreza"])
+
+    def test_condition_aliases_and_exhaustion_levels_are_normalized(self):
+        estado = __import__("rule_engine", fromlist=["EstadoCondicoes"]).EstadoCondicoes()
+        result = self.engine.evaluate({"type": "condition_state", "estado": estado, "operation": "apply", "condition": "Poisoned", "duration": 2})
+        self.assertEqual(result.outcome["condicao"], "envenenado")
+        result = self.engine.evaluate({"type": "condition_effect", "action": "move", "target_conditions": ["exhaustion"], "exhaustion_niveis": 3})
+        self.assertEqual(result.outcome["modificador_d20"], -6)
+
 
 if __name__ == "__main__":
     unittest.main()
