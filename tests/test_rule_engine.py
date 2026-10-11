@@ -860,13 +860,15 @@ class RuleEngineTests(unittest.TestCase):
         self.assertIn("dadiva_do_destino", EPIC_FEATS)
         self.assertEqual(FEATS["alerta"]["categoria"], "origem")
 
-    def test_origin_talents_resolve_core_effects(self):
+    def test_origin_talents_distinguish_catalog_from_implemented_effects(self):
         result = self.engine.evaluate({"type": "feat", "talento": "alerta", "nivel": 1})
         self.assertIn("proficiência_iniciativa", result.outcome["efeitos"])
+        self.assertEqual(result.outcome["resultado"], "nao_implementado")
         result = self.engine.evaluate({"type": "feat", "talento": "vigoroso", "nivel": 5})
         self.assertEqual(result.outcome["pv_adicionais"], 10)
         result = self.engine.evaluate({"type": "feat", "talento": "sortudo", "nivel": 1, "bonus_proficiencia": 2})
-        self.assertEqual(result.outcome["pontos_de_sorte"], 2)
+        self.assertEqual(result.outcome["resultado"], "nao_implementado")
+        self.assertNotIn("pontos_de_sorte", result.outcome)
 
     def test_general_talent_prerequisites_and_effects(self):
         blocked = self.engine.evaluate({"type": "feat", "talento": "conjurador_belico", "nivel": 4, "caracteristica_conjuracao": False})
@@ -876,11 +878,12 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "feat", "talento": "sentinela", "nivel": 4, "forca": 13})
         self.assertIn("zera_deslocamento", result.outcome["efeitos"])
 
-    def test_epic_talents_require_level_19_and_resolve_effects(self):
+    def test_epic_talents_require_level_19_and_mark_partial_effects_unimplemented(self):
         blocked = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_velocidade", "nivel": 18})
         self.assertEqual(blocked.outcome["motivo"], "nivel_insuficiente")
-        result = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_velocidade", "nivel": 19})
-        self.assertEqual(result.outcome["deslocamento_adicional_m"], 9)
+        partial = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_velocidade", "nivel": 19})
+        self.assertEqual(partial.outcome["resultado"], "nao_implementado")
+        self.assertNotIn("deslocamento_adicional_m", partial.outcome)
         result = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_visao_verdadeira", "nivel": 19})
         self.assertEqual(result.outcome["visao_verdadeira_m"], 18)
 
