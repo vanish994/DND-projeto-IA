@@ -317,14 +317,14 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result.outcome["resultado"], "bloqueado")
         self.assertEqual(result.outcome["motivo"], "tamanho_invalido")
 
-    def test_grapple_applies_immobilized_and_can_be_escaped(self):
+    def test_grapple_applies_grappled_condition_and_can_be_escaped(self):
         result = self.engine.evaluate({
             "type": "grapple", "forca_modificador": 3, "bonus_proficiencia": 2,
             "tamanho_atacante": 2, "tamanho_alvo": 2,
             "rolagem": 5, "modificador_salvaguarda": 1,
         })
         self.assertEqual(result.outcome["resultado"], "aplicado")
-        self.assertEqual(result.outcome["condicao"], "imobilizado")
+        self.assertEqual(result.outcome["condicao"], "agarrado")
         escape = self.engine.evaluate({
             "type": "grapple_escape", "rolagem": 13, "modificador": 2,
             "cd_agarramento": result.outcome["cd"],
