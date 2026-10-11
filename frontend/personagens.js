@@ -717,7 +717,7 @@
     for (const [chave, info] of Object.entries(catalogo.especies)) {
       grade.append(cartaoEscolha('especie', chave, nome(chave),
         `Tamanho ${nome(info.tamanho)} · Deslocamento ${String(info.deslocamento).replace('.', ',')} m`,
-        dados.especie === chave, (v) => { dados.especie = v; }));
+        dados.especie === chave, (v) => { dados.especie = v; dados.heranca_draconica = ''; render(); }));
     }
     const extras = [];
     const escolha = catalogo.escolhas_especie?.[dados.especie];
@@ -725,7 +725,7 @@
       const id = 'species-choice';
       const select = el('select', {id, className: 'field-control'},
         el('option', {value: '', textContent: 'Escolha uma herança dracônica…'}),
-        ...((escolha.opcoes || []).map((info) =>
+        ...(escolha.opcoes || []).map((info) =>
           el('option', {value: info.chave, textContent: `${info.nome} — dano ${info.dano}`})));
       select.value = dados.heranca_draconica || '';
       select.addEventListener('change', () => { dados.heranca_draconica = select.value; });
@@ -833,7 +833,7 @@
         grade.append(cartaoEscolha('antecedente', chave, info.nome,
           `${info.atributos.map(nome).join(', ')} · ${talentoNome(info.talento)} · ${info.pericias.map(nome).join(', ')}`,
           dados.antecedente === chave, (v) => {
-            if (v !== dados.antecedente) { dados.aumento2 = ''; dados.aumento1 = ''; dados.talento_antecedente = ''; }
+            if (v !== dados.antecedente) { dados.aumento2 = ''; dados.aumento1 = ''; dados.talento_antecedente = ''; dados.ferramenta_antecedente = ''; dados.equipamento_antecedente = ''; }
             dados.antecedente = v;
             desenharExtra();
             desenharEscolhasAntecedente();
