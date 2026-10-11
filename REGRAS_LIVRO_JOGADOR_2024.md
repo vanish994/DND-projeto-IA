@@ -143,6 +143,10 @@ Os testes foram adicionados, mas a suíte ainda não foi executada/confirmada po
 
 A lista oficial do PHB 2024 contém **15 condições**, não 16. `Lento/Slowed` não faz parte da lista normativa e foi removida do conjunto de condições do motor; efeitos de lentidão devem ser modelados como efeitos específicos de magias ou características, não como condição geral. A fonte oficial D&D Beyond lista as 15 condições no glossário.
 
+## Correção de Surpresa no combate de 2024
+
+Atualizado o rastreador de turnos: Surpresa não remove ação, ação bônus, reação nem movimento no primeiro turno. A condição de surpreendido agora é aplicada à rolagem de iniciativa como desvantagem, conforme o PHB 2024.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
