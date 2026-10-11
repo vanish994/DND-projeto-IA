@@ -1088,6 +1088,9 @@ def atacar_com_monstro_tatico(
         "alcance": selecionado["alcance_corpo_a_corpo"] or selecionado["alcance_maximo_distancia"],
         "alcance_maximo": selecionado["alcance_maximo_distancia"] or None,
         "ataque_a_distancia": selecionado["alcance_maximo_distancia"] > 0,
+        "desvantagem": bool(selecionado["alcance_maximo_distancia"] > 0 and (
+            distancia <= 5 or distancia > selecionado["alcance_minimo_distancia"]
+        )),
         "origem": (int(atacante["x"]), int(atacante["y"])),
         "alvo": (int(alvo["x"]), int(alvo["y"])),
         "atacante": (int(atacante["x"]), int(atacante["y"])),
@@ -1098,6 +1101,13 @@ def atacar_com_monstro_tatico(
     if geometria.get("resultado") != "permitido":
         raise HTTPException(status_code=422, detail={"motivo": geometria.get("motivo", "ataque_bloqueado"), "geometria": geometria})
     rolagem = secrets.randbelow(20) + 1
+    rolagens_extra = []
+    if geometria.get("estado_jogada") == "desvantagem":
+        rolagens_extra = [secrets.randbelow(20) + 1]
+        rolagem = min(rolagem, *rolagens_extra)
+    elif geometria.get("estado_jogada") == "vantagem":
+        rolagens_extra = [secrets.randbelow(20) + 1]
+        rolagem = max(rolagem, *rolagens_extra)
     ataque = build_default_engine().evaluate({
         "type": "attack", "roll": rolagem, "modifier": selecionado["bonus_ataque"],
         "target_ac": int(alvo["ac"]) + int(geometria.get("bonus_ca_por_cobertura", 0)),
@@ -1120,7 +1130,8 @@ def atacar_com_monstro_tatico(
     return {
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "monstro": monstro["nome"], "acao": selecionado["nome"], "ataque": ataque,
-        "rolagem": rolagem, "bonus_ataque": selecionado["bonus_ataque"],
+        "rolagem": rolagem, "rolagens": [rolagem, *rolagens_extra],
+        "bonus_ataque": selecionado["bonus_ataque"],
         "dados_dano": dados_dano if ataque.get("result") == "hit" else [],
         "dano": dano, "tipo_dano": selecionado["tipo_dano"], "geometria": geometria,
         "nota": "Ação extraída do bloco de estatísticas do bestiário; ações múltiplas e efeitos especiais ainda precisam de resolução própria.",
