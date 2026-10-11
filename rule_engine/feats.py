@@ -1,5 +1,14 @@
 """Talentos do Livro do Jogador 2024: Origem, Gerais e Dádivas Épicas."""
 
+import unicodedata
+
+
+def _normalizar_nome(valor: object) -> str:
+    texto = unicodedata.normalize("NFKD", str(valor).strip().lower())
+    texto = "".join(char for char in texto if not unicodedata.combining(char))
+    return "_".join(texto.replace("-", " ").split())
+
+
 ORIGIN_FEATS = {
     "alerta": {"categoria": "origem", "efeitos": ["proficiência_iniciativa", "troca_iniciativa"]},
     "artifista": {"categoria": "origem", "efeitos": ["proficiência_3_ferramentas", "desconto_20_porcento", "fabricacao_rapida"]},
@@ -54,11 +63,11 @@ EPIC_FEATS = {
 }
 EPIC_FEATS = {name: {"categoria": "dadiva_epica", "nivel": 19, "efeitos": effects} for name, effects in EPIC_FEATS.items()}
 
-FEATS = {**ORIGIN_FEATS, **GENERAL_FEATS, **EPIC_FEATS}
+FEATS = {_normalizar_nome(nome): dados for nome, dados in {**ORIGIN_FEATS, **GENERAL_FEATS, **EPIC_FEATS}.items()}
 
 
 def validar_talento(fatos: dict) -> dict:
-    nome = str(fatos.get("talento", "")).lower()
+    nome = _normalizar_nome(fatos.get("talento", ""))
     dados = FEATS.get(nome)
     if not dados:
         return {"resultado": "bloqueado", "motivo": "talento_desconhecido"}
@@ -84,19 +93,12 @@ def resolver_talento(fatos: dict) -> dict:
         return validacao
     nome = validacao["talento"]
     resultado = dict(validacao)
-    resultado["resultado"] = "resolvido"
+    # Catálogo e validação não equivalem a uma resolução mecânica completa.
+    # Só declarar resolvido o talento quando existe um ramo específico abaixo.
+    resultado["resultado"] = "nao_implementado"
+    resultado["motivo"] = "talento_catalogado_sem_resolucao_especifica"
     if nome == "vigoroso":
+        resultado["resultado"] = "resolvido"
+        resultado.pop("motivo", None)
         resultado["pv_adicionais"] = 2 * int(fatos.get("nivel", 1))
-    elif nome == "sortudo":
-        resultado["pontos_de_sorte"] = int(fatos.get("bonus_proficiencia", 2))
-    elif nome == "conjurador_ritualista":
-        resultado["magias_rituais"] = int(fatos.get("bonus_proficiencia", 2))
-    elif nome == "lider_inspirador":
-        resultado["pv_temporarios_por_aliado"] = int(fatos.get("nivel", 1)) + int(fatos.get("modificador_atributo", 0))
-    elif nome == "dadiva_da_velocidade":
-        resultado["deslocamento_adicional_m"] = 9
-    elif nome == "dadiva_da_visao_verdadeira":
-        resultado["visao_verdadeira_m"] = 18
-    elif nome == "dadiva_da_resistencia_a_energia":
-        resultado["quantidade_resistencias"] = 2
     return resultado
