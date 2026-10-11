@@ -41,7 +41,7 @@ Não apagar, reextrair ou recriar o bestiário, os catálogos ou o prompt do MJ 
 - GitHub: `https://github.com/vanish994/DND-projeto-IA`
 - Branch principal: `main`
 - Deploy automático: GitHub `main` → Render
-- Último estado validado: 188 testes aprovados após a integração da PR #1
+- Último estado validado: 235 testes aprovados no workflow [38156565465](https://github.com/vanish994/DND-projeto-IA/actions/runs/38156565465), após correções de progressão de conjuração e validação de magias
 
 ### Serviço online
 
@@ -350,7 +350,7 @@ git diff --check
 git status --short
 ```
 
-A suíte deve permanecer verde. O número de testes conhecido neste guia é 188; se diminuir, investigar antes de continuar.
+A suíte deve permanecer verde. O último número validado é 235; se diminuir, investigar antes de continuar.
 
 Para verificar o serviço online:
 
@@ -404,3 +404,17 @@ Uma funcionalidade só deve ser marcada como concluída quando:
 O próximo grande marco de produto é:
 
 > **Uma campanha persistente com personagens, estado mecânico, combate e interface visual, mantendo o MJ livre para narrar e o Rule Engine como árbitro das regras.**
+
+
+## Atualização de cobertura — motor de regras (2026-10-11)
+
+- Corrigida a progressão de espaços de magia do conjurador completo no nível 17.
+- Corrigida a quantidade de magias preparadas do Mago para nível + modificador de Inteligência; a progressão de magias do Bardo usa tabela própria.
+- Corrigidos truques por classe nos marcos de nível 1, 4 e 10 e normalização de nomes de classe com acentos.
+- Adicionada progressão de conjuração do Paladino ao registro do Rule Engine; incluídos espaços do Feiticeiro e validação de níveis 1–20 para conjuradores avançados.
+- Ações de conjurador ainda não implementadas agora são bloqueadas em vez de retornarem falsamente como resolvidas.
+- Mãos Consagradas valida gastos negativos e valores acima do pool restante.
+- Magias sem círculo identificado deixaram de ser classificadas como truques. Truques não podem gastar espaços, e espaços acima do 9º são bloqueados. Busca de magia normaliza acentos e espaços.
+- Validação: 235 testes aprovados no workflow indicado acima.
+
+Estas correções aumentam a precisão, mas o motor continua incompleto. Permanecem pendentes efeitos mecânicos das magias catalogadas, características e subclasses sem resolução específica, traços completos de espécies, integração de estado de recursos/combate e validação sistemática de todas as regras do PHB 2024.
