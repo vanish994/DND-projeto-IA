@@ -352,5 +352,52 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertIsNone(ficha_final["concentrando"])
 
 
+    def test_iniciativa_persiste_e_avanco_expira_condicao_numerica(self):
+        condicao = self.client.post(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/condicoes",
+            headers=self.headers,
+            json={"operacao": "apply", "condicao": "paralisado", "duracao": 1},
+        )
+        self.assertEqual(condicao.status_code, 200, condicao.text)
+        self.save_encounter()
+        with patch.object(backend_app.secrets, "randbelow", side_effect=[10, 10]):
+            inicio = self.client.post(self.url + "/iniciativa/iniciar", headers=self.headers)
+        self.assertEqual(inicio.status_code, 200, inicio.text)
+        body = inicio.json()
+        self.assertEqual(body["rodada"], 1)
+        self.assertEqual(len(body["iniciativa"]), 2)
+        ativo = body["mapa"]["token_ativo"]
+        ficha = self.hero
+        if ativo != "heroi-vex":
+            # Forçar a ordem do herói em empate, com o modificador de Destreza da ficha.
+            self.assertNotEqual(ativo, "heroi-vex")
+            bruto = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
+            bruto["iniciativa"].sort(key=lambda item: item["token_id"] != "heroi-vex")
+            bruto["turno_indice"] = 0
+            self.repo.salvar_mapa_tatico("jogador-mapa", self.cid, bruto)
+        avancar = self.client.post(self.url + "/turno/avancar", headers=self.headers, json={"token_id": "heroi-vex"})
+        self.assertEqual(avancar.status_code, 200, avancar.text)
+        self.assertIn("paralisado", avancar.json()["duracoes_encerradas"])
+        ficha_atual = self.repo.obter_personagem("jogador-mapa", self.cid, self.hero["id"])
+        self.assertNotIn("paralisado", ficha_atual.get("condicoes_ativas", []))
+        mapa = self.client.get(self.url, headers=self.headers).json()["mapa"]
+        self.assertTrue(mapa["combate_ativo"])
+        self.assertEqual(mapa["rodada"], 1)
+
+    def test_condicao_que_zerou_deslocamento_impede_movimento(self):
+        condicao = self.client.post(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/condicoes",
+            headers=self.headers,
+            json={"operacao": "apply", "condicao": "contido", "duracao": 2},
+        )
+        self.assertEqual(condicao.status_code, 200, condicao.text)
+        self.save_encounter()
+        response = self.client.post(self.url + "/mover", headers=self.headers, json={
+            "token_id": "heroi-vex", "destino_x": 2, "destino_y": 1,
+        })
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual(response.json()["detail"]["motivo"], "movimento_impedido_por_condicao")
+
+
 if __name__ == "__main__":
     unittest.main()
