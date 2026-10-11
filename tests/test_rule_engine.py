@@ -765,6 +765,7 @@ class RuleEngineTests(unittest.TestCase):
             "ability_scores": {"forca": 15, "destreza": 14, "constituicao": 13,
                                 "inteligencia": 10, "sabedoria": 10, "carisma": 8},
             "subclass": "campeao", "background": "soldado",
+            "ferramenta_antecedente": "Dados", "equipamento_antecedente": "A",
         })
         self.assertEqual(result.outcome["resultado"], "criado")
         self.assertEqual(result.outcome["personagem"].bonus_proficiencia, 2)
