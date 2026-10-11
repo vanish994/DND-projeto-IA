@@ -203,6 +203,8 @@ def resolver_salvaguarda(fatos: Mapping[str, Any]) -> dict[str, Any]:
         return {"resultado": "bloqueado", "motivo": "atributo_de_salvaguarda_ausente_ou_invalido"}
     if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
         return {"resultado": "bloqueado", "motivo": "resultado_de_d20_ausente"}
+    if atributo == "destreza" and bool(fatos.get("esquivando", fatos.get("dodging", False))) and not bool(fatos.get("incapacitado", fatos.get("incapacitated", False))) and float(fatos.get("deslocamento", fatos.get("speed", 1))) > 0:
+        fatos = {**fatos, "vantagem": True}
     profs = fatos.get("proficiencias_salvaguarda", fatos.get("saving_throw_proficiencies", [])) or []
     if isinstance(profs, str):
         profs = [profs]
