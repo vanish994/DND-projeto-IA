@@ -152,4 +152,12 @@ def resolver_acao_estudar(fatos: Mapping[str, Any]) -> dict[str, Any]:
     sucesso = teste["resultado"] == "sucesso"
     return {"resultado": "informacao_encontrada" if sucesso else "sem_informacao_nova", "sucesso": sucesso, "pericia": pericia, "teste": teste}
 
-__all__ = ["resolver_acao_esconder", "resolver_acao_influenciar", "resolver_fim_esconderijo", "resolver_acao_procurar", "resolver_acao_ajudar", "resolver_acao_estudar"]
+def resolver_acao_esquivar(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Aplica Esquivar até o início do próximo turno, se a criatura puder agir e tiver Deslocamento."""
+    incapacitado = bool(fatos.get("incapacitado", fatos.get("incapacitated", False)))
+    deslocamento = float(fatos.get("deslocamento", fatos.get("speed", 1)))
+    if incapacitado or deslocamento <= 0:
+        return {"resultado": "bloqueado", "motivo": "incapacitado_ou_deslocamento_zero"}
+    return {"resultado": "esquivando", "esquivando": True, "vantagem_salvaguardas_destreza": True, "desvantagem_ataques_contra_voce_se_o_atacante_for_visivel": True, "dura_ate": "inicio_do_proximo_turno", "perde_beneficios_se": ["incapacitado", "deslocamento_zero"]}
+
+__all__ = ["resolver_acao_esconder", "resolver_acao_influenciar", "resolver_fim_esconderijo", "resolver_acao_procurar", "resolver_acao_ajudar", "resolver_acao_estudar", "resolver_acao_esquivar"]
