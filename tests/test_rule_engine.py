@@ -974,7 +974,7 @@ class RuleEngineTests(unittest.TestCase):
 
     def test_interrupted_long_rest_after_one_hour_grants_short_rest_benefits(self):
         estado = EstadoVital(20, 5, dados_vida_maximos=3)
-        result = self.engine.evaluate({"type": "rest", "estado": estado, "rest_type": "longo", "duration_hours": 2, "interrupted": True, "hit_dice_rolls": [6]})
+        result = self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 2, "interrupted": True, "hit_dice_rolls": [6]})
         self.assertEqual(result.outcome["resultado"], "beneficios_de_descanso_curto_antes_da_interrupcao")
         self.assertEqual(estado.dados_vida_disponiveis, 2)
     def test_hide_action_requires_cover_and_line_of_sight_conditions(self):
