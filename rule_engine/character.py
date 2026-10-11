@@ -19,6 +19,7 @@ ESPECIES = {
     "halfling": {"tamanho": "pequeno", "deslocamento": 7.5},
     "humano": {"tamanho": "medio", "deslocamento": 9},
     "orc": {"tamanho": "medio", "deslocamento": 9},
+    "tiefling": {"tamanho": "pequeno_ou_medio", "deslocamento": 9},
 }
 CLASSES = {
     "barbaro": {"dado_vida": 12, "atributo_primario": "forca"},
