@@ -1042,11 +1042,19 @@ def mover_token_tatico(
     destino = (pedido.destino_x, pedido.destino_y)
     if any(t["id"] != token["id"] and (t["x"], t["y"]) == destino for t in tokens):
         raise HTTPException(status_code=409, detail="A casa de destino já está ocupada")
+    ficha_movimento = {}
+    estado_condicoes_movimento = None
+    condicoes_token = []
     if token["kind"] == "hero":
         ficha_movimento = repo.obter_personagem(jogador, campanha_id, token["character_id"]) or {}
-        efeitos_movimento = resolver_efeitos_condicao({"action": "move", "target_conditions": sorted(_condicoes_da_ficha(ficha_movimento).ativas)})
-        if not efeitos_movimento.get("pode_mover", True):
-            raise HTTPException(status_code=422, detail={"motivo": "movimento_impedido_por_condicao", "efeitos_condicao": efeitos_movimento})
+        estado_condicoes_movimento = _condicoes_da_ficha(ficha_movimento)
+        condicoes_token = sorted(estado_condicoes_movimento.ativas)
+    else:
+        condicoes_token = list(token.get("conditions") or [])
+    efeitos_movimento = resolver_efeitos_condicao({"action": "move", "target_conditions": condicoes_token})
+    if not efeitos_movimento.get("pode_mover", True):
+        raise HTTPException(status_code=422, detail={"motivo": "movimento_impedido_por_condicao", "efeitos_condicao": efeitos_movimento})
+    levantar_caido = "caido" in {str(c).casefold() for c in condicoes_token}
     origem = (int(token["x"]), int(token["y"]))
     dx, dy = destino[0] - origem[0], destino[1] - origem[1]
     passos = max(abs(dx), abs(dy))
@@ -1056,6 +1064,9 @@ def mover_token_tatico(
             caminho.append((round(origem[0] + dx * i / passos), round(origem[1] + dy * i / passos)))
     velocidade = max(0, int(token.get("speed_ft", 30)))
     disponivel = max(0, velocidade // 5)
+    if levantar_caido:
+        # Levantar custa metade do deslocamento antes de se mover.
+        disponivel //= 2
     resolucao = caminho_grade({
         "caminho": caminho, "movimento_disponivel": disponivel,
         "bloqueados": [], "terreno_dificil": [],
@@ -1070,6 +1081,11 @@ def mover_token_tatico(
         atualizado = repo.obter_personagem(jogador, campanha_id, token["character_id"])
         if not atualizado:
             raise HTTPException(status_code=404, detail="Personagem não encontrado")
+        if levantar_caido and estado_condicoes_movimento is not None:
+            estado_condicoes_movimento.remover("caido")
+            _salvar_condicoes_ficha(repo, jogador, campanha_id, atualizado, estado_condicoes_movimento)
+    elif levantar_caido:
+        token["conditions"] = [c for c in condicoes_token if str(c).casefold() not in {"caido", "prone"}]
     token["x"], token["y"] = destino
     bruto_mapa = repo.obter_mapa_tatico(jogador, campanha_id) or {}
     mapa_atualizado = {
