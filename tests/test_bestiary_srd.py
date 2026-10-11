@@ -73,6 +73,21 @@ class BestiarySrdIntegrationTests(unittest.TestCase):
         self.assertEqual(ataques[0]["dano_medio"], 5)
         self.assertEqual(ataques[0]["tipo_dano"], "necrotic")
 
+    def test_defesas_personagem_normaliza_campos_portugueses_e_ingleses(self):
+        from backend.app import _defesas_personagem
+
+        ficha = _defesas_personagem({
+            "resistencias": "fogo, frio",
+            "damage_immunities": ["poison"],
+            "vulnerabilidades_dano": ["radiante"],
+        })
+        self.assertEqual(ficha["resistencias_dano"], ["fogo", "frio"])
+        self.assertEqual(ficha["imunidades_dano"], ["poison"])
+        self.assertEqual(ficha["vulnerabilidades_dano"], ["radiante"])
+        self.assertEqual(_aplicar_defesas_monstro(9, "fogo", ficha)["dano"], 4)
+        self.assertEqual(_aplicar_defesas_monstro(9, "poison", ficha)["dano"], 0)
+        self.assertEqual(_aplicar_defesas_monstro(9, "radiante", ficha)["dano"], 18)
+
     def test_multiataque_expande_apenas_sequencias_sem_alternativas(self):
         from backend.app import _expandir_multiataque
 
