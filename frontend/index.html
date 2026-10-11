@@ -6,6 +6,7 @@
   <title>MJ — D&D Projeto IA</title>
   <link rel="stylesheet" href="/design-tokens.css">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/ficha.css">
   <link rel="stylesheet" href="/narration-theme.css">
 </head>
 <body>
@@ -79,12 +80,17 @@
 
   <dialog id="group-dialog" class="sheet sheet-tall" aria-labelledby="group-title">
     <div class="sheet-head">
-      <h2 id="group-title">Grupo</h2>
-      <button id="group-close" class="text-button" type="button">Fechar</button>
+      <div class="sheet-heading">
+        <p id="group-eyebrow" class="eyebrow">Grupo da campanha</p>
+        <h2 id="group-title">Grupo</h2>
+      </div>
+      <div class="sheet-head-actions">
+        <button id="group-back" class="text-button" type="button" hidden>Voltar</button>
+        <button id="group-close" class="text-button" type="button">Fechar</button>
+      </div>
     </div>
     <div id="group-body" class="sheet-body" aria-live="polite"></div>
     <div class="sheet-actions">
-      <button id="group-back" class="text-button" type="button" hidden>Voltar ao grupo</button>
       <button id="new-character" class="primary-button" type="button">Novo personagem</button>
     </div>
   </dialog>
@@ -98,6 +104,8 @@
         </div>
         <button id="character-cancel" class="text-button" type="button">Cancelar</button>
       </div>
+      <ol id="character-stepper" class="stepper" aria-hidden="true"></ol>
+      <p id="character-summary" class="resumo-escolhas" aria-hidden="true"></p>
       <div id="character-body" class="sheet-body"></div>
       <p id="character-error" class="form-error" role="alert"></p>
       <div class="sheet-actions">

@@ -1,83 +1,145 @@
-// Grupo e criação de personagens. Toda regra é validada no servidor pelo Rule Engine.
+// Grupo, ficha e assistente de criação de personagens.
+// Nenhuma regra é calculada aqui: a interface exibe o bloco devolvido pelo motor.
 (function () {
   const groupButton = document.querySelector('#group-button');
   const groupDialog = document.querySelector('#group-dialog');
   const groupBody = document.querySelector('#group-body');
   const groupBack = document.querySelector('#group-back');
+  const groupClose = document.querySelector('#group-close');
+  const groupTitle = document.querySelector('#group-title');
+  const groupEyebrow = document.querySelector('#group-eyebrow');
   const newCharacter = document.querySelector('#new-character');
   const charDialog = document.querySelector('#character-dialog');
   const charForm = document.querySelector('#character-form');
   const charBody = document.querySelector('#character-body');
   const charStep = document.querySelector('#character-step');
+  const charStepper = document.querySelector('#character-stepper');
+  const charSummary = document.querySelector('#character-summary');
   const charError = document.querySelector('#character-error');
   const prevButton = document.querySelector('#character-prev');
   const nextButton = document.querySelector('#character-next');
 
   const ATRIBUTOS = ['forca', 'destreza', 'constituicao', 'inteligencia', 'sabedoria', 'carisma'];
+  const ABREVIATURAS = {forca: 'FOR', destreza: 'DES', constituicao: 'CON', inteligenia: 'INT', inteligencia: 'INT', sabedoria: 'SAB', carisma: 'CAR'};
   const NOMES = {
     forca: 'Força', destreza: 'Destreza', constituicao: 'Constituição', inteligencia: 'Inteligência', sabedoria: 'Sabedoria', carisma: 'Carisma',
     aasimar: 'Aasimar', draconato: 'Draconato', anao: 'Anão', elfo: 'Elfo', gnomo: 'Gnomo', golias: 'Golias', halfling: 'Halfling', humano: 'Humano', orc: 'Orc', tiefling: 'Tiefling',
-    barbaro: 'Bárbaro', bardo: 'Bardo', clerigo: 'Clérigo', druida: 'Druida', guerreiro: 'Guerreiro', monge: 'Monge', paladino: 'Paladino', guardiao: 'Guardião', ladino: 'Ladino', feiticeiro: 'Feiticeiro', bruxo: 'Bruxo', mago: 'Mago', artifice: 'Artífice',
+    barbaro: 'Bárbaro', bardo: 'Bardo', clerigo: 'Clérigo', druida: 'Druída', guerreiro: 'Guerreiro', monge: 'Monge', paladino: 'Paladino', guardiao: 'Guardião', ladino: 'Ladino', feiticeiro: 'Feiticeiro', bruxo: 'Bruxo', mago: 'Mago', artifice: 'Artífice',
     pequeno: 'Pequeno', medio: 'Médio', pequeno_ou_medio: 'Pequeno ou Médio',
     iniciado_em_magia: 'Iniciado em Magia', artifista: 'Artifista', atacante_selvagem: 'Atacante Selvagem', valentao_de_taverna: 'Valentão de Taverna', olho_agucado: 'Olho Aguçado', dadiva_sombria: 'Dádiva Sombria',
     anatomia_aberrante: 'Anatomia Aberrante', sombra_viva: 'Sombra Viva', ser_simbiotico: 'Ser Simbiótico', alma_ecoante: 'Alma Ecoante', andarilho_das_brumas: 'Andarilho das Brumas', toque_da_morte: 'Toque da Morte', sussurros_reunidos: 'Sussurros Reunidos', segunda_pele: 'Segunda Pele', observadores: 'Observadores',
     intuicao: 'Intuição', religiao: 'Religião', investigacao: 'Investigação', persuasao: 'Persuasão', atuacao: 'Atuação', enganacao: 'Enganação', prestidigitacao: 'Prestidigitação', percepcao: 'Percepção', lidar_com_animais: 'Lidar com Animais', adestrar_animais: 'Lidar com Animais', arcanismo: 'Arcanismo', acrobacia: 'Acrobacia', atletismo: 'Atletismo', furtividade: 'Furtividade', medicina: 'Medicina', natureza: 'Natureza', sobrevivencia: 'Sobrevivência', historia: 'História', intimidacao: 'Intimidação',
     forca_ou_destreza: 'Força ou Destreza', destreza_e_sabedoria: 'Destreza e Sabedoria', forca_ou_destreza_e_carisma: 'Força ou Destreza, e Carisma',
+    duas_maos: 'Duas mãos', acuidade: 'Acuidade', arremesso: 'Arremesso', leve: 'Leve', municao: 'Munição', versatil: 'Versátil', extensao: 'Extensão', pesada: 'Pesada', recarga: 'Recarga',
+    contundente: 'contundente', cortante: 'cortante', perfurante: 'perfurante',
+    leves: 'armaduras leves', medias: 'armaduras médias', pesadas: 'armaduras pesadas', escudos: 'escudos', simples: 'armas simples', marciais: 'armas marciais',
   };
-  const PASSOS = ['Nome', 'Espécie', 'Classe', 'Proficiências', 'Antecedente', 'Atributos', 'Revisão'];
+  const PASSOS = ['Nome', 'Espécie', 'Classe', 'Perícias', 'Antecedente', 'Atributos', 'Revisão'];
 
   let catalogo = null;
+  let catalogoEquipamento = null;
   let dados = null;
   let passo = 0;
+  let abaAtiva = 'resumo';
+  let personagemCriado = false;
 
+  // ---------- utilidades ----------
   const nome = (chave) => NOMES[chave] || String(chave || '').replace(/_/g, ' ').replace(/^./, (l) => l.toUpperCase());
   const talentoNome = (chave) => {
     const [base, lista] = String(chave).split(':');
     return lista ? `${nome(base)} (${nome(lista)})` : nome(base);
   };
-  const mod = (v) => { const m = Math.floor((v - 10) / 2); return m >= 0 ? `+${m}` : `${m}`; };
+  const abreviar = (atributo) => ABREVIATURAS[atributo] || String(atributo || '').slice(0, 3).toUpperCase();
+  const modificador = (valor) => Math.floor((Number(valor) - 10) / 2);
+  const assinado = (n) => (Number(n) >= 0 ? `+${Number(n)}` : `${Number(n)}`);
   const url = (sufixo = '') => `/v1/campanhas/${encodeURIComponent(state.atual)}/personagens${sufixo}`;
   const el = (tag, props = {}, ...filhos) => {
-    const n = Object.assign(document.createElement(tag), props);
-    n.append(...filhos.filter((f) => f !== null && f !== undefined));
-    return n;
+    const no = document.createElement(tag);
+    for (const [chave, valor] of Object.entries(props)) {
+      if (valor === null || valor === undefined || valor === false) continue;
+      if (chave.includes('-') || chave === 'role') no.setAttribute(chave, valor);
+      else no[chave] = valor;
+    }
+    no.append(...filhos.filter((f) => f !== null && f !== undefined && f !== false));
+    return no;
   };
+  const meta = (texto) => el('p', {className: 'choice-meta', textContent: texto});
 
-  new MutationObserver(() => { groupButton.disabled = optionsButton.disabled; })
-    .observe(optionsButton, {attributes: true, attributeFilter: ['disabled']});
-  groupButton.disabled = optionsButton.disabled;
+  function chipDado(texto, rotulo, variante = '') {
+    const chip = el('span', {className: `chip chip-dado ${variante}`.trim()});
+    chip.append(el('span', {className: 'dado-icone', 'aria-hidden': 'true'}));
+    if (rotulo) chip.append(el('span', {className: 'chip-rotulo', textContent: rotulo}));
+    chip.append(document.createTextNode(texto));
+    return chip;
+  }
 
+  function blocoValor(rotulo, valor, nota) {
+    return el('div', {className: 'bloco-valor'},
+      el('span', {className: 'rotulo', textContent: rotulo}),
+      el('span', {className: 'valor', textContent: valor}),
+      nota ? el('span', {className: 'nota', textContent: nota}) : null);
+  }
+
+  function painel(titulo, ...conteudo) {
+    return el('section', {className: 'painel'}, el('p', {className: 'painel-titulo', textContent: titulo}), ...conteudo);
+  }
+
+  function badge(texto, variante = '') {
+    return el('span', {className: `badge ${variante}`.trim(), textContent: texto});
+  }
+
+  function barraPv(atual, maximo) {
+    const percentual = maximo > 0 ? Math.max(0, Math.min(100, (atual / maximo) * 100)) : 0;
+    return el('div', {className: 'pv-barra', role: 'img',
+      'aria-label': `Pontos de vida: ${atual} de ${maximo}`},
+      el('span', {className: 'pv-preenchimento', style: `width:${percentual}%`}));
+  }
+
+  function estadoPv(atual, maximo) {
+    if (atual <= 0) return {texto: 'Inconsciente', cor: 'var(--color-danger)'};
+    const razao = maximo > 0 ? atual / maximo : 0;
+    if (razao <= 0.3) return {texto: 'Grave', cor: 'var(--color-danger)'};
+    if (razao <= 0.7) return {texto: 'Ferido', cor: 'var(--color-accent)'};
+    return {texto: 'Saudável', cor: 'var(--color-success)'};
+  }
+
+  // ---------- catálogos ----------
   async function carregarCatalogo() {
     if (!catalogo) catalogo = await api('/v1/catalogo/personagens');
     return catalogo;
   }
 
-  // ---- Grupo ----
+  async function carregarEquipamento() {
+    if (!catalogoEquipamento) catalogoEquipamento = await api('/v1/catalogo/equipamento');
+    return catalogoEquipamento;
+  }
+
+  new MutationObserver(() => { groupButton.disabled = optionsButton.disabled; })
+    .observe(optionsButton, {attributes: true, attributeFilter: ['disabled']});
+  groupButton.disabled = optionsButton.disabled;
+
+  // ---------- grupo ----------
   let requisicaoGrupo = 0;
   async function abrirGrupo() {
     const token = ++requisicaoGrupo;
     const campanhaId = state.atual;
     groupBack.hidden = true;
     newCharacter.hidden = false;
-    groupBody.replaceChildren(el('p', {className: 'empty-inline', textContent: 'Carregando grupo…'}));
+    groupTitle.textContent = 'Grupo';
+    groupEyebrow.textContent = 'Grupo da campanha';
+    groupBody.replaceChildren(meta('Carregando grupo…'));
     if (!groupDialog.open) groupDialog.showModal();
     try {
       const grupo = await api(`/v1/campanhas/${encodeURIComponent(campanhaId)}/personagens`);
       if (token !== requisicaoGrupo || state.atual !== campanhaId) return;
       groupBody.replaceChildren();
+      groupTitle.textContent = grupo.length ? `Grupo · ${grupo.length}` : 'Grupo';
       if (!grupo.length) {
-        groupBody.append(el('p', {textContent: 'Ainda não há personagens nesta campanha. Crie o primeiro para o MJ conhecer o grupo.'}));
+        groupBody.append(meta('Ainda não há personagens nesta campanha. Crie o primeiro para o MJ conhecer o grupo.'));
         return;
       }
       const lista = el('ul', {className: 'choice-list'});
-      for (const p of grupo) {
-        const botao = el('button', {type: 'button', className: 'character-card'},
-          el('strong', {className: 'card-title', textContent: p.nome}),
-          el('span', {className: 'card-preview', textContent: `${nome(p.especie)} · ${nome(p.classe)} ${p.nivel} · ${nome(p.antecedente)}`}),
-          el('span', {className: 'card-action', textContent: `PV ${p.pv_atual}/${p.pv_maximo} — ver ficha`}));
-        botao.addEventListener('click', () => mostrarFicha(p));
-        lista.append(el('li', {}, botao));
-      }
+      for (const p of grupo) lista.append(el('li', {}, cartaoPersonagem(p)));
       groupBody.append(lista);
     } catch (erro) {
       if (token !== requisicaoGrupo || state.atual !== campanhaId) return;
@@ -85,174 +147,293 @@
     }
   }
 
+  function cartaoPersonagem(p) {
+    const estado = estadoPv(p.pv_atual, p.pv_maximo);
+    const cartao = el('button', {type: 'button', className: 'cartao-grupo'},
+      el('span', {className: 'cartao-topo'},
+        el('span', {className: 'cartao-nome', textContent: p.nome}),
+        el('span', {className: 'cartao-nivel', textContent: `Nível ${p.nivel}`})),
+      el('span', {className: 'linha-resumo', textContent: `${nome(p.especie)} · ${nome(p.classe)} · ${nome(p.antecedente)}`}),
+      barraPv(p.pv_atual, p.pv_maximo),
+      el('span', {className: 'chips'},
+        el('span', {className: 'chip', textContent: `${p.pv_atual}/${p.pv_maximo} PV`}),
+        blocoDoCartao(p, 'ca', 'CA'),
+        blocoDoCartao(p, 'ataque', 'Ataque', true),
+        p.proficiencias_pendentes ? badge('Escolhas pendentes', 'badge-alerta') : null),
+      el('span', {className: 'card-action', textContent: estado.texto + ' — ver ficha'}));
+    cartao.addEventListener('click', () => mostrarFicha(p));
+    return cartao;
+  }
+
+  function blocoDoCartao(p, chave, rotulo, sinal) {
+    const origem = chave === 'ca' ? p.bloco?.ca : p.bloco?.arma?.ataque;
+    if (origem === undefined || origem === null) return null;
+    return el('span', {className: 'chip', textContent: `${rotulo} ${sinal ? assinado(origem) : origem}`});
+  }
+
+  // ---------- ficha ----------
   function mostrarFicha(p) {
     groupBack.hidden = false;
     newCharacter.hidden = true;
-    const atributos = el('div', {className: 'ability-grid'});
-    for (const a of ATRIBUTOS) {
-      atributos.append(el('div', {className: 'ability'},
-        el('span', {className: 'ability-name', textContent: nome(a).slice(0, 3)}),
-        el('span', {className: 'ability-value', textContent: p.atributos[a]}),
-        el('span', {className: 'ability-mod', textContent: `mod ${mod(p.atributos[a])}`})));
-    }
-    const pv = el('span', {className: 'hp-value', textContent: `${p.pv_atual} / ${p.pv_maximo}`});
+    groupTitle.textContent = p.nome;
+    groupEyebrow.textContent = `${nome(p.especie)} · ${nome(p.classe)} nível ${p.nivel}`;
+    groupBody.replaceChildren(cabecalhoFicha(p), abasFicha(p));
+    groupBody.scrollTop = 0;
+  }
+
+  function cabecalhoFicha(p) {
+    const pvAtual = p.pv_atual;
+    const pvMaximo = p.pv_maximo;
+    const estado = estadoPv(pvAtual, pvMaximo);
+    const numero = el('p', {className: 'pv-numero'},
+      el('strong', {textContent: String(pvAtual)}), el('span', {textContent: ` / ${pvMaximo} PV`}));
+    const situacao = el('p', {className: 'pv-estado', textContent: estado.texto, style: `color:${estado.cor}`});
+    const barra = barraPv(pvAtual, pvMaximo);
+    const controles = el('div', {className: 'pv-controles'});
     const ajustar = async (delta) => {
+      [...controles.children].forEach((b) => { b.disabled = true; });
+      situacao.textContent = 'Ajustando…';
       try {
-        menos.disabled = true; mais.disabled = true;
         const novo = await api(url(`/${encodeURIComponent(p.id)}`), {method: 'PATCH', body: JSON.stringify({ajuste_pv: delta})});
         Object.assign(p, novo);
-        pv.textContent = `${p.pv_atual} / ${p.pv_maximo}`;
-        menos.disabled = false; mais.disabled = false;
-      } catch (erro) { pv.textContent = `Erro: ${erro.message}`; menos.disabled = false; mais.disabled = false; }
-    };
-    const menos = el('button', {type: 'button', className: 'icon-button', textContent: '−', ariaLabel: 'Perder 1 PV'});
-    const mais = el('button', {type: 'button', className: 'icon-button', textContent: '+', ariaLabel: 'Recuperar 1 PV'});
-    menos.addEventListener('click', () => ajustar(-1));
-    mais.addEventListener('click', () => ajustar(1));
-    const fato = (rotulo, valor) => [el('dt', {textContent: rotulo}), el('dd', {textContent: valor})];
-    const equip = p.equipamento_antecedente ? `A: ${p.equipamento_antecedente.A} · ou B: ${p.equipamento_antecedente.B}` : '—';
-    const modificador = (atributo) => Number(p.modificadores?.[atributo] ?? mod(p.atributos[atributo]));
-    const salvaguardasPorClasse = {
-      barbaro: ['forca', 'constituicao'], bardo: ['destreza', 'carisma'],
-      clerigo: ['sabedoria', 'carisma'], druida: ['inteligencia', 'sabedoria'],
-      guerreiro: ['forca', 'constituicao'], monge: ['forca', 'destreza'],
-      paladino: ['sabedoria', 'carisma'], guardiao: ['forca', 'destreza'],
-      ladino: ['destreza', 'inteligencia'], feiticeiro: ['constituicao', 'carisma'],
-      bruxo: ['sabedoria', 'carisma'], mago: ['inteligencia', 'sabedoria'],
-      artifice: ['constituicao', 'inteligencia'],
-    };
-    const salvaguardas = (salvaguardasPorClasse[p.classe] || []).map(a => `${nome(a)} ${modificador(a) >= 0 ? '+' : ''}${modificador(a) + p.bonus_proficiencia}`).join(', ') || '—';
-    const atributoMagia = ({bardo:'carisma', clerigo:'sabedoria', druida:'sabedoria', paladino:'carisma', guardiao:'sabedoria', feiticeiro:'carisma', bruxo:'carisma', mago:'inteligencia', artifice:'inteligencia'})[p.classe];
-    const cdMagia = atributoMagia ? 8 + p.bonus_proficiencia + modificador(atributoMagia) : null;
-    const ataqueMagia = atributoMagia ? p.bonus_proficiencia + modificador(atributoMagia) : null;
-    const equipamentoAtual = p.equipamento || {};
-    const armaSelect = el('select', {className: 'field-control', ariaLabel: 'Arma equipada'});
-    armaSelect.append(el('option', {value: '', textContent: 'Sem arma equipada'}));
-    for (const arma of ['Adaga', 'Clava', 'Clava Grande', 'Machadinha', 'Martelo Leve', 'Maça', 'Cajado', 'Espada Curta', 'Espada Longa', 'Rapieira', 'Cimitarra', 'Machado de Batalha', 'Martelo de Guerra', 'Arco Curto', 'Besta Leve', 'Besta de Mão']) {
-      armaSelect.append(el('option', {value: arma, textContent: arma}));
-    }
-    armaSelect.value = equipamentoAtual.arma || '';
-    const armaduraSelect = el('select', {className: 'field-control', ariaLabel: 'Armadura equipada'});
-    armaduraSelect.append(el('option', {value: '', textContent: 'Sem armadura'}));
-    for (const armadura of ['Acolchoada', 'Couro', 'Couro Batido', 'Gibão de Peles', 'Cota de Malha Parcial', 'Loriga de Escamas', 'Couraça Peitoral', 'Placas Parcial', 'Cota de Anéis', 'Cota de Malha', 'Armadura de Talas', 'Placas']) {
-      armaduraSelect.append(el('option', {value: armadura, textContent: armadura}));
-    }
-    armaduraSelect.value = equipamentoAtual.armadura || '';
-    const escudoCheck = el('input', {type: 'checkbox', checked: Boolean(equipamentoAtual.escudo)});
-    const equipamentoStatus = el('p', {className: 'choice-meta', role: 'status', textContent: 'CA calculada pelo equipamento registrado.'});
-    const salvarEquipamento = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar equipamento'});
-    salvarEquipamento.addEventListener('click', async () => {
-      salvarEquipamento.disabled = true;
-      equipamentoStatus.textContent = 'Validando equipamento e proficiências…';
-      try {
-        const atualizado = await api(url('/' + encodeURIComponent(p.id) + '/equipamento'), {
-          method: 'PATCH',
-          body: JSON.stringify({arma: armaSelect.value || null, armadura: armaduraSelect.value || null, escudo: escudoCheck.checked}),
-        });
-        Object.assign(p, atualizado);
-        equipamentoStatus.textContent = 'Equipamento salvo. O mapa calculará a CA e o dano da arma.';
         mostrarFicha(p);
+        return;
       } catch (erro) {
-        equipamentoStatus.textContent = 'Não foi possível equipar: ' + erro.message;
-        salvarEquipamento.disabled = false;
+        situacao.textContent = `Erro: ${erro.message}`;
       }
-    });
-    const secaoEquipamento = el('section', {className: 'spell-sheet'},
-      el('h3', {textContent: 'Armas e armadura'}),
-      el('label', {className: 'field-label', textContent: 'Arma equipada'}, armaSelect),
-      el('label', {className: 'field-label', textContent: 'Armadura'}, armaduraSelect),
-      el('label', {className: 'field-label'}, escudoCheck, document.createTextNode(' Escudo (+2 CA)')),
-      equipamentoStatus, salvarEquipamento);
+      [...controles.children].forEach((b) => { b.disabled = false; });
+      situacao.textContent = estado.texto;
+    };
+    for (const delta of [-5, -1, 1, 5]) {
+      const botao = el('button', {type: 'button', className: delta < 0 ? 'text-button' : 'icon-button',
+        textContent: `${delta > 0 ? '+' : '−'}${Math.abs(delta)}`,
+        'aria-label': `${delta > 0 ? 'Recuperar' : 'Perder'} ${Math.abs(delta)} PV`});
+      botao.addEventListener('click', () => ajustar(delta));
+      controles.append(botao);
+    }
+    return el('div', {className: 'painel'},
+      el('div', {className: 'cabecalho-ficha'},
+        el('h3', {className: 'nameplate', textContent: p.nome}),
+        el('p', {className: 'linha-resumo', textContent: `${nome(p.especie)} · ${nome(p.classe)} nível ${p.nivel}${p.subclasse ? ` · ${nome(p.subclasse)}` : ''} · ${nome(p.antecedente)}`}),
+        el('div', {className: 'badges'},
+          badge(`Proficiência ${assinado(p.bonus_proficiencia)}`, 'badge-destaque'),
+          badge(`Dado de Vida d${p.dado_vida}`),
+          badge(`${nome(p.tamanho)} · ${String(p.deslocamento).replace('.', ',')} m`),
+          p.bloco?.conjuracao ? badge(`Conjuração: ${abreviar(p.bloco.conjuracao.atributo)}`, 'badge-magia') : null,
+          p.proficiencias_pendentes ? badge('Escolhas pendentes', 'badge-alerta') : null)),
+      barra,
+      el('div', {className: 'pv-topo'}, numero, situacao),
+      controles);
+  }
+
+  function abasFicha(p) {
+    const pares = [
+      {id: 'resumo', rotulo: 'Resumo', montar: () => secaoResumo(p)},
+      {id: 'atributos', rotulo: 'Atributos', montar: () => secaoAtributos(p)},
+      {id: 'pericias', rotulo: 'Perícias', montar: () => secaoPericias(p)},
+      {id: 'equipamento', rotulo: 'Equipamento', montar: () => secaoEquipamento(p)},
+    ];
+    if (p.bloco?.conjuracao) pares.push({id: 'magias', rotulo: 'Magias', montar: () => secaoMagias(p)});
+
+    const lista = el('div', {className: 'abas', role: 'tablist', 'aria-label': 'Seções da ficha'});
+    const palco = el('div');
+    const botoes = new Map();
+    const montados = new Map();
+
+    const palcoWrapper = el('div', {id: 'painel-ficha', role: 'tabpanel', tabIndex: 0, 'aria-live': 'polite'}, palco);
+    const ativar = (id, focar) => {
+      abaAtiva = id;
+      palcoWrapper.setAttribute('aria-labelledby', `aba-${id}`);
+      for (const [chave, botao] of botoes) {
+        const selecionado = chave === id;
+        botao.setAttribute('aria-selected', String(selecionado));
+        botao.tabIndex = selecionado ? 0 : -1;
+        if (selecionado && focar) botao.focus();
+      }
+      if (!montados.has(id)) {
+        const alvo = pares.find((par) => par.id === id);
+        montados.set(id, alvo.montar());
+      }
+      palco.replaceChildren(montados.get(id));
+    };
+
+    for (const par of pares) {
+      const botao = el('button', {type: 'button', className: 'aba', role: 'tab', id: `aba-${par.id}`,
+        'aria-controls': 'painel-ficha', 'aria-selected': 'false', tabIndex: -1, textContent: par.rotulo});
+      botao.addEventListener('click', () => ativar(par.id));
+      botao.addEventListener('keydown', (evento) => {
+        const ordem = pares.map((x) => x.id);
+        const atual = ordem.indexOf(par.id);
+        const proximo = evento.key === 'ArrowRight' ? ordem[atual + 1]
+          : evento.key === 'ArrowLeft' ? ordem[atual - 1]
+          : evento.key === 'Home' ? ordem[0]
+          : evento.key === 'End' ? ordem[ordem.length - 1] : null;
+        if (!proximo) return;
+        evento.preventDefault();
+        ativar(proximo, true);
+      });
+      botoes.set(par.id, botao);
+      lista.append(botao);
+    }
+
+    const wrapper = el('div', {}, lista, palcoWrapper);
+    ativar(pares.some((par) => par.id === abaAtiva) ? abaAtiva : pares[0].id);
+    return wrapper;
+  }
+
+  function secaoResumo(p) {
+    const bloco = p.bloco || {};
+    const arma = bloco.arma || {};
+    const conjuracao = bloco.conjuracao;
+    const caixa = el('div');
+
+    caixa.append(painel('Bloco de combate',
+      el('div', {className: 'bloco-combate'},
+        blocoValor('CA', bloco.ca ?? '—', 'classe de armadura'),
+        blocoValor('Iniciativa', assinado(bloco.iniciativa ?? 0), 'Destreza'),
+        blocoValor('Proficiência', assinado(bloco.bonus_proficiencia ?? 0)),
+        blocoValor('Deslocamento', `${String(p.deslocamento).replace('.', ',')} m`),
+        blocoValor('Dado de Vida', `d${p.dado_vida}`),
+        conjuracao ? blocoValor('CD de magia', String(conjuracao.cd), abreviar(conjuracao.atributo)) : null),
+      meta('Valores derivados pelo motor a partir da ficha e dos catálogos oficiais.')));
+
+    const linhasArma = el('div', {className: 'chips'},
+      chipDado(`d20 ${assinado(arma.ataque ?? 0)}`, 'Ataque'),
+      arma.dado ? chipDado(arma.expressao_dano, 'Dano', 'chip-dano') : chipDado(String(arma.expressao_dano ?? '—'), 'Dano', 'chip-dano'));
+    const detalhesArma = [];
+    if (arma.nome) detalhesArma.push(arma.tipo ? `${nome(arma.tipo)}` : null);
+    if (arma.a_distancia) detalhesArma.push(`alcance ${Math.round((arma.alcance_pes || 0) / 3.28084)} m`);
+    else if (arma.alcance_pes > 5) detalhesArma.push(`extensão ${Math.round((arma.alcance_pes || 0) / 3.28084)} m`);
+    else detalhesArma.push('corpo a corpo');
+    if (arma.desarmado) detalhesArma.push('dano mínimo 0');
+    if ((arma.propriedades || []).length) detalhesArma.push(arma.propriedades.map(nome).join(', '));
+    const armadura = bloco.armadura || {};
+    caixa.append(painel('Ataque e proteção',
+      el('p', {className: 'linha-resumo', textContent: arma.nome || 'Desarmado'}),
+      linhasArma,
+      meta(detalhesArma.filter(Boolean).join(' · ')),
+      el('hr', {className: 'regra-fina'}),
+      el('p', {className: 'linha-resumo', textContent: armadura.nome ? `${armadura.nome}${armadura.escudo ? ' + escudo' : ''}` : 'Sem armadura'}),
+      meta(armadura.nome
+        ? `CA base ${armadura.ca_base} · ${nome(armadura.categoria || '')}${armadura.escudo ? ' · +2 do escudo' : ''}`
+        : 'CA 10 + modificador de Destreza.'),
+      arma.proficiente === false ? el('p', {className: 'form-error', textContent: 'A ficha não registra proficiência com esta arma.'}) : null,
+      conjuracao ? el('div', {className: 'chips', style: 'margin-top:var(--space-3)'},
+        chipDado(`d20 ${assinado(conjuracao.ataque)}`, 'Ataque mágico', 'chip-magia'),
+        chipDado(`CD ${conjuracao.cd}`, 'Dificuldade', 'chip-magia')) : null));
+
+    const talentos = (p.talentos || []).map(talentoNome);
+    caixa.append(painel('Talentos e proficiências',
+      talentos.length ? el('div', {className: 'chips'}, ...talentos.map((t) => el('span', {className: 'chip', textContent: t})))
+        : meta('Nenhum talento registrado.'),
+      el('hr', {className: 'regra-fina'}),
+      el('dl', {className: 'facts'},
+        el('dt', {textContent: 'Armas'}), el('dd', {textContent: (p.proficiencias_classe?.armas || []).map(nome).join(', ') || '—'}),
+        el('dt', {textContent: 'Armaduras'}), el('dd', {textContent: (p.proficiencias_classe?.armaduras || []).map(nome).join(', ') || '—'}),
+        el('dt', {textContent: 'Ferramentas'}), el('dd', {textContent: [...(p.proficiencias_classe?.ferramentas || []), p.ferramenta].filter(Boolean).join(', ') || '—'}))));
+
+    if (p.equipamento_antecedente) {
+      caixa.append(painel('Equipamento inicial do antecedente',
+        meta(`Opção A: ${p.equipamento_antecedente.A}`),
+        meta(`Opção B: ${p.equipamento_antecedente.B}`)));
+    }
+
     const apagar = el('button', {type: 'button', className: 'danger-button', textContent: 'Apagar personagem'});
     apagar.addEventListener('click', async () => {
       if (!window.confirm(`Apagar ${p.nome}? Esta ação não pode ser desfeita.`)) return;
       try { await api(url(`/${encodeURIComponent(p.id)}`), {method: 'DELETE'}); abrirGrupo(); } catch (erro) { window.alert(erro.message); }
     });
-    groupBody.replaceChildren(
-      el('h3', {textContent: p.nome}),
-      el('p', {className: 'choice-meta', textContent: `${nome(p.especie)} · ${nome(p.classe)} nível ${p.nivel} · ${nome(p.antecedente)}`}),
-      el('h3', {textContent: 'Pontos de Vida'}),
-      el('div', {className: 'hp-row'}, menos, pv, mais),
-      el('h3', {textContent: 'Atributos'}),
-      atributos,
-      el('h3', {textContent: 'Detalhes'}),
-      el('dl', {className: 'facts'},
-        ...fato('Bônus de Proficiência', `+${p.bonus_proficiencia}`),
-        ...fato('Iniciativa', `${modificador('destreza') >= 0 ? '+' : ''}${modificador('destreza')}`),
-        ...fato('CA sem armadura (referência)', String(10 + modificador('destreza'))),
-        ...fato('Salvaguardas proficientes', salvaguardas),
-        ...(cdMagia == null ? [] : fato('CD para evitar suas magias', String(cdMagia))),
-        ...(ataqueMagia == null ? [] : fato('Bônus de ataque mágico', `${ataqueMagia >= 0 ? '+' : ''}${ataqueMagia}`)),
-        ...fato('Dado de Vida', `d${p.dado_vida}`),
-        ...fato('Tamanho', nome(p.tamanho)),
-        ...fato('Deslocamento', `${String(p.deslocamento).replace('.', ',')} m`),
-        ...fato('Perícias totais', p.pericias.map(nome).join(', ') || '—'),
-        ...fato('Perícias escolhidas de classe', (p.pericias_classe || []).map(nome).join(', ') || 'pendentes'),
-        ...fato('Proficiências de armaduras', (p.proficiencias_classe?.armaduras || []).join(', ') || '—'),
-        ...fato('Proficiências de armas', (p.proficiencias_classe?.armas || []).join(', ') || '—'),
-        ...fato('Proficiências de ferramentas de classe', (p.proficiencias_classe?.ferramentas || []).join(', ') || '—'),
-        ...fato('Ferramenta de antecedente', p.ferramenta || '—'),
-        ...fato('Talentos', p.talentos.map(talentoNome).join(', ') || '—'),
-        ...fato('Equipamento inicial', equip)),
-      secaoEquipamento,
-      apagar);
-    carregarProficienciasClasse(p);
-    carregarConjuracao(p);
-    groupBody.scrollTop = 0;
+    caixa.append(el('section', {className: 'painel zona-perigo'},
+      el('p', {className: 'painel-titulo', textContent: 'Zona de perigo'}),
+      meta('Apagar remove a ficha da campanha. O histórico da campanha não é afetado.'),
+      apagar));
+    return caixa;
   }
 
-  async function carregarProficienciasClasse(p) {
-    const secao = el('section', {className: 'spell-sheet'});
-    secao.append(el('h3', {textContent: 'Proficiências de classe'}));
-    const status = el('p', {className: 'choice-meta', role: 'status', textContent: 'Carregando opções…'});
+  function secaoAtributos(p) {
+    const grade = el('div', {className: 'atributos'});
+    for (const a of ATRIBUTOS) {
+      const valor = p.atributos[a];
+      const mod = p.modificadores?.[a] ?? modificador(valor);
+      grade.append(el('div', {className: 'atributo', 'data-destaque': mod >= 3 ? 'sim' : 'nao'},
+        el('span', {className: 'atributo-nome', textContent: abreviar(a)}),
+        el('span', {className: 'atributo-valor', textContent: String(valor)}),
+        el('span', {className: 'atributo-mod', textContent: assinado(mod)}),
+        el('span', {className: 'choice-meta', textContent: nome(a)})));
+    }
+    return el('div', {},
+      painel('Atributos', grade, meta('Os modificadores são calculados pelo motor de regras.')));
+  }
+
+  function secaoPericias(p) {
+    const caixa = el('div');
+
+    const salvaguardas = el('ul', {className: 'lista-pericias'});
+    for (const linha of p.bloco?.salvaguardas || []) {
+      salvaguardas.append(el('li', {className: 'linha-pericia', 'data-proficiente': linha.proficiente ? 'sim' : 'nao'},
+        el('span', {className: 'marca', 'data-proficiente': linha.proficiente ? 'sim' : 'nao', 'aria-hidden': 'true'}),
+        el('span', {className: 'nome-pericia', textContent: nome(linha.atributo)}),
+        el('span', {className: 'atributo-pericia', textContent: linha.proficiente ? 'proficiente' : ''}),
+        el('span', {className: 'total-pericia', textContent: assinado(linha.total)})));
+    }
+    caixa.append(painel('Salvaguardas', salvaguardas));
+
+    const pericias = el('ul', {className: 'lista-pericias'});
+    for (const linha of p.bloco?.pericias || []) {
+      pericias.append(el('li', {className: 'linha-pericia', 'data-proficiente': linha.proficiente ? 'sim' : 'nao'},
+        el('span', {className: 'marca', 'data-proficiente': linha.proficiente ? 'sim' : 'nao', 'aria-hidden': 'true'}),
+        el('span', {className: 'nome-pericia', textContent: nome(linha.pericia)}),
+        el('span', {className: 'atributo-pericia', textContent: abreviar(linha.atributo)}),
+        el('span', {className: 'total-pericia', textContent: assinado(linha.total)})));
+    }
+    caixa.append(painel('Perícias', pericias,
+      meta('A marca âmbar indica proficiência; o valor já soma o bônus de proficiência.')));
+
+    caixa.append(editorProficiencias(p));
+    return caixa;
+  }
+
+  function editorProficiencias(p) {
+    const secao = painel('Escolhas de classe');
+    const status = meta('Carregando opções…');
     secao.append(status);
-    groupBody.append(secao);
-    try {
-      const cat = await carregarCatalogo();
-      if (!groupBody.contains(secao)) return;
+    carregarCatalogo().then((cat) => {
       const opcoes = cat.pericias_classe_opcoes?.[p.classe] || [];
       const limite = Number(cat.quantidade_pericias_classe?.[p.classe] || 0);
+      if (!opcoes.length) { status.textContent = 'Esta classe não exige escolha de perícias.'; return; }
       const selecionadas = new Set(p.pericias_classe || []);
       const lista = el('ul', {className: 'choice-list'});
-      const atualizarStatus = () => {
+      const atualizar = () => {
         status.textContent = `Escolha ${limite} perícias de classe. Selecionadas: ${selecionadas.size}/${limite}.`;
       };
       for (const pericia of opcoes) {
         const caixa = el('input', {type: 'checkbox', checked: selecionadas.has(pericia)});
         caixa.addEventListener('change', () => {
-          if (caixa.checked && selecionadas.size >= limite) {
-            caixa.checked = false;
-            return;
-          }
+          if (caixa.checked && selecionadas.size >= limite) { caixa.checked = false; return; }
           if (caixa.checked) selecionadas.add(pericia); else selecionadas.delete(pericia);
-          atualizarStatus();
+          atualizar();
         });
         lista.append(el('li', {}, el('label', {className: 'choice'}, caixa,
-          el('span', {className: 'choice-text'},
-            el('span', {className: 'choice-title', textContent: nome(pericia)})))));
+          el('span', {className: 'choice-text'}, el('span', {className: 'choice-title', textContent: nome(pericia)})))));
       }
       let ferramentaSelect = null;
       if (p.classe === 'artifice') {
         const id = `artisan-tool-${p.id}`;
-        ferramentaSelect = el('select', {id}, el('option', {value: '', textContent: 'Escolha uma ferramenta de artesão…'}),
-          ...(cat.ferramentas_artesao || []).map(ferramenta => el('option', {value: ferramenta, textContent: ferramenta})));
+        ferramentaSelect = el('select', {id, className: 'field-control'},
+          el('option', {value: '', textContent: 'Escolha uma ferramenta de artesão…'}),
+          ...(cat.ferramentas_artesao || []).map((ferramenta) => el('option', {value: ferramenta, textContent: ferramenta})));
         ferramentaSelect.value = p.ferramenta_artesao || '';
         secao.append(el('label', {htmlFor: id, textContent: 'Ferramenta de artesão do Artífice'}), ferramentaSelect);
       }
-      const salvar = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar proficiências'});
+      const salvar = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar escolhas'});
       salvar.addEventListener('click', async () => {
-        if (selecionadas.size !== limite) {
-          status.textContent = `Escolha exatamente ${limite} perícias antes de salvar.`;
-          return;
-        }
+        if (selecionadas.size !== limite) { status.textContent = `Escolha exatamente ${limite} perícias antes de salvar.`; return; }
         salvar.disabled = true;
         status.textContent = 'Validando no motor…';
         try {
           const atualizado = await api(url(`/${encodeURIComponent(p.id)}/proficiencias`), {
-            method: 'PATCH', body: JSON.stringify({
-              pericias_classe: [...selecionadas],
-              ferramenta_artesao: ferramentaSelect ? (ferramentaSelect.value || null) : null,
-            }),
+            method: 'PATCH',
+            body: JSON.stringify({pericias_classe: [...selecionadas], ferramenta_artesao: ferramentaSelect ? (ferramentaSelect.value || null) : null}),
           });
           Object.assign(p, atualizado);
           mostrarFicha(p);
@@ -261,105 +442,219 @@
           salvar.disabled = false;
         }
       });
-      status.remove();
-      secao.append(lista, salvar, status);
-      atualizarStatus();
-    } catch (erro) {
-      status.textContent = `Não foi possível carregar as proficiências. ${erro.message}`;
-    }
+      secao.append(lista, salvar);
+      atualizar();
+    }).catch((erro) => { status.textContent = `Não foi possível carregar as opções. ${erro.message}`; });
+    return secao;
   }
 
-  async function carregarConjuracao(p) {
-    const secao = el("section", {className: "spell-sheet"});
-    secao.append(el("h3", {textContent: "Conjuração"}), el("p", {className: "choice-meta", textContent: p.classe === "artifice" ? "Lista, truques, magias preparadas e espaços são validados pela progressão do Artífice. Se o efeito de uma magia ainda não estiver implementado, o motor a recusará sem inventar o resultado." : "A seleção é registrada no catálogo; a validação completa por classe ainda está sendo implementada."}));
-    const status = el("p", {className: "choice-meta", textContent: "Carregando catálogo de magias…"});
+  function secaoEquipamento(p) {
+    const secao = painel('Armas e armadura');
+    const status = meta('Carregando catálogo oficial…');
     secao.append(status);
-    groupBody.append(secao);
+    carregarEquipamento().then((cat) => {
+      status.remove();
+      const profs = p.proficiencias_classe || {};
+      const armas = new Set(profs.armas || []);
+      const armaduras = new Set(profs.armaduras || []);
+      const categoriaArmadura = {leve: 'leves', media: 'medias', pesada: 'pesadas', escudo: 'escudos'};
+      const temArma = (nomeArma) => {
+        const categoria = cat.arma_simples.includes(nomeArma) ? 'simples' : 'marciais';
+        return armas.has(categoria) || armas.has(cat.alias_proficiencia_arma[nomeArma]);
+      };
+
+      const armaSelect = el('select', {className: 'field-control', 'aria-label': 'Arma equipada'});
+      armaSelect.append(el('option', {value: '', textContent: 'Desarmado'}));
+      for (const [rotulo, filtro] of [['Armas simples', (n) => cat.arma_simples.includes(n)], ['Armas marciais', (n) => !cat.arma_simples.includes(n)]]) {
+        const grupo = el('optgroup', {label: rotulo});
+        for (const nomeArma of Object.keys(cat.armas).filter(filtro)) {
+          const dadosArma = cat.armas[nomeArma];
+          const opcao = el('option', {value: nomeArma,
+            textContent: `${nomeArma} · ${dadosArma.dano} ${nome(dadosArma.tipo)}${temArma(nomeArma) ? '' : ' (sem proficiência)'}`});
+          opcao.disabled = !temArma(nomeArma);
+          grupo.append(opcao);
+        }
+        armaSelect.append(grupo);
+      }
+
+      const armaduraSelect = el('select', {className: 'field-control', 'aria-label': 'Armadura equipada'});
+      armaduraSelect.append(el('option', {value: '', textContent: 'Sem armadura'}));
+      for (const [nomeArmadura, dadosArmadura] of Object.entries(cat.armaduras)) {
+        if (dadosArmadura.categoria === 'escudo') continue;
+        const permitida = armaduras.has(categoriaArmadura[dadosArmadura.categoria]);
+        const opcao = el('option', {value: nomeArmadura,
+          textContent: `${nomeArmadura} · CA ${dadosArmadura.ca}${permitida ? '' : ' (sem proficiência)'}`});
+        opcao.disabled = !permitida;
+        armaduraSelect.append(opcao);
+      }
+
+      const escudoId = `escudo-${p.id}`;
+      const escudoCheck = el('input', {type: 'checkbox', id: escudoId, checked: Boolean(p.equipamento?.escudo)});
+      const equipamentoAtual = p.equipamento || {};
+      armaSelect.value = equipamentoAtual.arma || '';
+      armaduraSelect.value = equipamentoAtual.armadura || '';
+      const feedback = el('p', {className: 'painel-nota', role: 'status', textContent: 'A CA e o dano são calculados pelo motor depois de salvar.'});
+      const salvar = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar equipamento'});
+      salvar.addEventListener('click', async () => {
+        salvar.disabled = true;
+        feedback.textContent = 'Validando equipamento e proficiências…';
+        try {
+          const atualizado = await api(url(`/${encodeURIComponent(p.id)}/equipamento`), {
+            method: 'PATCH',
+            body: JSON.stringify({arma: armaSelect.value || null, armadura: armaduraSelect.value || null, escudo: escudoCheck.checked}),
+          });
+          Object.assign(p, atualizado);
+          mostrarFicha(p);
+        } catch (erro) {
+          feedback.textContent = `Não foi possível equipar: ${erro.message}`;
+          salvar.disabled = false;
+        }
+      });
+      secao.append(
+        el('label', {className: 'field-label', htmlFor: `arma-${p.id}`, textContent: 'Arma equipada'}),
+        Object.assign(armaSelect, {id: `arma-${p.id}`}),
+        el('label', {className: 'field-label', htmlFor: `armadura-${p.id}`, textContent: 'Armadura'}),
+        Object.assign(armaduraSelect, {id: `armadura-${p.id}`}),
+        el('label', {className: 'choice', style: 'margin-top:var(--space-2)'}, escudoCheck,
+          el('span', {className: 'choice-text'}, el('span', {className: 'choice-title', textContent: 'Escudo (+2 CA)'}))),
+        salvar, feedback);
+    }).catch((erro) => { status.textContent = `Não foi possível carregar o catálogo. ${erro.message}`; });
+    return secao;
+  }
+
+  function secaoMagias(p) {
+    const secao = painel('Conjuração',
+      meta(p.classe === 'artifice'
+        ? 'Lista, truques, magias preparadas e espaços são validados pela progressão do Artífice. Se o efeito de uma magia ainda não estiver implementado, o motor a recusará sem inventar o resultado.'
+        : 'A seleção é registrada no catálogo; a validação completa por classe ainda está sendo implementada.'));
+    const status = el('p', {className: 'painel-nota', role: 'status', textContent: 'Carregando catálogo de magias…'});
+    secao.append(status);
+    montarConjuracao(p, secao, status);
+    return secao;
+  }
+
+  async function montarConjuracao(p, secao, status) {
     try {
       const [catalogoMagias, atual] = await Promise.all([
         api(`/v1/catalogo/magias?classe=${encodeURIComponent(p.classe)}&nivel=${encodeURIComponent(p.nivel)}`),
         api(url(`/${encodeURIComponent(p.id)}`)),
       ]);
-      if (!groupBody.contains(secao)) return;
       const conj = atual.conjuracao || {truques: [], magias_preparadas: [], espacos_totais: {}};
-      const progresso = p.classe === "artifice"
+      const progresso = p.classe === 'artifice'
         ? await api(`/v1/catalogo/conjuracao?classe=artifice&nivel=${encodeURIComponent(p.nivel)}&inteligencia=${encodeURIComponent(p.atributos.inteligencia)}`)
         : null;
       status.remove();
-      const selectMagias = (id, titulo, filtro, selecionadas) => {
-        const opcoes = catalogoMagias.filter(filtro);
-        const select = el("select", {id, multiple: true, size: 6, ariaLabel: titulo});
-        for (const magia of opcoes) {
-          const opt = el("option", {value: magia.nome, textContent: magia.circulo === 0 ? `${magia.nome} · Truque` : `${magia.nome} · ${magia.circulo == null ? "círculo não catalogado" : `círculo ${magia.circulo}`}`});
-          opt.selected = selecionadas.includes(magia.nome);
-          select.append(opt);
+
+      const limiteTruques = progresso?.truques ?? null;
+      const limiteMagias = progresso?.magias_preparadas ?? null;
+      // O catálogo e a ficha podem grafar o nome com maiúsculas diferentes.
+      const normalizar = (texto) => String(texto).trim().toLocaleLowerCase('pt-BR');
+      const conjuntoMagias = (lista) => {
+        const mapa = new Map();
+        for (const item of lista || []) mapa.set(normalizar(item), item);
+        return mapa;
+      };
+      const truques = conjuntoMagias(conj.truques);
+      const preparadas = conjuntoMagias(conj.magias_preparadas);
+
+      const construirLista = (titulo, magias, selecionadas, limite, evento) => {
+        const bloco = el('div');
+        bloco.append(el('p', {className: 'painel-titulo', textContent: titulo}));
+        const contador = meta('');
+        const lista = el('ul', {className: 'lista-magias'});
+        const atualizar = () => {
+          contador.textContent = limite ? `Selecionadas: ${selecionadas.size}/${limite}.` : `${selecionadas.size} selecionada(s).`;
+          for (const botao of lista.querySelectorAll('.botao-magia')) {
+            botao.setAttribute('aria-pressed', String(selecionadas.has(normalizar(botao.dataset.nome))));
+          }
+        };
+        for (const magia of magias) {
+          const chave = normalizar(magia.nome);
+          const botao = el('button', {type: 'button', className: 'botao-magia',
+            'aria-pressed': String(selecionadas.has(chave))},
+            el('span', {className: 'magia-nome', textContent: magia.nome}),
+            el('span', {className: 'magia-meta', textContent: `${nome(magia.escola)}${magia.concentracao ? ' · concentração' : ''}${magia.ritual ? ' · ritual' : ''}`}));
+          botao.dataset.nome = magia.nome;
+          botao.addEventListener('click', () => {
+            if (selecionadas.has(chave)) selecionadas.delete(chave);
+            else {
+              if (limite && selecionadas.size >= limite) { contador.textContent = `O motor limita esta lista a ${limite} magia(s).`; return; }
+              selecionadas.add(chave, magia.nome);
+            }
+            atualizar();
+            evento?.();
+          });
+          lista.append(el('li', {}, botao));
         }
-        const bloco = el("div", {className: "spell-field"}, el("label", {htmlFor: id, textContent: titulo}), select,
-          el("p", {className: "choice-meta", textContent: "Toque para selecionar; toque novamente para remover."}));
-        return {select, bloco};
+        bloco.append(contador, lista);
+        atualizar();
+        return bloco;
       };
-      const truques = selectMagias("sheet-cantrips", "Truques", m => m.circulo === 0, conj.truques || []);
-      const preparadas = selectMagias("sheet-prepared-spells", "Magias preparadas/conhecidas", m => m.circulo != null && m.circulo > 0, conj.magias_preparadas || []);
-      const slotsContainer = el("div", {className: "spell-field"});
-      const slotInputs = {};
-      const slotsEsperados = progresso?.espacos_totais || conj.espacos_totais || {"1": 0};
-      const restantesStatus = el("p", {className: "choice-meta"});
-      const atualizarRestantes = (estado = {}) => {
-        const totais = estado.espacos_totais || slotsEsperados;
-        const restantes = estado.espacos_restantes || totais;
-        restantesStatus.textContent = `Espaços restantes: ${Object.entries(totais).filter(([, total]) => Number(total) > 0).map(([circulo, total]) => `${circulo}º círculo ${restantes[circulo] ?? total}/${total}`).join(' · ') || 'nenhum'}`;
-      };
-      atualizarRestantes(conj);
+
+      const truquesBloco = construirLista('Truques', catalogoMagias.filter((m) => m.circulo === 0), truques, limiteTruques);
+      const magiasBloco = construirLista('Magias preparadas/conhecidas', catalogoMagias.filter((m) => (m.circulo ?? 0) > 0), preparadas, limiteMagias);
+      secao.append(truquesBloco, magiasBloco);
+
+      // Espaços de magia
+      const espacos = el('div', {className: 'espacos'});
+      const slotsEsperados = progresso?.espacos_totais || conj.espacos_totais || {'1': 0};
+      const restantes = conj.espacos_restantes || slotsEsperados;
       for (const [circulo, total] of Object.entries(slotsEsperados)) {
-        const id = `sheet-level-${circulo}-slots`;
-        const campo = el("input", {id, type: "number", min: "0", max: "20",
-          value: String(progresso ? total : ((conj.espacos_totais || {})[circulo] ?? total)), inputMode: "numeric",
-          readOnly: Boolean(progresso)});
-        slotInputs[circulo] = campo;
-        slotsContainer.append(el("label", {htmlFor: id, textContent: `Espaços de magia de ${circulo}º círculo (total)`}), campo);
+        const pips = el('span', {className: 'pips'});
+        const usados = Number(total) - Number(restantes[circulo] ?? total);
+        for (let i = 0; i < Number(total); i += 1) {
+          pips.append(el('span', {className: 'pip', 'data-preenchido': i < Number(total) - usados ? 'sim' : 'nao'}));
+        }
+        espacos.append(el('div', {className: 'linha-espaco'},
+          el('span', {className: 'rotulo-espaco', textContent: `${circulo}º círculo`}),
+          pips,
+          el('span', {className: 'magia-meta', textContent: `${restantes[circulo] ?? total}/${total} restantes`})));
       }
-      slotsContainer.append(restantesStatus);
-      if (progresso) {
-        slotsContainer.append(el("p", {className: "choice-meta", textContent: `Limite do motor: ${progresso.truques} truques e ${progresso.magias_preparadas} magias preparadas. Espaços calculados automaticamente.`}));
-      }
-      const salvar = el("button", {type: "button", className: "primary-button", textContent: "Salvar conjuração"});
-      const descanso = el("button", {type: "button", className: "text-button", textContent: "Recuperar espaços após descanso longo"});
-      const feedback = el("p", {className: "choice-meta", role: "status"});
-      descanso.addEventListener("click", async () => {
-        descanso.disabled = true;
-        feedback.textContent = "Recuperando espaços…";
-        try {
-          const atualizado = await api(url(`/${encodeURIComponent(p.id)}/descanso-longo`), {method: "POST"});
-          Object.assign(p, atualizado);
-          atualizarRestantes(p.conjuracao || {});
-          feedback.textContent = "Espaços restaurados após descanso longo.";
-        } catch (erro) { feedback.textContent = `Não foi possível recuperar espaços: ${erro.message}`; }
-        finally { descanso.disabled = false; }
-      });
-      salvar.addEventListener("click", async () => {
+      secao.append(el('div', {},
+        el('p', {className: 'painel-titulo', textContent: 'Espaços de magia'}),
+        Object.keys(slotsEsperados).length ? espacos : meta('Nenhum espaço registrado.')));
+
+      const feedback = el('p', {className: 'painel-nota', role: 'status'});
+      const salvar = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar conjuração'});
+      salvar.addEventListener('click', async () => {
         salvar.disabled = true;
-        feedback.textContent = "Salvando…";
+        feedback.textContent = 'Salvando…';
         try {
-          const resultado = await api(url(`/${encodeURIComponent(p.id)}/magias`), {method: "PATCH", body: JSON.stringify({
-            truques: Array.from(truques.select.selectedOptions, o => o.value),
-            magias_preparadas: Array.from(preparadas.select.selectedOptions, o => o.value),
-            espacos_totais: Object.fromEntries(Object.entries(slotInputs).map(([circulo, campo]) => [
-              circulo, Math.max(0, Math.min(20, Number(campo.value) || 0)),
-            ])),
-          })});
+          const resultado = await api(url(`/${encodeURIComponent(p.id)}/magias`), {
+            method: 'PATCH',
+            body: JSON.stringify({
+              truques: [...truques],
+              magias_preparadas: [...preparadas],
+              espacos_totais: Object.fromEntries(Object.entries(slotsEsperados).map(([circulo, total]) => [circulo, Number(total)])),
+            }),
+          });
           Object.assign(p, resultado);
-          atualizarRestantes(p.conjuracao || {});
-          feedback.textContent = "Conjuração salva na ficha da campanha.";
-        } catch (erro) { feedback.textContent = `Não foi possível salvar: ${erro.message}`; }
-        finally { salvar.disabled = false; }
+          mostrarFicha(p);
+        } catch (erro) {
+          feedback.textContent = `Não foi possível salvar: ${erro.message}`;
+          salvar.disabled = false;
+        }
       });
-      secao.append(truques.bloco, preparadas.bloco, slotsContainer, salvar, descanso, feedback);
+      const descanso = el('button', {type: 'button', className: 'text-button', textContent: 'Recuperar espaços (descanso longo)'});
+      descanso.addEventListener('click', async () => {
+        descanso.disabled = true;
+        feedback.textContent = 'Recuperando espaços…';
+        try {
+          const atualizado = await api(url(`/${encodeURIComponent(p.id)}/descanso-longo`), {method: 'POST'});
+          Object.assign(p, atualizado);
+          mostrarFicha(p);
+        } catch (erro) {
+          feedback.textContent = `Não foi possível recuperar espaços: ${erro.message}`;
+          descanso.disabled = false;
+        }
+      });
+      secao.append(el('div', {className: 'sheet-actions'}, descanso, salvar), feedback);
     } catch (erro) {
       status.textContent = `Não foi possível carregar a conjuração. ${erro.message}`;
     }
   }
 
-  // ---- Assistente de criação ----
+  // ---------- assistente de criação ----------
   function novoRascunho() {
     return {nome: '', especie: '', classe: '', antecedente: '', talento_antecedente: '', metodo_atributos: 'matriz_padrao',
       atributos: Object.fromEntries(ATRIBUTOS.map((a) => [a, ''])), compra: Object.fromEntries(ATRIBUTOS.map((a) => [a, 8])),
@@ -375,31 +670,13 @@
     render();
   }
 
-  function radios(nomeCampo, opcoes, atual, aoEscolher) {
-    const lista = el('ul', {className: 'choice-list'});
-    for (const [valor, titulo, meta] of opcoes) {
-      const input = el('input', {type: 'radio', name: nomeCampo, value: valor, checked: valor === atual});
-      input.addEventListener('change', () => aoEscolher(valor));
-      lista.append(el('li', {}, el('label', {className: 'choice'}, input,
-        el('span', {className: 'choice-text'}, el('span', {className: 'choice-title', textContent: titulo}), meta ? el('span', {className: 'choice-meta', textContent: meta}) : null))));
-    }
-    return lista;
-  }
-
-  const custos = () => catalogo.compra_pontos.custos;
-  const pontosGastos = () => ATRIBUTOS.reduce((t, a) => t + custos()[dados.compra[a]], 0);
-  function base() {
-    if (dados.metodo_atributos === 'compra_pontos') return {...dados.compra};
-    return Object.fromEntries(ATRIBUTOS.map((a) => [a, Number(dados.atributos[a]) || 0]));
-  }
-  function aumentos() {
-    const r = {};
-    const bg = catalogo.antecedentes[dados.antecedente];
-    if (!bg) return r;
-    if (dados.modo_aumento === '1-1-1') { for (const a of bg.atributos) r[a] = 1; return r; }
-    if (dados.aumento2) r[dados.aumento2] = 2;
-    if (dados.aumento1) r[dados.aumento1] = (r[dados.aumento1] || 0) + 1;
-    return r;
+  function cartaoEscolha(nomeCampo, valor, titulo, metaTexto, marcado, aoEscolher) {
+    const input = el('input', {type: 'radio', name: nomeCampo, value: valor, checked: marcado});
+    input.addEventListener('change', () => aoEscolher(valor));
+    return el('label', {className: 'escolha-cartao'}, input,
+      el('span', {className: 'escolha-texto'},
+        el('span', {className: 'escolha-titulo', textContent: titulo}),
+        metaTexto ? el('span', {className: 'escolha-meta', textContent: metaTexto}) : null));
   }
 
   function render() {
@@ -407,8 +684,24 @@
     charStep.textContent = `Passo ${passo + 1} de ${PASSOS.length} — ${PASSOS[passo]}`;
     prevButton.disabled = passo === 0;
     nextButton.textContent = passo === PASSOS.length - 1 ? 'Criar personagem' : 'Próximo';
+    desenharStepper();
     charBody.replaceChildren(...[passoNome, passoEspecie, passoClasse, passoPericiasClasse, passoAntecedente, passoAtributos, passoRevisao][passo]());
     charBody.scrollTop = 0;
+  }
+
+  function desenharStepper() {
+    charStepper.replaceChildren();
+    for (let i = 0; i < PASSOS.length; i += 1) {
+      const estado = i === passo ? 'atual' : i < passo ? 'feito' : 'pendente';
+      charStepper.append(el('li', {className: 'passo', 'data-estado': estado},
+        el('span', {className: 'passo-marca', textContent: i < passo ? '✓' : String(i + 1)}),
+        el('span', {className: 'passo-rotulo', textContent: PASSOS[i]})));
+    }
+    const partes = [];
+    if (dados.especie) partes.push(['Espécie', nome(dados.especie)]);
+    if (dados.classe) partes.push(['Classe', nome(dados.classe)]);
+    if (dados.antecedente) partes.push(['Antecedente', catalogo.antecedentes[dados.antecedente]?.nome || nome(dados.antecedente)]);
+    charSummary.replaceChildren(...partes.map(([rotulo, valor]) => el('span', {}, document.createTextNode(`${rotulo}: `), el('strong', {textContent: valor}))));
   }
 
   function passoNome() {
@@ -416,28 +709,36 @@
     input.addEventListener('input', () => { dados.nome = input.value; });
     setTimeout(() => input.focus(), 0);
     return [el('label', {htmlFor: 'character-name', textContent: 'Nome do personagem'}), input,
-      el('p', {className: 'choice-meta', textContent: 'Criação no nível 1, conforme o Livro do Jogador 2024.'})];
+      meta('Criação no nível 1, conforme o Livro do Jogador 2024.')];
   }
 
   function passoEspecie() {
-    const opcoes = Object.entries(catalogo.especies).map(([k, v]) => [k, nome(k), `Tamanho ${nome(v.tamanho)} · Deslocamento ${String(v.deslocamento).replace('.', ',')} m`]);
-    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a espécie'}), radios('especie', opcoes, dados.especie, (v) => { dados.especie = v; }))];
+    const grade = el('div', {className: 'escolhas-grade'});
+    for (const [chave, info] of Object.entries(catalogo.especies)) {
+      grade.append(cartaoEscolha('especie', chave, nome(chave),
+        `Tamanho ${nome(info.tamanho)} · Deslocamento ${String(info.deslocamento).replace('.', ',')} m`,
+        dados.especie === chave, (v) => { dados.especie = v; }));
+    }
+    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a espécie'}), grade)];
   }
 
   function passoClasse() {
-    const opcoes = Object.entries(catalogo.classes).map(([k, v]) => [k, nome(k), `Dado de Vida d${v.dado_vida} · Atributo principal: ${nome(v.atributo_primario)}`]);
-    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a classe'}), radios('classe', opcoes, dados.classe, (v) => { dados.classe = v; dados.pericias_classe = []; dados.ferramenta_artesao = ''; }))];
+    const grade = el('div', {className: 'escolhas-grade'});
+    for (const [chave, info] of Object.entries(catalogo.classes)) {
+      grade.append(cartaoEscolha('classe', chave, nome(chave),
+        `Dado de Vida d${info.dado_vida} · Atributo principal: ${nome(info.atributo_primario)}`,
+        dados.classe === chave, (v) => { dados.classe = v; dados.pericias_classe = []; dados.ferramenta_artesao = ''; }));
+    }
+    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a classe'}), grade)];
   }
 
   function passoPericiasClasse() {
     const opcoes = catalogo.pericias_classe_opcoes?.[dados.classe] || [];
     const limite = Number(catalogo.quantidade_pericias_classe?.[dados.classe] || 0);
-    const selecionadas = new Set(dados.pericias_classe || []);
-    const status = el('p', {className: 'choice-meta', role: 'status',
-      textContent: `Escolha ${limite} perícias de classe. Selecionadas: ${selecionadas.size}/${limite}.`});
+    const status = meta(`Escolha ${limite} perícias de classe. Selecionadas: ${(dados.pericias_classe || []).length}/${limite}.`);
     const lista = el('ul', {className: 'choice-list'});
     for (const pericia of opcoes) {
-      const caixa = el('input', {type: 'checkbox', checked: selecionadas.has(pericia)});
+      const caixa = el('input', {type: 'checkbox', checked: (dados.pericias_classe || []).includes(pericia)});
       caixa.addEventListener('change', () => {
         const atuais = new Set(dados.pericias_classe || []);
         if (caixa.checked && atuais.size >= limite) {
@@ -457,14 +758,13 @@
     if (dados.classe === 'artifice') {
       const id = 'artisan-tool-proficiency';
       const select = el('select', {id}, el('option', {value: '', textContent: 'Escolha uma ferramenta de artesão…'}),
-        ...(catalogo.ferramentas_artesao || []).map(ferramenta => el('option', {value: ferramenta, textContent: ferramenta})));
+        ...(catalogo.ferramentas_artesao || []).map((ferramenta) => el('option', {value: ferramenta, textContent: ferramenta})));
       select.value = dados.ferramenta_artesao || '';
       select.addEventListener('change', () => { dados.ferramenta_artesao = select.value; });
-      extras.push(el('label', {htmlFor: id, textContent: 'Proficiência de ferramenta adicional do Artífice'}),
-        select);
+      extras.push(el('label', {htmlFor: id, textContent: 'Proficiência de ferramenta adicional do Artífice'}), select);
     }
     return [el('fieldset', {}, el('legend', {textContent: `Perícias de ${nome(dados.classe)}`}),
-      el('p', {className: 'choice-meta', textContent: 'Essas escolhas são validadas pelo motor e somadas às perícias do antecedente, sem duplicar bônus.'}),
+      meta('Essas escolhas são validadas pelo motor e somadas às perícias do antecedente, sem duplicar bônus.'),
       lista, status, ...extras)];
   }
 
@@ -488,12 +788,17 @@
       extra.append(el('label', {htmlFor: 'background-feat', textContent: 'Talento do antecedente (Dádivas Sombrias exigem campanha de Ravenloft)'}), select);
     };
     for (const [titulo, filtro] of grupos) {
-      const opcoes = Object.entries(catalogo.antecedentes).filter(([, v]) => v.fonte.includes(filtro)).map(([k, v]) => [k, v.nome,
-        `${v.atributos.map(nome).join(', ')} · Talento: ${talentoNome(v.talento)} · Perícias: ${v.pericias.map(nome).join(', ')}`]);
-      blocos.push(el('h3', {textContent: titulo}), radios('antecedente', opcoes, dados.antecedente, (v) => {
-        if (v !== dados.antecedente) { dados.aumento2 = ''; dados.aumento1 = ''; dados.talento_antecedente = ''; }
-        dados.antecedente = v; desenharExtra();
-      }));
+      const grade = el('div', {className: 'escolhas-grade'});
+      for (const [chave, info] of Object.entries(catalogo.antecedentes).filter(([, v]) => v.fonte.includes(filtro))) {
+        grade.append(cartaoEscolha('antecedente', chave, info.nome,
+          `${info.atributos.map(nome).join(', ')} · ${talentoNome(info.talento)} · ${info.pericias.map(nome).join(', ')}`,
+          dados.antecedente === chave, (v) => {
+            if (v !== dados.antecedente) { dados.aumento2 = ''; dados.aumento1 = ''; dados.talento_antecedente = ''; }
+            dados.antecedente = v;
+            desenharExtra();
+          }));
+      }
+      blocos.push(el('h3', {textContent: titulo}), grade);
     }
     desenharExtra();
     return [el('fieldset', {}, el('legend', {textContent: 'Escolha o antecedente'}), ...blocos), extra];
@@ -502,44 +807,79 @@
   function passoAtributos() {
     const area = el('div');
     const desenhar = () => {
-      const metodo = el('div', {className: 'segmented', role: 'group', ariaLabel: 'Método de geração de atributos'});
+      const metodo = el('div', {className: 'segmented', role: 'group', 'aria-label': 'Método de geração de atributos'});
       for (const [valor, titulo] of [['matriz_padrao', 'Matriz padrão'], ['compra_pontos', 'Compra por pontos']]) {
         const b = el('button', {type: 'button', className: 'text-button', textContent: titulo});
         b.setAttribute('aria-pressed', String(dados.metodo_atributos === valor));
         b.addEventListener('click', () => { dados.metodo_atributos = valor; desenhar(); });
         metodo.append(b);
       }
-      const grade = el('div', {className: 'ability-grid'});
+      const grade = el('div', {className: 'atributos'});
       const extras = [];
       if (dados.metodo_atributos === 'matriz_padrao') {
-        extras.push(el('p', {className: 'choice-meta', textContent: `Distribua ${catalogo.matriz_padrao.join(', ')} — cada valor uma vez.`}));
+        extras.push(meta(`Distribua ${catalogo.matriz_padrao.join(', ')} — cada valor uma vez.`));
+        const selects = [];
+        const sincronizar = () => {
+          const usados = new Set(ATRIBUTOS.map((a) => String(dados.atributos[a])).filter((v) => v && v !== ''));
+          for (const select of selects) {
+            for (const opcao of select.options) {
+              if (!opcao.value) continue;
+              opcao.disabled = usados.has(opcao.value) && opcao.value !== select.value;
+            }
+          }
+        };
         for (const a of ATRIBUTOS) {
           const id = `matriz-${a}`;
-          const select = el('select', {id}, el('option', {value: '', textContent: '—'}), ...catalogo.matriz_padrao.map((v) => el('option', {value: String(v), textContent: String(v)})));
+          const select = el('select', {id, className: 'field-control'}, el('option', {value: '', textContent: '—'}),
+            ...catalogo.matriz_padrao.map((v) => el('option', {value: String(v), textContent: String(v)})));
           select.value = String(dados.atributos[a]);
-          select.addEventListener('change', () => { dados.atributos[a] = select.value; });
-          grade.append(el('div', {className: 'ability'}, el('label', {htmlFor: id, className: 'ability-name', textContent: nome(a)}), select));
+          const valor = el('span', {className: 'atributo-mod'});
+          const atualizarMod = () => { valor.textContent = select.value ? assinado(modificador(select.value)) : '—'; };
+          select.addEventListener('change', () => { dados.atributos[a] = select.value; atualizarMod(); sincronizar(); });
+          atualizarMod();
+          selects.push(select);
+          grade.append(el('div', {className: 'atributo'},
+            el('label', {htmlFor: id, className: 'atributo-nome', textContent: abreviar(a)}),
+            select, valor,
+            el('span', {className: 'choice-meta', textContent: nome(a)})));
         }
+        sincronizar();
       } else {
+        const custos = catalogo.compra_pontos.custos;
+        const gastos = () => ATRIBUTOS.reduce((total, a) => total + custos[dados.compra[a]], 0);
         const restante = el('p', {className: 'points', role: 'status'});
-        const atualizar = () => { restante.textContent = `Pontos restantes: ${catalogo.compra_pontos.total - pontosGastos()} de ${catalogo.compra_pontos.total}`; };
+        const atualizar = () => {
+          restante.textContent = `Pontos restantes: ${catalogo.compra_pontos.total - gastos()} de ${catalogo.compra_pontos.total}`;
+        };
         for (const a of ATRIBUTOS) {
-          const valor = el('span', {className: 'ability-value', textContent: dados.compra[a]});
+          const valor = el('span', {className: 'atributo-valor', textContent: String(dados.compra[a])});
+          const custo = el('span', {className: 'compra-custo'});
+          const mod = el('span', {className: 'atributo-mod'});
+          const pintar = () => {
+            valor.textContent = String(dados.compra[a]);
+            custo.textContent = `custo ${custos[dados.compra[a]]}`;
+            mod.textContent = assinado(modificador(dados.compra[a]));
+          };
           const passoValor = (d) => {
             const novo = dados.compra[a] + d;
             if (novo < 8 || novo > 15) return;
-            const antes = dados.compra[a]; dados.compra[a] = novo;
-            if (pontosGastos() > catalogo.compra_pontos.total) { dados.compra[a] = antes; return; }
-            valor.textContent = novo; atualizar();
+            const antes = dados.compra[a];
+            dados.compra[a] = novo;
+            if (gastos() > catalogo.compra_pontos.total) { dados.compra[a] = antes; return; }
+            pintar(); atualizar();
           };
-          const menos = el('button', {type: 'button', className: 'icon-button', textContent: '−', ariaLabel: `Diminuir ${nome(a)}`});
-          const mais = el('button', {type: 'button', className: 'icon-button', textContent: '+', ariaLabel: `Aumentar ${nome(a)}`});
+          const menos = el('button', {type: 'button', className: 'icon-button', textContent: '−', 'aria-label': `Diminuir ${nome(a)}`});
+          const mais = el('button', {type: 'button', className: 'icon-button', textContent: '+', 'aria-label': `Aumentar ${nome(a)}`});
           menos.addEventListener('click', () => passoValor(-1));
           mais.addEventListener('click', () => passoValor(1));
-          grade.append(el('div', {className: 'ability'}, el('span', {className: 'ability-name', textContent: nome(a)}), el('div', {className: 'stepper'}, menos, valor, mais)));
+          pintar();
+          grade.append(el('div', {className: 'atributo'},
+            el('span', {className: 'atributo-nome', textContent: abreviar(a)}),
+            el('div', {className: 'stepper'}, menos, valor, mais),
+            mod, el('span', {className: 'compra-linha'}, el('span', {className: 'choice-meta', textContent: nome(a)}), custo)));
         }
         atualizar();
-        extras.push(restante);
+        extras.unshift(restante);
       }
       area.replaceChildren(metodo, ...extras, grade, blocoAumentos());
     };
@@ -550,7 +890,7 @@
   function blocoAumentos() {
     const bg = catalogo.antecedentes[dados.antecedente];
     const caixa = el('fieldset', {}, el('legend', {textContent: `Aumentos do antecedente ${bg.nome}: ${bg.atributos.map(nome).join(', ')}`}));
-    const modos = el('div', {className: 'segmented', role: 'group', ariaLabel: 'Distribuição dos aumentos'});
+    const modos = el('div', {className: 'segmented', role: 'group', 'aria-label': 'Distribuição dos aumentos'});
     const corpo = el('div');
     const desenhar = () => {
       modos.replaceChildren();
@@ -562,15 +902,28 @@
       }
       corpo.replaceChildren();
       if (dados.modo_aumento === '2-1') {
+        const selects = [];
+        const sincronizar = () => {
+          const escolhidos = new Set(selects.map((s) => s.value).filter(Boolean));
+          for (const select of selects) {
+            for (const opcao of select.options) {
+              if (!opcao.value) continue;
+              opcao.disabled = escolhidos.has(opcao.value) && opcao.value !== select.value;
+            }
+          }
+        };
         for (const [campo, rotulo] of [['aumento2', '+2 em'], ['aumento1', '+1 em']]) {
           const id = `bg-${campo}`;
-          const select = el('select', {id}, el('option', {value: '', textContent: '—'}), ...bg.atributos.map((a) => el('option', {value: a, textContent: nome(a)})));
+          const select = el('select', {id, className: 'field-control'}, el('option', {value: '', textContent: '—'}),
+            ...bg.atributos.map((a) => el('option', {value: a, textContent: nome(a)})));
           select.value = dados[campo];
-          select.addEventListener('change', () => { dados[campo] = select.value; });
+          select.addEventListener('change', () => { dados[campo] = select.value; sincronizar(); });
+          selects.push(select);
           corpo.append(el('label', {htmlFor: id, textContent: rotulo}), select);
         }
+        sincronizar();
       } else {
-        corpo.append(el('p', {className: 'choice-meta', textContent: `+1 em ${bg.atributos.map(nome).join(', ')}.`}));
+        corpo.append(meta(`+1 em ${bg.atributos.map(nome).join(', ')}.`));
       }
     };
     desenhar();
@@ -578,32 +931,59 @@
     return caixa;
   }
 
+  const custos = () => catalogo.compra_pontos.custos;
+  const pontosGastos = () => ATRIBUTOS.reduce((t, a) => t + custos()[dados.compra[a]], 0);
+  function base() {
+    if (dados.metodo_atributos === 'compra_pontos') return {...dados.compra};
+    return Object.fromEntries(ATRIBUTOS.map((a) => [a, Number(dados.atributos[a]) || 0]));
+  }
+  function aumentos() {
+    const r = {};
+    const bg = catalogo.antecedentes[dados.antecedente];
+    if (!bg) return r;
+    if (dados.modo_aumento === '1-1-1') { for (const a of bg.atributos) r[a] = 1; return r; }
+    if (dados.aumento2) r[dados.aumento2] = 2;
+    if (dados.aumento1) r[dados.aumento1] = (r[dados.aumento1] || 0) + 1;
+    return r;
+  }
+
+  function passoRevisao() {
+    const b = base();
+    const au = aumentos();
+    const grade = el('div', {className: 'atributos'});
+    for (const a of ATRIBUTOS) {
+      const total = b[a] + (au[a] || 0);
+      grade.append(el('div', {className: 'atributo', 'data-destaque': modificador(total) >= 3 ? 'sim' : 'nao'},
+        el('span', {className: 'atributo-nome', textContent: abreviar(a)}),
+        el('span', {className: 'atributo-valor', textContent: String(total)}),
+        el('span', {className: 'atributo-mod', textContent: assinado(modificador(total))}),
+        el('span', {className: 'choice-meta', textContent: au[a] ? `${b[a]} + ${au[a]}` : `${b[a]}`})));
+    }
+    const bg = catalogo.antecedentes[dados.antecedente];
+    const talento = dados.talento_antecedente || bg.talento;
+    return [
+      el('div', {className: 'cabecalho-ficha'},
+        el('h3', {className: 'nameplate', textContent: dados.nome.trim()}),
+        el('p', {className: 'linha-resumo', textContent: `${nome(dados.especie)} · ${nome(dados.classe)} nível 1 · ${bg.nome}`}),
+        el('div', {className: 'badges'},
+          badge(nome(dados.especie)),
+          badge(`d${catalogo.classes[dados.classe].dado_vida}`, 'badge-destaque'),
+          badge(talentoNome(talento), 'badge-magia'))),
+      grade,
+      el('hr', {className: 'regra-fina'}),
+      el('dl', {className: 'facts'},
+        el('dt', {textContent: 'Perícias do antecedente'}), el('dd', {textContent: bg.pericias.map(nome).join(', ')}),
+        el('dt', {textContent: 'Perícias de classe'}), el('dd', {textContent: (dados.pericias_classe || []).map(nome).join(', ')}),
+        ...(dados.classe === 'artifice' ? [el('dt', {textContent: 'Ferramenta de artesão'}), el('dd', {textContent: dados.ferramenta_artesao || 'pendente'})] : []),
+        el('dt', {textContent: 'Ferramenta do antecedente'}), el('dd', {textContent: bg.ferramenta}),
+        el('dt', {textContent: 'Equipamento inicial'}), el('dd', {textContent: `A: ${bg.equipamento.A} · ou B: ${bg.equipamento.B}`})),
+      meta('PV, bônus de proficiência, CA e salvaguardas são calculados pelo motor de regras ao criar o personagem.')];
+  }
+
   function payload() {
     return {nome: dados.nome.trim(), especie: dados.especie, classe: dados.classe, nivel: 1, metodo_atributos: dados.metodo_atributos,
       atributos: base(), antecedente: dados.antecedente, aumentos_antecedente: aumentos(), talento_antecedente: dados.talento_antecedente || null,
       pericias_classe: dados.pericias_classe, ferramenta_artesao: dados.ferramenta_artesao || null};
-  }
-
-  function passoRevisao() {
-    const b = base(); const au = aumentos();
-    const grade = el('div', {className: 'ability-grid'});
-    for (const a of ATRIBUTOS) {
-      const total = b[a] + (au[a] || 0);
-      grade.append(el('div', {className: 'ability'}, el('span', {className: 'ability-name', textContent: nome(a).slice(0, 3)}),
-        el('span', {className: 'ability-value', textContent: total}),
-        el('span', {className: 'ability-mod', textContent: `${b[a]}${au[a] ? ` + ${au[a]}` : ''} · mod ${mod(total)}`})));
-    }
-    const bg = catalogo.antecedentes[dados.antecedente];
-    const talento = dados.talento_antecedente || bg.talento;
-    return [el('h3', {textContent: dados.nome.trim()}),
-      el('p', {className: 'choice-meta', textContent: `${nome(dados.especie)} · ${nome(dados.classe)} nível 1 · ${bg.nome}`}),
-      grade,
-      el('dl', {className: 'facts'}, el('dt', {textContent: 'Talento'}), el('dd', {textContent: talentoNome(talento)}),
-        el('dt', {textContent: 'Perícias do antecedente'}), el('dd', {textContent: bg.pericias.map(nome).join(', ')}),
-        el('dt', {textContent: 'Perícias de classe'}), el('dd', {textContent: (dados.pericias_classe || []).map(nome).join(', ')}),
-        ...(dados.classe === 'artifice' ? [el('dt', {textContent: 'Ferramenta de artesão do Artífice'}), el('dd', {textContent: dados.ferramenta_artesao || 'pendente'})] : []),
-        el('dt', {textContent: 'Ferramenta do antecedente'}), el('dd', {textContent: bg.ferramenta})),
-      el('p', {className: 'choice-meta', textContent: 'PV, Bônus de Proficiência e demais valores são calculados pelo motor de regras ao criar.'})];
   }
 
   function validarPasso() {
@@ -639,6 +1019,7 @@
     nextButton.disabled = true;
     try {
       await api(url(), {method: 'POST', body: JSON.stringify(payload())});
+      personagemCriado = true;
       charDialog.close();
       abrirGrupo();
     } catch (falha) {
@@ -647,9 +1028,16 @@
       nextButton.disabled = false;
     }
   });
+
   prevButton.addEventListener('click', () => { if (passo > 0) { passo -= 1; render(); } });
   document.querySelector('#character-cancel').addEventListener('click', () => charDialog.close());
-  document.querySelector('#group-close').addEventListener('click', () => groupDialog.close());
+  // Cancelar ou fechar o assistente devolve o jogador ao grupo, sem perder a campanha aberta.
+  charDialog.addEventListener('close', () => {
+    const reabrirGrupo = !personagemCriado && Boolean(state.atual) && !groupDialog.open;
+    personagemCriado = false;
+    if (reabrirGrupo) groupDialog.showModal();
+  });
+  groupClose.addEventListener('click', () => groupDialog.close());
   groupBack.addEventListener('click', abrirGrupo);
   groupButton.addEventListener('click', abrirGrupo);
   newCharacter.addEventListener('click', abrirCriacao);

@@ -133,12 +133,20 @@ Até existir login, cada navegador gera um identificador próprio e o envia no c
 | `DELETE` | `/v1/campanhas/{id}` | Apaga a campanha e as mensagens |
 | `POST` | `/v1/campanhas/{id}/mensagens` | Envia uma mensagem ao MJ e salva a troca |
 | `GET` | `/v1/catalogo/personagens` | Espécies, classes, antecedentes (PHB 2024 + Ravenloft), talentos de origem e Dádivas Sombrias |
+| `GET` | `/v1/catalogo/equipamento` | Armas, armaduras, perícias por atributo e proficiências de arma do catálogo oficial |
+| `GET` | `/v1/catalogo/magias` | Magias do catálogo, com classe e nível para filtrar |
 | `GET` | `/v1/campanhas/{id}/personagens` | Lista as fichas do grupo da campanha |
 | `POST` | `/v1/campanhas/{id}/personagens` | Cria uma ficha validada pelo Rule Engine (atributos, antecedente e aumentos) |
 | `GET` | `/v1/campanhas/{id}/personagens/{pid}` | Retorna a ficha |
 | `PUT` | `/v1/campanhas/{id}/personagens/{pid}` | Refaz a ficha, revalidando pelo motor |
 | `PATCH` | `/v1/campanhas/{id}/personagens/{pid}` | Atualiza os PV atuais (`{"pv_atual": n}`, limitado ao máximo) |
 | `DELETE` | `/v1/campanhas/{id}/personagens/{pid}` | Apaga a ficha |
+
+### Bloco derivado da ficha
+
+Toda resposta de personagem traz um campo `bloco` calculado pelo servidor (`fonte: rule_engine`): CA a partir da armadura e do escudo, iniciativa, bônus de proficiência, arma equipada (atributo usado, bônus de ataque, expressão de dano, tipo, alcance e proficiência), conjuração (atributo, CD e bônus de ataque mágico), salvaguardas e perícias com os totais já somados. Armas de munição usam Destreza; as demais usam Força, ou Destreza quando a arma tem Acuidade.
+
+O objetivo é que a interface nunca precise recalcular regra nem manter listas próprias de equipamento: o catálogo oficial é servido por `/v1/catalogo/equipamento` e a ficha apenas exibe o que o motor devolve.
 
 O endpoint legado `/v1/mj/mensagem` continua funcionando: a `sessao_id` passa a ser o id de uma campanha persistida. Autenticação própria ainda é necessária antes de abrir o serviço ao público; a chave do TokenHarbor nunca deve chegar ao navegador.
 
