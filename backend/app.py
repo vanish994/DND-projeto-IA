@@ -1089,11 +1089,11 @@ def _expandir_multiataque(monstro: dict, ataques: list[dict]) -> list[str] | Non
     if not descricao:
         return None
     # Opções com "or" exigem escolher a alternativa correta; não escolher por conta própria.
-    if re.search(r"\\bor\\b", descricao, re.I):
+    if re.search(r"\bor\b", descricao, re.I):
         return None
     por_nome = {str(a["nome"]).casefold(): a for a in ataques}
     def achar_ataque(referencia: str) -> str | None:
-        ref = re.sub(r"\\s+", " ", referencia.strip().casefold()).rstrip(" .")
+        ref = re.sub(r"\s+", " ", referencia.strip().casefold()).rstrip(" .")
         candidatas = [ref, ref.rstrip("s"), ref + "s"]
         for chave in candidatas:
             if chave in por_nome:
@@ -1102,7 +1102,7 @@ def _expandir_multiataque(monstro: dict, ataques: list[dict]) -> list[str] | Non
         return matches[0] if len(matches) == 1 else None
     palavras = {"one": 1, "once": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
     especificos = []
-    padrao = r"\\b(one|two|three|four|five|six|[1-6])\\s+with\\s+(?:its|the)\\s+([a-z][a-z -]*?)(?=\\s*(?:,|and\\b|\\.|$))"
+    padrao = r"\b(one|two|three|four|five|six|[1-6])\s+with\s+(?:its|the)\s+([a-z][a-z -]*?)(?=\s*(?:,|and\b|\\.|$))"
     for m in re.finditer(padrao, descricao, re.I):
         quantidade = palavras.get(m.group(1).casefold(), int(m.group(1)) if m.group(1).isdigit() else 0)
         nome = achar_ataque(m.group(2))
@@ -1112,7 +1112,7 @@ def _expandir_multiataque(monstro: dict, ataques: list[dict]) -> list[str] | Non
     if especificos:
         return especificos
     # Forma compacta: "makes two Bite attacks" / "makes three Tentacle attacks".
-    m = re.search(r"\\b(one|two|three|four|five|six|[1-6])\\s+([a-z][a-z -]*?)\\s+attacks?\\b", descricao, re.I)
+    m = re.search(r"\b(one|two|three|four|five|six|[1-6])\s+([a-z][a-z -]*?)\s+attacks?\b", descricao, re.I)
     if m:
         quantidade = palavras.get(m.group(1).casefold(), int(m.group(1)) if m.group(1).isdigit() else 0)
         nome = achar_ataque(m.group(2))
@@ -1120,7 +1120,7 @@ def _expandir_multiataque(monstro: dict, ataques: list[dict]) -> list[str] | Non
             return [nome] * quantidade
         return None
     # "makes two melee attacks": só é seguro quando há um único ataque corpo a corpo disponível.
-    m = re.search(r"\\b(one|two|three|four|five|six|[1-6])\\s+melee attacks?\\b", descricao, re.I)
+    m = re.search(r"\b(one|two|three|four|five|six|[1-6])\s+melee attacks?\b", descricao, re.I)
     if m:
         quantidade = palavras.get(m.group(1).casefold(), int(m.group(1)) if m.group(1).isdigit() else 0)
         corpo_a_corpo = [a for a in ataques if a["alcance_corpo_a_corpo"] > 0]
