@@ -994,12 +994,17 @@ def conjurar_no_mapa_tatico(
     ficha = repo.obter_personagem(jogador, campanha_id, conjurador["character_id"])
     if not ficha:
         raise HTTPException(status_code=404, detail="Ficha do conjurador não encontrada")
+    if str(ficha.get("classe", "")).casefold() != "artifice":
+        raise HTTPException(status_code=422, detail="A lista de magias táticas implementada nesta versão é a do Artífice; outras classes precisam de suas listas validadas")
     conjuracao = ficha.get("conjuracao") or {}
     magia = obter_magia(pedido.magia)
     if not magia:
         raise HTTPException(status_code=422, detail="Magia ausente do catálogo do motor")
     nome = magia["nome"]
     circulo = int(magia.get("circulo") or 0)
+    catalogo_artifice = {str(m.get("nome", "")).casefold() for m in listar_magias_artifice(int(ficha.get("nivel", 1)))}
+    if nome.casefold() not in catalogo_artifice:
+        raise HTTPException(status_code=422, detail="Esta magia não pertence à lista disponível do Artífice neste nível")
     truques = {str(n).casefold() for n in conjuracao.get("truques", [])}
     preparadas = {str(n).casefold() for n in conjuracao.get("magias_preparadas", [])}
     if circulo == 0 and nome.casefold() not in truques:
