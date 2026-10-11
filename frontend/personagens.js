@@ -232,7 +232,7 @@
 
   async function carregarConjuracao(p) {
     const secao = el("section", {className: "spell-sheet"});
-    secao.append(el("h3", {textContent: "Conjuração"}), el("p", {className: "choice-meta", textContent: p.classe === "artifice" ? "A lista, os truques, as magias preparadas e os espaços são validados conforme a progressão do Artífice." : "A seleção é registrada no catálogo; a validação completa por classe ainda está sendo implementada."}));
+    secao.append(el("h3", {textContent: "Conjuração"}), el("p", {className: "choice-meta", textContent: p.classe === "artifice" ? "Lista, truques, magias preparadas e espaços são validados pela progressão do Artífice. Se o efeito de uma magia ainda não estiver implementado, o motor a recusará sem inventar o resultado." : "A seleção é registrada no catálogo; a validação completa por classe ainda está sendo implementada."}));
     const status = el("p", {className: "choice-meta", textContent: "Carregando catálogo de magias…"});
     secao.append(status);
     groupBody.append(secao);
