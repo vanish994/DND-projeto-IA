@@ -32,9 +32,10 @@ from rule_engine import (
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine.spells import listar_magias, obter_magia, resolver_magia
-from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE
+from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE, escolha_ferramenta_do_antecedente
+from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA, escolha_de_especie
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
-from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS
+from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS, INSTRUMENTOS_MUSICAIS, KITS_DE_JOGOS
 from rule_engine.ability_checks import PERICIAS, resolver_salvaguarda
 from rule_engine.conditions import EstadoCondicoes, normalizar_condicao, resolver_efeitos_condicao
 
@@ -118,6 +119,10 @@ class NovoPersonagem(BaseModel):
     talento_antecedente: str | None = None
     pericias_classe: list[str] | None = Field(default=None, max_length=10)
     ferramenta_artesao: str | None = Field(default=None, max_length=80)
+    heranca_draconica: str | None = Field(default=None, max_length=40)
+    ferramenta_antecedente: str | None = Field(default=None, max_length=80)
+    equipamento_antecedente: str | None = Field(default=None, pattern="^[AaBb]$")
+    magias_iniciais: AtualizarMagiasPersonagem | None = None
 
 
 class AtualizarPersonagem(BaseModel):
@@ -175,6 +180,9 @@ class AtualizarMagiasPersonagem(BaseModel):
 class AtualizarProficienciasPersonagem(BaseModel):
     pericias_classe: list[str] = Field(min_length=1, max_length=10)
     ferramenta_artesao: str | None = Field(default=None, max_length=80)
+    heranca_draconica: str | None = Field(default=None, max_length=40)
+    ferramenta_antecedente: str | None = Field(default=None, max_length=80)
+    equipamento_antecedente: str | None = Field(default=None, pattern="^[AaBb]$")
 
 
 class AtualizarEquipamentoPersonagem(BaseModel):
@@ -206,6 +214,18 @@ class AcaoAvancarTurno(BaseModel):
     salvaguardas: list[SalvaguardaFimTurno] = Field(default_factory=list, max_length=15)
 
 
+def _exigir_escolhas_de_criacao(dados: NovoPersonagem) -> None:
+    """A criação só termina quando a ficha não depende de escolhas pendentes."""
+    escolha = escolha_de_especie(dados.especie)
+    if escolha and not dados.heranca_draconica:
+        raise HTTPException(status_code=422, detail=f"Escolha a {escolha['rotulo']} do {dados.especie}.")
+    ferramenta = escolha_ferramenta_do_antecedente(dados.antecedente)
+    if ferramenta and not dados.ferramenta_antecedente:
+        raise HTTPException(status_code=422, detail=f"Escolha o tipo de {ferramenta['rotulo']} do antecedente {dados.antecedente}.")
+    if dados.antecedente in ANTECEDENTES and not dados.equipamento_antecedente:
+        raise HTTPException(status_code=422, detail="Escolha o equipamento de antecedente A ou B.")
+
+
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
     """Toda ficha passa pelo Rule Engine; nada é calculado no cliente."""
     try:
@@ -227,6 +247,9 @@ def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
             "background_feat": dados.talento_antecedente,
             **({"class_skill_proficiencies": dados.pericias_classe} if dados.pericias_classe is not None else {}),
             **({"artisan_tool_proficiency": dados.ferramenta_artesao} if dados.ferramenta_artesao is not None else {}),
+            **({"heranca_draconica": dados.heranca_draconica} if dados.heranca_draconica is not None else {}),
+            **({"ferramenta_antecedente": dados.ferramenta_antecedente} if dados.ferramenta_antecedente is not None else {}),
+            **({"equipamento_antecedente": dados.equipamento_antecedente} if dados.equipamento_antecedente is not None else {}),
         })
     except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc).strip("'\"")) from exc
@@ -438,6 +461,17 @@ def catalogo_personagens() -> dict:
         "pericias_classe_opcoes": {classe: sorted(opcoes) for classe, opcoes in PERICIAS_CLASSE_OPCOES.items()},
         "quantidade_pericias_classe": dict(QUANTIDADE_PERICIAS_CLASSE),
         "ferramentas_artesao": sorted(FERRAMENTAS_ARTESAO),
+        "escolhas_especie": {
+            especie: {"rotulo": escolha["rotulo"], "nota": escolha["nota"], "opcoes": escolha["opcoes"]}
+            for especie, escolha in ESCOLHAS_ESPECIE.items()
+        },
+        "heranca_draconica": HERANCA_DRACONICA,
+        "ferramentas_antecedente": {
+            categoria: {"rotulo": dados["rotulo"], "opcoes": dados["opcoes"]}
+            for categoria, dados in __import__("rule_engine.character", fromlist=["CATEGORIAS_FERRAMENTA_ANTECEDENTE"]).CATEGORIAS_FERRAMENTA_ANTECEDENTE.items()
+        },
+        "instrumentos_musicais": INSTRUMENTOS_MUSICAIS,
+        "kits_de_jogos": KITS_DE_JOGOS,
         "matriz_padrao": sorted(gerar_atributos_matriz_padrao().values(), reverse=True),
         "compra_pontos": {"total": 27, "custos": {8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}},
     }
@@ -502,6 +536,7 @@ def criar_personagem_campanha(
     repo: RepositorioCampanhas = Depends(obter_repositorio),
 ) -> dict:
     _campanha_ou_404(repo, jogador, campanha_id)
+    _exigir_escolhas_de_criacao(dados)
     entrada, ficha = _resolver_ficha(dados)
     return _com_bloco(repo.criar_personagem(jogador, campanha_id, entrada, ficha))
 
@@ -532,6 +567,7 @@ def substituir_personagem(
     repo: RepositorioCampanhas = Depends(obter_repositorio),
 ) -> dict:
     _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+    _exigir_escolhas_de_criacao(dados)
     entrada, ficha = _resolver_ficha(dados)
     return _com_bloco(repo.atualizar_personagem(jogador, campanha_id, personagem_id, entrada=entrada, ficha=ficha))
 
@@ -563,6 +599,9 @@ def atualizar_proficiencias_personagem(
     entrada = dict(personagem.get("entrada") or {})
     entrada["pericias_classe"] = dados.pericias_classe
     entrada["ferramenta_artesao"] = dados.ferramenta_artesao
+    entrada["heranca_draconica"] = dados.heranca_draconica
+    entrada["ferramenta_antecedente"] = dados.ferramenta_antecedente
+    entrada["equipamento_antecedente"] = dados.equipamento_antecedente
     try:
         novo = NovoPersonagem.model_validate(entrada)
         nova_entrada, nova_ficha = _resolver_ficha(novo)
