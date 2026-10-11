@@ -31,7 +31,7 @@ from rule_engine import (
 )
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
-from rule_engine.spells import listar_magias, obter_magia
+from rule_engine.spells import listar_magias, obter_magia, resolver_magia
 from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
 from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS
@@ -148,6 +148,14 @@ class AcaoAtaqueTatico(BaseModel):
     alvo_id: str = Field(min_length=1, max_length=80)
     cobertura: str = Field(default="nenhuma", pattern="^(nenhuma|meia|tres_quartos|total)$")
     arma: str | None = Field(default=None, max_length=80)
+
+
+class AcaoConjurarTatico(BaseModel):
+    atacante_id: str = Field(min_length=1, max_length=80)
+    alvo_id: str = Field(min_length=1, max_length=80)
+    magia: str = Field(min_length=1, max_length=100)
+    espaco: int | None = Field(default=None, ge=0, le=9)
+    cobertura: str = Field(default="nenhuma", pattern="^(nenhuma|meia|tres_quartos|total)$")
 
 
 class AtualizarMagiasPersonagem(BaseModel):
@@ -855,14 +863,22 @@ def atacar_token_tatico(
         raise HTTPException(status_code=422, detail="O alvo já está com 0 PV")
     equipamento_tatico = atacante.get("equipment") or {}
     nome_arma_tatica = pedido.arma or equipamento_tatico.get("arma")
-    alcance_tatico = 5
-    if nome_arma_tatica in CATALOGO_ARMAS and "extensao" in CATALOGO_ARMAS[nome_arma_tatica].get("propriedades", []):
-        alcance_tatico = 10
+    arma_tatica = CATALOGO_ARMAS.get(nome_arma_tatica or "")
     dx, dy = abs(int(atacante["x"]) - int(alvo["x"])), abs(int(atacante["y"]) - int(alvo["y"]))
     distancia_pes = max(dx, dy) * 5
+    alcance_tatico = 5
+    ataque_a_distancia = False
+    if arma_tatica:
+        propriedades_taticas = set(arma_tatica.get("propriedades", []))
+        alcance_catalogo = int(arma_tatica.get("alcance", 0))
+        ataque_a_distancia = "municao" in propriedades_taticas or ("arremesso" in propriedades_taticas and distancia_pes > 5)
+        if ataque_a_distancia:
+            alcance_tatico = max(5, round(alcance_catalogo * 3.28084))
+        elif "extensao" in propriedades_taticas:
+            alcance_tatico = 10
     geometria = resolver_ataque_tatico({
-        "distancia": distancia_pes, "alcance": alcance_tatico, "alcance_maximo": alcance_tatico,
-        "ataque_a_distancia": False,
+        "distancia": distancia_pes, "alcance": alcance_tatico, "alcance_maximo": alcance_tatico if ataque_a_distancia else None,
+        "ataque_a_distancia": ataque_a_distancia,
         "origem": (int(atacante["x"]), int(atacante["y"])),
         "alvo": (int(alvo["x"]), int(alvo["y"])),
         "atacante": (int(atacante["x"]), int(atacante["y"])),
@@ -899,15 +915,12 @@ def atacar_token_tatico(
         proficiente = categoria_arma in prof_armas or alias_prof.get(nome_arma) in prof_armas
         if not proficiente:
             raise HTTPException(status_code=422, detail="A ficha não confirma proficiência com esta arma")
-        if int(arma.get("alcance", 0)) > 0:
-            raise HTTPException(status_code=422, detail="Armas à distância/arremesso ainda não estão implementadas neste ataque; use uma arma corpo a corpo")
-        if "extensao" in arma.get("propriedades", []):
-            alcance_corpo_a_corpo = 10
-        else:
-            alcance_corpo_a_corpo = 5
-        distancia_pes = max(abs(int(atacante["x"]) - int(alvo["x"])), abs(int(atacante["y"]) - int(alvo["y"]))) * 5
-        if distancia_pes > alcance_corpo_a_corpo:
-            raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_pes": alcance_corpo_a_corpo})
+        alcance_corpo_a_corpo = 10 if "extensao" in arma.get("propriedades", []) else 5
+        propriedades_arma = set(arma.get("propriedades", []))
+        e_distancia = "municao" in propriedades_arma or ("arremesso" in propriedades_arma and distancia_pes > 5)
+        alcance_maximo_arma = max(5, round(int(arma.get("alcance", 0)) * 3.28084)) if e_distancia else alcance_corpo_a_corpo
+        if distancia_pes > alcance_maximo_arma:
+            raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_pes": alcance_maximo_arma})
         try:
             qtd, lados = map(int, arma["dano"].lower().split("d"))
         except (ValueError, AttributeError):
@@ -917,6 +930,13 @@ def atacar_token_tatico(
             modificadores = int(atacante.get("dex_mod", 0))
     bonus = int(atacante.get("proficiency", 2)) + modificadores
     rolagem = secrets.randbelow(20) + 1
+    rolagens_extra = []
+    if geometria.get("estado_jogada") == "vantagem":
+        rolagens_extra = [secrets.randbelow(20) + 1]
+        rolagem = max(rolagem, *rolagens_extra)
+    elif geometria.get("estado_jogada") == "desvantagem":
+        rolagens_extra = [secrets.randbelow(20) + 1]
+        rolagem = min(rolagem, *rolagens_extra)
     engine = build_default_engine()
     ca_efetiva = int(alvo["ac"]) + int(geometria.get("bonus_ca_por_cobertura", 0))
     ataque = engine.evaluate({"type": "attack", "roll": rolagem, "modifier": bonus, "target_ac": ca_efetiva}).outcome
@@ -947,7 +967,10 @@ def atacar_token_tatico(
         "geometria": geometria,
         "arma": nome_arma or "Ataque desarmado",
         "ca_alvo": int(alvo["ac"]),
-        "nota": "CA calculada a partir do equipamento registrado. Armas corpo a corpo usam dados do catálogo; ataques à distância, magias, condições e ações de monstros ainda precisam ser conectados.",
+        "rolagens": [rolagem, *rolagens_extra],
+        "alcance_pes": alcance_tatico,
+        "ataque_a_distancia": ataque_a_distancia,
+        "nota": "Armas corpo a corpo e à distância usam o catálogo, alcance e estado de vantagem/desvantagem do motor. Munição não é rastreada no inventário nesta versão.",
     }
 
 
