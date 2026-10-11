@@ -154,7 +154,10 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         "deslocamento": 0 if {"agarrado", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo else "normal",
         "pode_realizar_acoes": not bool(incapacitado),
         "pode_realizar_reacoes": not bool(incapacitado),
-        "pode_falar": not bool({"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo),
+        # Incapacitado, isoladamente, não impede a fala; Paralisado,
+        # Petrificado e Inconsciente impedem. Atordoado permite fala vacilante.
+        "pode_falar": not bool({"paralisado", "petrificado", "inconsciente"} & alvo),
+        "fala_vacilante": "atordoado" in alvo,
         "pode_ver": "cego" not in alvo,
         "pode_ouvir": "surdo" not in alvo,
         "falha_automaticamente_teste_que_exige_visao": "cego" in alvo,
