@@ -944,7 +944,7 @@ def salvar_mapa_tatico(
             anterior = tokens_anteriores.get(token.id, {})
             hp_maximo = int(m["pv"])
             hp_atual = max(0, min(hp_maximo, int(anterior.get("hp", hp_maximo)))) if anterior.get("monster_name") == m["nome"] else hp_maximo
-            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": hp_atual, "maxHp": hp_maximo, "conditions": list(anterior.get("conditions") or [])})
+            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": hp_atual, "maxHp": hp_maximo, "conditions": list(anterior.get("conditions") or []), "condition_durations": dict(anterior.get("condition_durations") or {})})
         else:
             raise HTTPException(status_code=422, detail="Use um personagem ou monstro do catálogo")
     estado = {"title": pedido.title, "terrain": pedido.terrain, "tokens": tokens, "bloqueados": [], "terreno_dificil": []}
@@ -1147,7 +1147,7 @@ def mover_token_tatico(
     mapa_atualizado = {
         **{k: bruto_mapa[k] for k in ("iniciativa", "turno_indice", "rodada", "combate_ativo") if k in bruto_mapa},
         "title": estado["title"], "terrain": estado["terrain"],
-        "tokens": [{k: t[k] for k in ("id", "kind", "character_id", "monster_name", "x", "y", "hp", "maxHp", "conditions") if k in t} for t in tokens],
+        "tokens": [{k: t[k] for k in ("id", "kind", "character_id", "monster_name", "x", "y", "hp", "maxHp", "conditions", "condition_durations") if k in t} for t in tokens],
         "bloqueados": bruto_mapa.get("bloqueados", []), "terreno_dificil": bruto_mapa.get("terreno_dificil", []),
     }
     repo.salvar_mapa_tatico(jogador, campanha_id, mapa_atualizado)
