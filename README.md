@@ -12,7 +12,7 @@ Biblioteca de referência do projeto de IA para Dungeons & Dragons.
 
 ## Bestiário SRD 5.2.1
 
-O projeto agora inclui um catálogo determinístico com **232 blocos estatísticos completos** identificados no `SRD_CC_v5.2.1.pdf` compartilhado. Cada registro contém nome, tamanho, tipo, alinhamento, CA, PV, dados de vida, ND e XP.
+O projeto inclui um catálogo resumido de **232 monstros** identificados no `SRD_CC_v5.2.1.pdf`, com nome, tamanho, tipo, alinhamento, CA, PV, dados de vida, ND e XP. Isso não significa que todos os blocos de combate estejam completos: ações, atributos e salvaguardas estruturados estão sendo preenchidos por etapas.
 
 Também estão disponíveis a tabela de XP por ND, filtros por tipo/ND, consulta por nome e cálculo do XP bruto de um encontro. A regra do motor usa entradas como:
 
@@ -22,7 +22,7 @@ Também estão disponíveis a tabela de XP por ND, filtros por tipo/ND, consulta
 {"type": "bestiary", "operacao": "xp_encontro", "nomes": ["Bandit", "Wolf"]}
 ```
 
-O bestiário também preserva o bloco integral de cada monstro, com cabeçalho, traços, ações, ações bônus, reações e ações lendárias quando existirem. As operações `bloco_completo` e `secao` permitem consultar esses dados de forma auditável.
+Os blocos de combate estruturados atualmente disponíveis são Bandit, Bandit Captain, Skeleton, Wolf e Zombie. O mapa tático consegue resolver ataques individuais com bônus, alcance e dano explícitos nesses blocos, além de usar as salvaguardas estruturadas nas magias de área. Multiataques, reações, traços especiais e os demais monstros ainda precisam de integração antes de serem considerados suportados.
 
 ### Fluxo de seleção para o MJ
 
