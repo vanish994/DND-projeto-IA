@@ -625,6 +625,29 @@ def mensagem_mj(
     return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta)
 
 
+def _calcular_ca_ficha(personagem: dict) -> int:
+    mods = personagem.get("modificadores") or {}
+    dex = int(mods.get("destreza", 0))
+    equipamento = personagem.get("equipamento") or {}
+    nome_armadura = equipamento.get("armadura")
+    if nome_armadura:
+        armadura = CATALOGO_ARMADURAS[nome_armadura]
+        categoria = armadura["categoria"]
+        if categoria == "leve":
+            ca = int(armadura["ca"]) + dex
+        elif categoria == "media":
+            ca = int(armadura["ca"]) + min(2, dex)
+        elif categoria == "pesada":
+            ca = int(armadura["ca"])
+        else:
+            ca = 10 + dex
+    else:
+        ca = 10 + dex
+    if equipamento.get("escudo") or (nome_armadura and CATALOGO_ARMADURAS[nome_armadura]["categoria"] == "escudo"):
+        ca += 2
+    return ca
+
+
 def _estado_mapa_normalizado(repo: RepositorioCampanhas, jogador: str, campanha_id: str) -> dict:
     estado = repo.obter_mapa_tatico(jogador, campanha_id)
     if estado is None:
