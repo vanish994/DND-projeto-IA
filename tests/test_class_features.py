@@ -23,6 +23,23 @@ class ClassFeatureCoverageTests(unittest.TestCase):
         self.assertEqual(result["resultado"], "resolvido")
         self.assertEqual(result["usos"], 2)
 
+    def test_paladin_lay_on_hands_cannot_spend_negative_or_unavailable_pool(self):
+        negative = resolver_caracteristica({
+            "classe": "paladino", "nivel": 3, "recurso": "maos_consagradas", "custo": -1,
+        })
+        self.assertEqual(negative["resultado"], "bloqueado")
+        overdrawn = resolver_caracteristica({
+            "classe": "paladino", "nivel": 3, "recurso": "maos_consagradas",
+            "custo": 6, "pool_restante": 5,
+        })
+        self.assertEqual(overdrawn["resultado"], "bloqueado")
+        valid = resolver_caracteristica({
+            "classe": "paladino", "nivel": 3, "recurso": "maos_consagradas",
+            "custo": 4, "pool_restante": 5,
+        })
+        self.assertEqual(valid["cura"], 4)
+        self.assertEqual(valid["pool_restante"], 1)
+
     def test_unknown_class_is_blocked(self):
         result = resolver_caracteristica({"classe": "classe_fantasma", "nivel": 3, "recurso": "qualquer_coisa"})
         self.assertEqual(result["resultado"], "bloqueado")
