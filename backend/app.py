@@ -210,6 +210,10 @@ def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) ->
         )
         linhas.append(
             f"  Dados de ficha: perícias={', '.join(p.get('pericias') or []) or 'nenhuma registrada'}; "
+            f"perícias escolhidas de classe={', '.join(p.get('pericias_classe') or []) or 'não registradas'}; "
+            f"salvaguardas proficientes={', '.join(p.get('proficiencias_salvaguarda') or []) or 'não registradas'}; "
+            f"proficiências de classe={p.get('proficiencias_classe') or 'não catalogadas'}; "
+            f"proficiências pendentes={p.get('proficiencias_pendentes', True)}; "
             f"ferramenta de antecedente={p.get('ferramenta') or 'nenhuma registrada'}; "
             f"talentos={', '.join(p.get('talentos') or []) or 'nenhum registrado'}; "
             f"deslocamento={p.get('deslocamento', 'não registrado')} m; "
@@ -495,7 +499,7 @@ def atualizar_magias_personagem(
         try:
             validar_escolhas_artifice(
                 int(personagem.get("nivel", 1)),
-                int((personagem.get("modificadores") or {}).get("inteligencia", 0)) + 10,
+                int((personagem.get("atributos") or {}).get("inteligencia", 10)),
                 truques,
                 preparadas,
                 dados.espacos_totais,
