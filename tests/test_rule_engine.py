@@ -994,6 +994,22 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "level_up", "current_level": 5, "class": "bardo"})
         self.assertIn("Característica de Subclasse", result.outcome["caracteristicas"])
 
+    def test_bestiary_catalog_has_srd_monsters_and_stat_fields(self):
+        from rule_engine import BESTIARIO, consultar_monstro
+        self.assertGreaterEqual(len(BESTIARIO), 220)
+        aboleth = consultar_monstro("Aboleth")
+        self.assertEqual(aboleth["ca"], 17)
+        self.assertEqual(aboleth["pv"], 150)
+        self.assertEqual(aboleth["xp"], 5900)
+
+    def test_bestiary_filters_and_xp_resolution(self):
+        from rule_engine import XP_POR_ND, build_default_engine
+        self.assertEqual(XP_POR_ND["1/4"], 50)
+        result = build_default_engine().evaluate({"type": "bestiary", "operacao": "xp_encontro", "nomes": ["Bandit", "Wolf"]})
+        self.assertEqual(result.outcome["xp_total"], 25 + 50)
+        filtered = build_default_engine().evaluate({"type": "bestiary", "operacao": "listar", "tipo": "beast", "nd": "0"})
+        self.assertGreater(filtered.outcome["quantidade"], 0)
+
     def test_second_batch_bard_cleric_and_druid_features(self):
         bard = self.engine.evaluate({"type": "class_feature", "classe": "bardo", "recurso": "inspiracao_de_bardo", "nivel": 10, "carisma": 18})
         self.assertEqual(bard.outcome["dado"], "d10")

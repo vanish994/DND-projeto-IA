@@ -42,6 +42,7 @@ from .spells import listar_magias, obter_magia, resolver_magia
 from .economy import comprar_item, consultar_item, resolver_inventario, resolver_sintonizacao, usar_item_magico, vender_item
 from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
 from .class_features import resolver_caracteristica
+from .bestiary import resolver_bestiario
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -910,5 +911,11 @@ def build_default_engine() -> RuleEngine:
         description="Resolve características executáveis das 13 classes, incluindo recursos marciais, auras, perícias e capstones.",
         priority=80, when=lambda f: f["type"] == "class_feature",
         resolve=resolver_caracteristica, source="D&D 2024 — características de classe",
+    ))
+    engine.register(Rule(
+        rule_id="bestiary.catalog",
+        description="Consulta monstros do SRD 5.2.1, filtra o catálogo e calcula XP de ND ou encontro.",
+        priority=80, when=lambda f: f["type"] == "bestiary",
+        resolve=resolver_bestiario, source="SRD 5.2.1 — bestiário",
     ))
     return engine
