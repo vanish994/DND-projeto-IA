@@ -14,7 +14,9 @@ O **Bloco 1 está encerrado no nível do núcleo**. A recuperação de uma carac
 
 ## Bloco 2 — geometria de combate
 
-O núcleo geométrico foi iniciado com distância em grade, espaço por tamanho, alcance normal e máximo, Desvantagem por alcance estendido, cobertura, linha de visão, combinação de validações antes do ataque e queda com dano de 1d6 por 3 metros e condição Caído. Ainda faltam as regras completas de sentidos, movimento especial, montaria, combate subaquático e resolução de objetos.
+O núcleo geométrico foi concluído com distância em grade, espaço por tamanho, alcance normal e máximo, Desvantagem por alcance estendido, cobertura, linha de visão, combinação de validações antes do ataque, sentidos especiais, movimento especial, queda com dano de 1d6 por 3 metros, montaria, combate subaquático e resolução básica de objetos.
+
+O **Bloco 2 está encerrado no nível do núcleo**. A integração com o catálogo de criaturas, mapas, obstáculos e características de classe será feita pelos módulos que consumirem essas resoluções.
 
 ## O que já está implementado
 

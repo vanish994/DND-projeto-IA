@@ -13,6 +13,10 @@ from .combat_geometry import (
     resolver_ataque_geometria, resolver_alcance, resolver_cobertura,
     resolver_queda, resolver_linha_de_visao, espaco_por_tamanho,
 )
+from .combat_movement import (
+    resolver_ataque_subaquatico, resolver_montaria, resolver_movimento_especial,
+    resolver_objeto, resolver_sentidos,
+)
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -487,5 +491,45 @@ def build_default_engine() -> RuleEngine:
         when=lambda f: f["type"] == "fall",
         resolve=lambda f: resolver_queda(f["distance"], rolagens=f.get("rolls")),
         source="D&D 2024 — queda",
+    ))
+    engine.register(Rule(
+        rule_id="combat.senses",
+        description="Resolve Visão no Escuro, Visão às Cegas, Sentido de Tremor e Visão Verdadeira.",
+        priority=50,
+        when=lambda f: f["type"] == "senses",
+        resolve=resolver_sentidos,
+        source="D&D 2024 — sentidos especiais",
+    ))
+    engine.register(Rule(
+        rule_id="combat.special-movement",
+        description="Resolve rastejar, escalar, nadar e levantar-se de Caído.",
+        priority=50,
+        when=lambda f: f["type"] == "special_movement",
+        resolve=resolver_movimento_especial,
+        source="D&D 2024 — movimento especial",
+    ))
+    engine.register(Rule(
+        rule_id="combat.mounted",
+        description="Resolve montar, desmontar, controle da montaria e queda do cavaleiro.",
+        priority=50,
+        when=lambda f: f["type"] == "mounted_combat",
+        resolve=resolver_montaria,
+        source="D&D 2024 — combate montado",
+    ))
+    engine.register(Rule(
+        rule_id="combat.underwater",
+        description="Aplica limitações de armas e alcance no combate subaquático.",
+        priority=50,
+        when=lambda f: f["type"] == "underwater_attack",
+        resolve=resolver_ataque_subaquatico,
+        source="D&D 2024 — combate subaquático",
+    ))
+    engine.register(Rule(
+        rule_id="combat.object",
+        description="Aplica dano aos Pontos de Vida de um objeto.",
+        priority=50,
+        when=lambda f: f["type"] == "object_damage",
+        resolve=resolver_objeto,
+        source="D&D 2024 — objetos",
     ))
     return engine

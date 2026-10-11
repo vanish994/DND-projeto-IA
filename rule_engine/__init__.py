@@ -11,6 +11,10 @@ from .combat_geometry import (
     resolver_alcance, resolver_ataque_geometria, resolver_cobertura,
     resolver_linha_de_visao, resolver_queda,
 )
+from .combat_movement import (
+    custo_movimento, resolver_ataque_subaquatico, resolver_montaria,
+    resolver_movimento_especial, resolver_objeto, resolver_sentidos,
+)
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -27,6 +31,8 @@ __all__ = [
     "distancia_euclidiana", "distancia_grade", "espaco_por_tamanho",
     "resolver_alcance", "resolver_ataque_geometria", "resolver_cobertura",
     "resolver_linha_de_visao", "resolver_queda",
+    "custo_movimento", "resolver_ataque_subaquatico", "resolver_montaria",
+    "resolver_movimento_especial", "resolver_objeto", "resolver_sentidos",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
     "resolver_descanso",

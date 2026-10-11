@@ -407,6 +407,69 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result.outcome["dano"], 7)
         self.assertEqual(result.outcome["condicao"], "caido")
 
+    def test_special_senses_handle_darkness_and_invisibility(self):
+        normal = self.engine.evaluate({
+            "type": "senses", "sense": "visao_normal", "darkness": True,
+        })
+        self.assertEqual(normal.outcome["resultado"], "não_percebido")
+        blindsight = self.engine.evaluate({
+            "type": "senses", "sense": "visao_as_cegas", "invisible_target": True,
+        })
+        self.assertTrue(blindsight.outcome["ignora_invisibilidade"])
+
+    def test_special_movement_doubles_crawling_cost_and_standing_costs_half_speed(self):
+        rastejar = self.engine.evaluate({
+            "type": "special_movement", "distance": 3,
+            "movement_remaining": 6, "crawling": True,
+        })
+        self.assertEqual(rastejar.outcome["custo"], 6)
+        levantar = self.engine.evaluate({
+            "type": "special_movement", "stand_from_prone": True,
+            "movement_max": 9, "movement_remaining": 9,
+        })
+        self.assertEqual(levantar.outcome["custo"], 4)
+
+    def test_mounting_requires_a_willing_mount_one_size_larger(self):
+        bloqueado = self.engine.evaluate({
+            "type": "mounted_combat", "action": "montar",
+            "montaria_disposta": True, "tamanho_montaria": 2,
+            "tamanho_cavaleiro": 2,
+        })
+        self.assertEqual(bloqueado.outcome["resultado"], "bloqueado")
+        permitido = self.engine.evaluate({
+            "type": "mounted_combat", "action": "montar",
+            "montaria_disposta": True, "tamanho_montaria": 3,
+            "tamanho_cavaleiro": 2, "deslocamento_cavaleiro": 9,
+        })
+        self.assertEqual(permitido.outcome["custo_movimento"], 4)
+
+    def test_mount_fall_requires_dexterity_save_dc_ten(self):
+        result = self.engine.evaluate({
+            "type": "mounted_combat", "action": "queda_montaria",
+            "salvaguarda_destreza": 8,
+        })
+        self.assertEqual(result.outcome["resultado"], "caiu")
+        self.assertEqual(result.outcome["cd"], 10)
+
+    def test_underwater_attacks_apply_weapon_and_range_limits(self):
+        melee = self.engine.evaluate({
+            "type": "underwater_attack", "submerso": True,
+            "tipo_ataque": "corpo_a_corpo", "propriedade_arma": "cortante",
+        })
+        self.assertTrue(melee.outcome["desvantagem"])
+        ranged = self.engine.evaluate({
+            "type": "underwater_attack", "submerso": True,
+            "tipo_ataque": "a_distancia", "distancia": 30, "alcance": 18,
+        })
+        self.assertEqual(ranged.outcome["resultado"], "bloqueado")
+
+    def test_object_damage_reduces_hit_points_and_can_destroy_object(self):
+        result = self.engine.evaluate({
+            "type": "object_damage", "pontos_de_vida": 10, "dano": 10, "ca": 15,
+        })
+        self.assertEqual(result.outcome["resultado"], "destruido")
+        self.assertEqual(result.outcome["pv_restantes"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
