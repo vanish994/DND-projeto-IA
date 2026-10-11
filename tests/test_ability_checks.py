@@ -1,6 +1,6 @@
 import unittest
 
-from rule_engine import build_default_engine, resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica
+from rule_engine import build_default_engine, resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica, resolver_salvaguarda, resolver_iniciativa
 
 
 class AbilityCheckTests(unittest.TestCase):
@@ -75,6 +75,7 @@ class AbilityCheckTests(unittest.TestCase):
         self.assertEqual(result.outcome["resultado"], "sucesso")
         passive = engine.evaluate({"type": "passive_check", "pericia": "percepcao", "modificador_atributo": 2})
         self.assertEqual(passive.outcome["valor_passivo"], 12)
+        self.assertEqual(passive.outcome["resultado"], "calculado")
         group = engine.evaluate({"type": "group_check", "participantes": [True, True, False]})
         self.assertEqual(group.outcome["resultado"], "sucesso")
 
