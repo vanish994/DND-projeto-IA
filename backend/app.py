@@ -1336,8 +1336,8 @@ def conjurar_no_mapa_tatico(
             atributo = str(mecanica.get("salvaguarda", "destreza")).lower()
             mods_alvo = ficha_alvo.get("modificadores") or {}
             bonus_atributo = int(mods_alvo.get(atributo, 0))
-            profs_salva = ficha_alvo.get("proficiencias_salvaguarda") or ficha_alvo.get("salvaguardas") or []
-            profs_norm = {str(p).casefold() for p in profs_salva} if not isinstance(profs_salva, dict) else set(profs_salva.keys())
+            profs_salva = ficha_alvo.get("proficiencias_salvaguarda") if "proficiencias_salvaguarda" in ficha_alvo else ficha_alvo.get("salvaguardas", [])
+            profs_norm = {str(p).casefold() for p in (profs_salva or [])} if not isinstance(profs_salva, dict) else set(profs_salva.keys())
             proficiente = atributo in profs_norm
             bonus_salva = int(ficha_alvo.get("salvaguardas", {}).get(atributo, bonus_atributo)) if isinstance(ficha_alvo.get("salvaguardas"), dict) else bonus_atributo
             rolagem_salva = secrets.randbelow(20) + 1
