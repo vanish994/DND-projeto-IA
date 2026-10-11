@@ -177,31 +177,59 @@ def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
     return dados.model_dump(), ficha_personagem(personagem)
 
 
-def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) -> str | None:
+def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) -> str:
+    """Fornece a ficha real ao MJ e bloqueia invenções quando não há personagem."""
     grupo = repo.listar_personagens(jogador, campanha_id) or []
     if not grupo:
-        return None
+        return (
+            "ESTADO DA CAMPANHA — nenhum personagem está cadastrado nesta campanha. "
+            "Não invente nem presuma nome, espécie, classe, nível, antecedentes, atributos, "
+            "aparência ou história do personagem do jogador. Antes de narrar uma cena que "
+            "dependa do personagem, pergunte qual personagem existente ele quer usar ou "
+            "oriente-o a criar um. Não afirme que consultou uma ficha."
+        )
+
     linhas = []
     for indice, p in enumerate(grupo, start=1):
-        atributos = ", ".join(f"{nome[:3].upper()} {valor}" for nome, valor in p["atributos"].items())
+        atributos = ", ".join(f"{nome.upper()} {valor}" for nome, valor in (p.get("atributos") or {}).items())
+        modificadores = ", ".join(
+            f"{nome.upper()} {valor:+d}" for nome, valor in (p.get("modificadores") or {}).items()
+        )
         linhas.append(
-            f"- Personagem {indice}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
-            f"PV {p['pv_atual']}/{p['pv_maximo']}, BP +{p['bonus_proficiencia']}, {atributos}"
+            f"- FICHA AUTORITATIVA #{indice}: nome={p.get('nome', 'não registrado')}; "
+            f"espécie={p.get('especie', 'não registrada')}; classe={p.get('classe', 'não registrada')}; "
+            f"subclasse={p.get('subclasse') or 'nenhuma registrada'}; nível={p.get('nivel', 'não registrado')}; "
+            f"antecedente={p.get('antecedente') or 'não registrado'}; "
+            f"PV={p.get('pv_atual', '?')}/{p.get('pv_maximo', '?')}; "
+            f"bônus de proficiência=+{p.get('bonus_proficiencia', '?')}; "
+            f"atributos=[{atributos}]; modificadores=[{modificadores}]."
+        )
+        linhas.append(
+            f"  Dados de ficha: perícias={', '.join(p.get('pericias') or []) or 'nenhuma registrada'}; "
+            f"ferramenta de antecedente={p.get('ferramenta') or 'nenhuma registrada'}; "
+            f"talentos={', '.join(p.get('talentos') or []) or 'nenhum registrado'}; "
+            f"deslocamento={p.get('deslocamento', 'não registrado')} m; "
+            f"equipamento de antecedente={p.get('equipamento_antecedente') or 'não registrado'}."
         )
         conjuracao = p.get("conjuracao") or {}
         truques = conjuracao.get("truques") or []
         preparadas = conjuracao.get("magias_preparadas") or []
         espacos = conjuracao.get("espacos_totais") or {}
-        if truques or preparadas or espacos:
-            linhas.append(
-                f"  Conjuração salva na ficha: truques={', '.join(truques) or 'nenhum'}; "
-                f"magias preparadas/conhecidas={', '.join(preparadas) or 'nenhuma'}; "
-                f"espaços totais por círculo={espacos}. Use isso como estado registrado, "
-                "mas confirme disponibilidade e espaços restantes com o Rule Engine antes de permitir conjurar."
-            )
+        linhas.append(
+            f"  Conjuração exatamente registrada: truques={', '.join(truques) or 'nenhum registrado'}; "
+            f"magias preparadas/conhecidas={', '.join(preparadas) or 'nenhuma registrada'}; "
+            f"espaços totais={espacos or 'nenhum registrado'}. "
+            "Não invente escolhas, espaços, magias, proficiências, equipamento ou características ausentes. "
+            "Valide classe, nível, disponibilidade e custo no Rule Engine antes de permitir conjurar."
+        )
     return (
-        "Fichas do grupo registradas pelo Rule Engine (estado autoritativo; não altere valores "
-        "sem resolução mecânica):\n" + "\n".join(linhas)
+        "ESTADO AUTORITATIVO DOS PERSONAGENS DESTA CAMPANHA, consultado do banco. "
+        "Estes dados prevalecem sobre suposições narrativas e sobre mensagens antigas. "
+        "Nunca altere nem contradiga a ficha; não invente nome, raça/espécie, classe, nível, "
+        "antecedente, atributos, proficiências, aparência ou história pessoal. Não pergunte de novo "
+        "informações que já constam aqui. Se um dado não estiver registrado, trate-o como desconhecido "
+        "e pergunte ao jogador antes de fixá-lo como fato. Toda alteração mecânica exige resolução do motor.\n"
+        + "\n".join(linhas)
     )
 
 
@@ -237,9 +265,9 @@ def _campanha_ou_404(repo: RepositorioCampanhas, jogador: str, campanha_id: str)
 
 def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str) -> str:
     historico = repo.historico_llm(jogador, campanha_id, HISTORICO_MAX)
-    grupo = _resumo_grupo(repo, jogador, campanha_id)
-    if grupo:
-        historico = [{"role": "system", "content": grupo}, *historico]
+    contexto_personagem = _resumo_grupo(repo, jogador, campanha_id)
+    # Contexto autoritativo sempre presente, inclusive quando a campanha ainda não tem ficha.
+    historico = [{"role": "system", "content": contexto_personagem}, *historico]
     try:
         resposta = mj.responder(texto, historico)
     except Exception as exc:
