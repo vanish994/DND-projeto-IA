@@ -1,6 +1,11 @@
 import unittest
 
-from rule_engine import build_default_engine
+from rule_engine import (
+    bonus_proficiencia,
+    build_default_engine,
+    modificador_atributo,
+    resolver_teste_d20,
+)
 
 
 class RuleEngineTests(unittest.TestCase):
@@ -101,6 +106,36 @@ class RuleEngineTests(unittest.TestCase):
             "attacker_conditions": ["poisoned"], "target_conditions": ["blinded"],
         })
         self.assertEqual(result.outcome["result"], "normal")
+
+    def test_attribute_modifier_uses_floor_for_odd_values(self):
+        self.assertEqual(modificador_atributo(1), -5)
+        self.assertEqual(modificador_atributo(9), -1)
+        self.assertEqual(modificador_atributo(10), 0)
+        self.assertEqual(modificador_atributo(20), 5)
+
+    def test_proficiency_bonus_uses_level_boundaries(self):
+        self.assertEqual(bonus_proficiencia(1), 2)
+        self.assertEqual(bonus_proficiencia(4), 2)
+        self.assertEqual(bonus_proficiencia(5), 3)
+        self.assertEqual(bonus_proficiencia(17), 6)
+        self.assertEqual(bonus_proficiencia(30), 9)
+
+    def test_advantage_selects_highest_d20(self):
+        result = resolver_teste_d20([4, 18], vantagem=True, modificador=2, cd=20)
+        self.assertEqual(result.dado_selecionado, 18)
+        self.assertEqual(result.total, 20)
+        self.assertTrue(result.sucesso)
+
+    def test_disadvantage_selects_lowest_d20(self):
+        result = resolver_teste_d20([4, 18], desvantagem=True, modificador=2, cd=10)
+        self.assertEqual(result.dado_selecionado, 4)
+        self.assertFalse(result.sucesso)
+
+    def test_advantage_and_disadvantage_cancel(self):
+        result = resolver_teste_d20([4], vantagem=True, desvantagem=True)
+        self.assertEqual(result.dado_selecionado, 4)
+        self.assertFalse(result.vantagem)
+        self.assertFalse(result.desvantagem)
 
 
 if __name__ == "__main__":
