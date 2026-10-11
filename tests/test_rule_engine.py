@@ -984,6 +984,17 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(hidden.outcome["resultado"], "escondido")
         self.assertEqual(hidden.outcome["dc_para_encontrar"], 17)
 
+    def test_hide_event_ends_hidden_state_for_required_events(self):
+        ended = self.engine.evaluate({"type": "hide_event", "escondido": True, "evento": "som_alto"})
+        still = self.engine.evaluate({"type": "hide_event", "escondido": True, "evento": "mover"})
+        self.assertFalse(ended.outcome["escondido"])
+        self.assertTrue(still.outcome["escondido"])
+
+    def test_influence_applies_friendly_advantage_and_hostile_disadvantage(self):
+        friendly = self.engine.evaluate({"type": "influence_action", "disposicao": "hesitante", "atitude_monstro": "amigavel", "interacao": "persuasao", "valor_atributo": 16, "dados": [3, 15], "inteligencia_monstro": 10})
+        hostile = self.engine.evaluate({"type": "influence_action", "disposicao": "hesitante", "atitude_monstro": "hostil", "interacao": "persuasao", "valor_atributo": 16, "dados": [15, 3], "inteligencia_monstro": 10})
+        self.assertTrue(friendly.outcome["monstro_atende"])
+        self.assertFalse(hostile.outcome["monstro_atende"])
     def test_influence_action_handles_willing_unwilling_and_hesitant(self):
         willing = self.engine.evaluate({"type": "influence_action", "disposicao": "disposto"})
         unwilling = self.engine.evaluate({"type": "influence_action", "disposicao": "indisposto"})
