@@ -32,6 +32,10 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <button id="attack" class="primary">Ataque com arma</button>
   <select id="monster-attack-source" aria-label="Monstro atacante"><option value="">Monstro atacante…</option></select>
   <button id="monster-attack" class="primary">Ataque do monstro</button>
+  <button id="start-initiative" class="primary">Iniciar iniciativa</button>
+  <button id="next-turn" disabled>Próximo turno</button>
+  <button id="end-combat" disabled>Encerrar combate</button>
+  <span id="turn-info" class="hint">Combate não iniciado</span>
   <select id="spell-choice" aria-label="Magia tática"><option value="">Magia disponível…</option><option value="Raio de Fogo">Raio de Fogo (truque)</option><option value="Curar Ferimentos">Curar Ferimentos (1º círculo)</option><option value="Onda Trovejante">Onda Trovejante (área/salvaguarda)</option></select>
   <button id="cast-spell">Conjurar</button>
   <button id="measure">Medir distância</button>
@@ -52,7 +56,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   const canvas = document.querySelector('#map'), ctx = canvas.getContext('2d');
   const status = document.querySelector('#status'), sceneLabel = document.querySelector('#scene-label');
   let measureMode = false, measureStart = null, dragging = null, selectedToken = null, generatedBaseImage = null, cachedBackgroundSrc = null, cachedBackgroundImage = null;
-  let scene = {terrain:'forest', title:'Mapa inicial', background:null, generatedBackground:null, tokens:[]};
+  let scene = {terrain:'forest', title:'Mapa inicial', background:null, generatedBackground:null, tokens:[], iniciativa:[], turno_indice:0, rodada:1, combate_ativo:false, token_ativo:null};
   const terrainNames = {forest:'Floresta',dungeon:'Masmorra',cave:'Caverna',ruins:'Ruínas',town:'Vila',road:'Estrada'};
   const colors = {hero:'#6fa9d8',enemy:'#cf7167',npc:'#d6b76c'};
   let rosterCharacters = [], rosterMonsters = [];
@@ -61,8 +65,15 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   function gridCoord(pixel){return Math.max(0,Math.min(19,Math.round((pixel-CELL/2)/CELL)))}
   function payload(){return {title:scene.title||'Cena da aventura',terrain:scene.terrain||'forest',tokens:scene.tokens.map(t=>({id:t.id,kind:t.kind,character_id:t.character_id||null,monster_name:t.monster_name||null,x:gridCoord(t.x),y:Math.max(0,Math.min(12,Math.round((t.y-CELL/2)/CELL)))}))}}
   function fromServerToken(t){return {...t,x:t.x*CELL+CELL/2,y:t.y*CELL+CELL/2,gridX:t.x,gridY:t.y}}
-  function applyServerMap(mapa){scene.title=mapa.title||scene.title;scene.terrain=mapa.terrain||scene.terrain;scene.tokens=(mapa.tokens||[]).map(fromServerToken);render();save(true);refreshCombatControls()}
-  function refreshCombatControls(){for(const [selector,filter,label] of [['#attack-source',t=>t.kind==='hero','Atacante…'],['#attack-target',t=>true,'Alvo…'],['#monster-attack-source',t=>t.kind==='enemy','Monstro atacante…']]){const el=document.querySelector(selector),old=el.value;el.replaceChildren(new Option(label,''));scene.tokens.filter(filter).forEach(t=>el.add(new Option(t.name+' ('+t.hp+'/'+t.maxHp+' PV)',t.id)));if(scene.tokens.some(t=>t.id===old&&filter(t)))el.value=old}}
+  function applyServerMap(mapa){scene.title=mapa.title||scene.title;scene.terrain=mapa.terrain||scene.terrain;scene.tokens=(mapa.tokens||[]).map(fromServerToken);scene.iniciativa=mapa.iniciativa||[];scene.turno_indice=mapa.turno_indice||0;scene.rodada=mapa.rodada||1;scene.combate_ativo=Boolean(mapa.combate_ativo);scene.token_ativo=mapa.token_ativo||null;render();save(true);refreshCombatControls()}
+  function refreshCombatControls(){for(const [selector,filter,label] of [['#attack-source',t=>t.kind==='hero','Atacante…'],['#attack-target',t=>true,'Alvo…'],['#monster-attack-source',t=>t.kind==='enemy','Monstro atacante…']]){const el=document.querySelector(selector),old=el.value;el.replaceChildren(new Option(label,''));scene.tokens.filter(filter).forEach(t=>el.add(new Option(t.name+' ('+t.hp+'/'+t.maxHp+' PV)',t.id)));if(scene.tokens.some(t=>t.id===old&&filter(t)))el.value=old}
+    document.querySelector('#start-initiative').disabled=scene.combate_ativo||scene.tokens.length===0;
+    document.querySelector('#next-turn').disabled=!scene.combate_ativo;
+    document.querySelector('#end-combat').disabled=!scene.combate_ativo;
+    const info=document.querySelector('#turn-info');
+    if(scene.combate_ativo){const atual=scene.iniciativa.find(i=>i.token_id===scene.token_ativo);info.textContent='Rodada '+scene.rodada+' · Turno: '+(atual?.nome||scene.token_ativo||'—');}
+    else info.textContent='Combate não iniciado';
+  }
   async function syncMapToServer(){const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico',{method:'PUT',body:JSON.stringify(payload())});applyServerMap(data.mapa);status.textContent='Mapa e posições salvos no servidor. PV dos personagens vêm da ficha.';}
   async function loadEncounter(){try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico');rosterCharacters=data.personagens||[];rosterMonsters=data.monstros||[];const charSel=document.querySelector('#character-choice');charSel.replaceChildren(new Option('Personagens da campanha…',''));rosterCharacters.forEach(p=>charSel.add(new Option(p.nome+' · '+p.classe+' · '+p.pv_atual+'/'+p.pv_maximo+' PV',p.id)));const monsterSel=document.querySelector('#monster-choice');monsterSel.replaceChildren(new Option('Monstros do bestiário…',''));rosterMonsters.forEach(m=>monsterSel.add(new Option(m.nome+' · CA '+m.ca+' · '+m.pv+' PV · ND '+m.nd,m.nome)));applyServerMap(data.mapa);status.textContent=rosterCharacters.length?'Encontro sincronizado. Adicione personagens e monstros reais da campanha.':'Crie primeiro um personagem na campanha; depois ele aparecerá aqui para ser colocado no mapa.';}catch(e){status.textContent='Não foi possível sincronizar o encontro: '+e.message+'. O mapa local continua disponível.'}}
   try { const saved=JSON.parse(localStorage.getItem(KEY)||'null'); if(saved&&typeof saved==='object') scene={...scene,...saved,tokens:Array.isArray(saved.tokens)?saved.tokens:[]}; } catch(_){}
@@ -103,6 +114,17 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   function nextPosition(){for(let y=1;y<11;y++)for(let x=1;x<19;x++)if(!scene.tokens.some(t=>gridCoord(t.x)===x&&Math.round((t.y-CELL/2)/CELL)===y))return{x:x*CELL+CELL/2,y:y*CELL+CELL/2};return{x:CELL/2,y:CELL/2}}
   document.querySelector('#add-character').addEventListener('click',async()=>{const id=document.querySelector('#character-choice').value;if(!id){status.textContent='Selecione um personagem criado nesta campanha.';return}if(scene.tokens.some(t=>t.character_id===id)){status.textContent='Esse personagem já está no mapa.';return}const p=rosterCharacters.find(x=>x.id===id);if(!p)return;const pos=nextPosition();scene.tokens.push({id:newId(),kind:'hero',character_id:id,name:p.nome,hp:p.pv_atual,maxHp:p.pv_maximo,x:pos.x,y:pos.y});try{await syncMapToServer()}catch(e){status.textContent='Não foi possível adicionar o personagem: '+e.message;await loadEncounter()}});
   document.querySelector('#add-monster').addEventListener('click',async()=>{const name=document.querySelector('#monster-choice').value;if(!name){status.textContent='Selecione um monstro do bestiário.';return}const m=rosterMonsters.find(x=>x.nome===name);if(!m)return;const pos=nextPosition();scene.tokens.push({id:newId(),kind:'enemy',monster_name:name,name:m.nome,hp:m.pv,maxHp:m.pv,x:pos.x,y:pos.y});try{await syncMapToServer()}catch(e){status.textContent='Não foi possível adicionar o monstro: '+e.message;await loadEncounter()}});
+  document.querySelector('#start-initiative').addEventListener('click',async()=>{
+    try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/iniciativa/iniciar',{method:'POST'});applyServerMap(data.mapa);status.textContent='Iniciativa rolada: '+data.iniciativa.map(i=>i.nome+' '+i.total).join(' · ')+'. Começa '+(data.mapa.iniciativa?.[0]?.nome||'o primeiro participante')+'.'}catch(e){status.textContent='Não foi possível iniciar a iniciativa: '+e.message}
+  });
+  document.querySelector('#next-turn').addEventListener('click',async()=>{
+    if(!scene.token_ativo){status.textContent='Não há turno ativo.';return}
+    try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/turno/avancar',{method:'POST',body:JSON.stringify({token_id:scene.token_ativo})});applyServerMap(data.mapa);const atual=data.mapa.iniciativa?.find(i=>i.token_id===data.mapa.token_ativo);status.textContent='Turno de '+data.turno_encerrado+' encerrado. '+(data.duracoes_encerradas?.length?'Condições encerradas: '+data.duracoes_encerradas.join(', ')+'. ':'')+(data.duracoes_inicio_encerradas?.length?'Condições encerradas no início do turno: '+data.duracoes_inicio_encerradas.join(', ')+'. ':'')+'Agora: '+(atual?.nome||data.mapa.token_ativo||'combate encerrado')+'. Rodada '+data.rodada+'.'}catch(e){status.textContent='Não foi possível avançar o turno: '+e.message}
+  });
+  document.querySelector('#end-combat').addEventListener('click',async()=>{
+    try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/combate/encerrar',{method:'POST'});applyServerMap(data.mapa);status.textContent='Combate encerrado.'}catch(e){status.textContent='Não foi possível encerrar o combate: '+e.message}
+  });
+
   document.querySelector('#attack').addEventListener('click',async()=>{const atacante_id=document.querySelector('#attack-source').value,alvo_id=document.querySelector('#attack-target').value;if(!atacante_id||!alvo_id){status.textContent='Escolha um personagem atacante e um alvo.';return}try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/atacar',{method:'POST',body:JSON.stringify({atacante_id,alvo_id,cobertura:'nenhuma'})});applyServerMap(data.mapa);const a=data.ataque;status.textContent=(a.result==='hit'?'Acerto!':'Errou!')+' d20 '+data.rolagem+' + '+data.bonus_ataque+' = '+a.total+'. '+(data.dano?'Dano: '+data.dano+' PV.':'Sem dano.')+' '+data.nota}catch(e){status.textContent='Ação rejeitada pelo motor: '+e.message}});
 
 
