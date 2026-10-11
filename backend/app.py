@@ -1610,6 +1610,8 @@ def atacar_com_monstro_tatico(
     }).outcome
     if rolagem == 1:
         ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
+    elif ataque.get("result") == "hit" and efeitos_condicao_monstro.get("acerto_critico_automatico"):
+        ataque = {**ataque, "critical": True, "reason": "critical_due_to_condition"}
     dados_expr = selecionado["dano"]
     import re
     m = re.fullmatch(r"(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?", dados_expr)
