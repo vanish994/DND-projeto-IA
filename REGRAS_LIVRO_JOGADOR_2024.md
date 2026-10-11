@@ -443,3 +443,6 @@ A lista acima é a referência atual para determinar quando o Rule Engine estar�
 ## Auditoria de falsos positivos — características de classe
 
 Corrigido o resolvedor `class_features.py`: uma característica desconhecida ou catalogada sem resolução específica não pode mais retornar `resolvido` por padrão. O resolvedor retorna `nao_implementado`, solicita a característica quando ela não foi informada e bloqueia classes desconhecidas. Nomes de classes e características agora normalizam acentos e hífens, importante para entradas em português. Foram adicionados cinco testes de regressão. Este ajuste melhora a confiabilidade da auditoria, mas não significa que todas as características estejam implementadas; as lacunas agora ficam explícitas.
+## Auditoria de falsos positivos — magias
+
+`resolver_magia` não declara mais que uma magia foi conjurada quando só existem metadados de catálogo e nenhum efeito mecânico específico. Nesses casos, retorna `nao_implementado` com motivo auditável; magias com efeito detalhado continuam sendo resolvidas, e validações de componentes/círculo permanecem ativas. Foram adicionados testes para o fallback, uma magia detalhada com escalonamento e componentes ausentes. Isso corrige uma afirmação indevida de cobertura, mas deixa explícita a necessidade de implementar os efeitos restantes das magias catalogadas.
