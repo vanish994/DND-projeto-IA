@@ -16,7 +16,7 @@ O catálogo original mantém **232 entradas** extraídas do `SRD_CC_v5.2.1.pdf`.
 
 A origem e os termos de atribuição CC BY 4.0 estão registrados no próprio JSON. O conjunto importado tem mais entradas que o catálogo original; isso não significa que todas as 322 sejam nomes distintos presentes na extração local do PDF. Dados não publicados pela fonte, como alinhamento de algumas entradas adicionais, não são inventados.
 
-O motor converte esses registros para o formato interno e os disponibiliza em `consultar_monstro`/`bloco_completo`. O ataque tático agora reconhece descrições de ataque no formato SRD 5.2.1 (`Melee Weapon Attack: +X to hit`) além do formato anterior.
+O motor converte esses registros para o formato interno e os disponibiliza em `consultar_monstro`/`bloco_completo`. O ataque tático agora reconhece descrições de ataque no formato SRD 5.2.1 (`Melee Weapon Attack: +X to hit`) além do formato anterior. Multiataques com sequência explícita são executados como ataques separados; alternativas ambíguas são recusadas. Efeitos de ataque com salvaguarda reconhecida podem aplicar condições como Caído ou Envenenado ao token. O mapa guarda as condições, mas a duração e a remoção automática ainda dependem do controle de turnos, que não está implementado.
 
 Também estão disponíveis a tabela de XP por ND, filtros por tipo/ND, consulta por nome e cálculo do XP bruto de um encontro. A regra do motor usa entradas como:
 
