@@ -980,19 +980,27 @@ def avancar_turno_tatico(
                     _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, condicoes)
                 except (TypeError, ValueError, KeyError) as exc:
                     raise HTTPException(status_code=422, detail=str(exc)) from exc
-    proximo_indice = (indice + 1) % len(iniciativa)
-    rodada = int(bruto.get("rodada", 1)) + (1 if proximo_indice == 0 else 0)
-    bruto["turno_indice"] = proximo_indice
-    bruto["rodada"] = rodada
     vivos = {t["id"] for t in estado["tokens"] if int(t.get("hp", 0)) > 0}
-    iniciativa_viva = [i for i in iniciativa if i["token_id"] in vivos]
+    iniciativa_viva = [item for item in iniciativa if item["token_id"] in vivos]
     bruto["iniciativa"] = iniciativa_viva
     if not iniciativa_viva:
+        rodada = int(bruto.get("rodada", 1))
         bruto["combate_ativo"] = False
         bruto["turno_indice"] = 0
     else:
-        bruto["turno_indice"] %= len(iniciativa_viva)
+        proximo_original = (indice + 1) % len(iniciativa)
+        voltas = 1 if proximo_original == 0 else 0
+        # Pula criaturas derrotadas sem pular o próximo participante vivo.
+        while iniciativa[proximo_original]["token_id"] not in vivos:
+            proximo_original += 1
+            if proximo_original >= len(iniciativa):
+                proximo_original = 0
+                voltas += 1
+        proximo_id = iniciativa[proximo_original]["token_id"]
+        bruto["turno_indice"] = next(i for i, item in enumerate(iniciativa_viva) if item["token_id"] == proximo_id)
+        rodada = int(bruto.get("rodada", 1)) + voltas
         bruto["combate_ativo"] = True
+    bruto["rodada"] = rodada
     repo.salvar_mapa_tatico(jogador, campanha_id, bruto)
     return {
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
