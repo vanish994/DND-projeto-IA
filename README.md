@@ -22,7 +22,7 @@ Também estão disponíveis a tabela de XP por ND, filtros por tipo/ND, consulta
 {"type": "bestiary", "operacao": "xp_encontro", "nomes": ["Bandit", "Wolf"]}
 ```
 
-Os blocos de combate estruturados atualmente disponíveis são Bandit, Bandit Captain, Skeleton, Wolf e Zombie. O mapa tático consegue resolver ataques individuais com bônus, alcance e dano explícitos nesses blocos, além de usar as salvaguardas estruturadas nas magias de área. Multiataques, reações, traços especiais e os demais monstros ainda precisam de integração antes de serem considerados suportados.
+Os blocos de combate estruturados atualmente disponíveis são Bandit, Bandit Captain, Skeleton, Wolf e Zombie. O mapa tático consegue resolver ataques individuais com bônus, alcance e dano explícitos nesses blocos, além de usar as salvaguardas estruturadas nas magias de área. O traço **Undead Fortitude** do Zombie também é resolvido quando um ataque de personagem o reduziria a 0 PV: o motor aplica a salvaguarda de Constituição, a CD baseada no dano e as exceções de acerto crítico. Multiataques, outras reações/traços especiais e os demais monstros ainda precisam de integração antes de serem considerados suportados.
 
 ### Fluxo de seleção para o MJ
 
