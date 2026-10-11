@@ -186,7 +186,7 @@
         });
         lista.append(el('li', {}, el('label', {className: 'choice'}, caixa,
           el('span', {className: 'choice-text'},
-            el('span', {className: 'choice-title', textContent: nome(pericia)}))));
+            el('span', {className: 'choice-title', textContent: nome(pericia)})))));
       }
       const salvar = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar proficiências'});
       salvar.addEventListener('click', async () => {
