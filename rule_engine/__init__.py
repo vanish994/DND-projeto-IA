@@ -3,6 +3,8 @@
 from .engine import Rule, RuleEngine, Resolution
 from .core import ResultadoD20, bonus_proficiencia, modificador_atributo, resolver_teste_d20
 from .dice import rolar_d20_auditavel
+from .ability_checks import PERICIAS, CDS_PADRAO, resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica, resolver_salvaguarda, resolver_iniciativa
+from .exploration_actions import resolver_acao_esconder, resolver_acao_influenciar
 from .combat_special import (
     cd_ataque_desarmado, resolver_agarrar, resolver_ataque_oportunidade,
     resolver_empurrar, resolver_escape_agarramento,
@@ -49,6 +51,7 @@ from .survival import (
 __all__ = [
     "Rule", "RuleEngine", "Resolution", "ResultadoD20", "bonus_proficiencia", "rolar_d20_auditavel",
     "modificador_atributo", "resolver_teste_d20", "build_default_engine",
+    "PERICIAS", "CDS_PADRAO", "resolver_teste_habilidade", "resolver_teste_passivo", "resolver_teste_grupo", "resolver_inspiracao_heroica", "resolver_salvaguarda", "resolver_iniciativa", "resolver_acao_esconder", "resolver_acao_influenciar",
     "Participante", "EstadoTurno", "RastreadorCombate", "ordenar_iniciativa",
     "cd_ataque_desarmado", "resolver_agarrar", "resolver_ataque_oportunidade",
     "resolver_empurrar", "resolver_escape_agarramento",
