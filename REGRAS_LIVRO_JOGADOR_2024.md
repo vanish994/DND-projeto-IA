@@ -157,6 +157,12 @@ Testes de regressão adicionados. A validação final depende da execução da s
 
 Descanso Longo interrompido após pelo menos uma hora agora concede os benefícios de Descanso Curto; descansos longos completos validam sono mínimo de seis horas e até duas horas de atividade leve. Salvaguardas contra a Morte rejeitam valores fora de 1–20 e não podem ser roladas por uma criatura já estável.
 
+## Ações de exploração e interação social
+
+Adicionado `exploration_actions.py` para Esconder-se (requisitos de obscurecimento/cobertura, fora da linha de visão, Furtividade CD 15 e DC para encontrar) e Influenciar (disposto/indisposto sem teste; hesitante com a perícia aplicável e CD padrão max(15, Inteligência do monstro)).
+
+Testes de integração adicionados; aguardando execução da suíte.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
