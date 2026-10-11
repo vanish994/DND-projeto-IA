@@ -9,6 +9,7 @@ const listStatus = document.querySelector('#campaigns-status');
 const newCampaignButton = document.querySelector('#new-campaign');
 const backButton = document.querySelector('#back-button');
 const optionsButton = document.querySelector('#options-button');
+const mapButton = document.querySelector('#map-button');
 const helpButton = document.querySelector('#help-button');
 const title = document.querySelector('#campaign-title');
 const messages = document.querySelector('#messages');
@@ -148,6 +149,7 @@ function atualizarComposer() {
   sendButton.disabled = ocupado;
   sendButton.textContent = state.atual && state.pendentes.has(state.atual) ? 'Aguarde' : 'Enviar';
   optionsButton.disabled = !state.atual;
+  mapButton.disabled = !state.atual;
 }
 
 function autoResize() {
@@ -324,6 +326,11 @@ optionsDialog.addEventListener('close', async () => {
   } catch (erro) {
     if (state.atual === id) addMessage('assistant', `Não foi possível concluir a ação. ${erro.message}`, 'message-error');
   }
+});
+
+mapButton.addEventListener('click', () => {
+  if (!state.atual) return;
+  window.location.href = `/mapa-tatico.html?campanha=${encodeURIComponent(state.atual)}`;
 });
 
 helpButton.addEventListener('click', () => helpDialog.showModal());
