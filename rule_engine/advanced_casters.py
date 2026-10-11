@@ -1,4 +1,6 @@
-"""Características do Bruxo, Feiticeiro e Guardião — PHB 2024."""
+"""Características do Bruxo, Feiticeiro, Guardião e Paladino — PHB 2024."""
+
+from .spellcasters import FULL_CASTER_SLOTS
 
 HALF_CASTER_SLOTS = {
     1: [2], 2: [2], 3: [3], 4: [3], 5: [4, 2], 6: [4, 2], 7: [4, 3],
@@ -57,7 +59,7 @@ def resolver_feiticeiro(fatos: dict) -> dict:
         return {"resultado": "ativada", "custo": 2, "metamagias_por_magia": 2}
     if acao == "apoteose_arcana":
         return {"resultado": "resolvido", "metamagia_gratuita_por_turno": True}
-    return {"resultado": "resolvido", "pontos_de_feiticaria": pontos, "atributo_conjuracao": "carisma"}
+    return {"resultado": "resolvido", "pontos_de_feiticaria": pontos, "espacos": list(FULL_CASTER_SLOTS[nivel]), "atributo_conjuracao": "carisma"}
 
 
 def resolver_guardiao(fatos: dict) -> dict:
