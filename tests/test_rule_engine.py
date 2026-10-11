@@ -956,6 +956,22 @@ class RuleEngineTests(unittest.TestCase):
         result = resolver_efeitos_condicao({"action": "save", "target_conditions": ["frightened", "poisoned"]})
         self.assertFalse(result["desvantagem_salvaguardas"])
         self.assertTrue(result["desvantagem_testes_habilidade"])
+    def test_condition_sensory_failures_and_charmed_effects(self):
+        from rule_engine import resolver_efeitos_condicao
+        blinded = resolver_efeitos_condicao({"action": "study", "target_conditions": ["blinded"]})
+        deafened = resolver_efeitos_condicao({"action": "search", "target_conditions": ["deafened"]})
+        charmed = resolver_efeitos_condicao({"action": "attack", "target_conditions": ["charmed"], "atacante_e_enfeiticador": True})
+        self.assertTrue(blinded["falha_automaticamente_teste_que_exige_visao"])
+        self.assertTrue(deafened["falha_automaticamente_teste_que_exige_audicao"])
+        self.assertTrue(charmed["não_pode_afetar_o_enfeiticador_com_efeito_nocivo"])
+
+    def test_petrified_and_grappled_conditions_expose_derived_effects(self):
+        from rule_engine import resolver_efeitos_condicao
+        petrified = resolver_efeitos_condicao({"action": "move", "target_conditions": ["petrified"]})
+        grappled = resolver_efeitos_condicao({"action": "move", "target_conditions": ["grappled"], "agarrador_incapacitado": True})
+        self.assertEqual(petrified["peso_multiplicado"], 10)
+        self.assertTrue(petrified["resistencia_todos_danos"])
+        self.assertTrue(grappled["agarrado_termina"])
     def test_exhaustion_reduces_speed_and_does_not_mislabel_other_conditions(self):
         from rule_engine import resolver_efeitos_condicao
         result = resolver_efeitos_condicao({"action": "move", "target_conditions": ["exhaustion"], "exhaustion_niveis": 3})
