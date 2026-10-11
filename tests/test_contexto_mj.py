@@ -48,7 +48,7 @@ class ContextoMestreTests(unittest.TestCase):
         self.assertIn("nível=1", contexto)
         self.assertIn("INTELIGENCIA 16", contexto)
         self.assertIn("truques=nenhum registrado", contexto)
-        self.assertIn("Não invente nome", contexto)
+        self.assertIn("não invente nome", contexto)
 
     def test_sem_personagem_instrui_mj_a_nao_inventar_um(self):
         contexto = _resumo_grupo(RepositorioFalso([]), "jogador", "campanha")
