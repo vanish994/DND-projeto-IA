@@ -59,7 +59,7 @@ def listar_magias(escola: str | None = None, circulo: int | None = None) -> list
 def _normalizar_nome_magia(nome: str) -> str:
     texto = unicodedata.normalize("NFKD", str(nome).strip().lower())
     texto = "".join(c for c in texto if not unicodedata.combining(c))
-    return re.sub(r"\\s+", " ", texto).replace("-", " ")
+    return re.sub(r"\s+", " ", texto).replace("-", " ")
 
 
 def obter_magia(nome: str) -> dict[str, Any] | None:
