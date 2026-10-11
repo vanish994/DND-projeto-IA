@@ -40,6 +40,30 @@ class BestiarySrdIntegrationTests(unittest.TestCase):
         self.assertEqual(arco["alcance_minimo_distancia"], 80)
         self.assertEqual(arco["alcance_maximo_distancia"], 320)
 
+    def test_multiataque_expande_apenas_sequencias_sem_alternativas(self):
+        from backend.app import _expandir_multiataque
+
+        dretch = consultar_monstro("Dretch")
+        ataques_dretch = _extrair_ataques_monstro(dretch)
+        self.assertEqual(
+            _expandir_multiataque(dretch, ataques_dretch),
+            ["Bite", "Claws"],
+        )
+
+        ape = consultar_monstro("Ape")
+        ataques_ape = _extrair_ataques_monstro(ape)
+        self.assertEqual(
+            _expandir_multiataque(ape, ataques_ape),
+            ["Fist", "Fist"],
+        )
+
+    def test_multiataque_com_alternativas_nao_escolhe_sem_instrucao(self):
+        from backend.app import _expandir_multiataque
+
+        centauro = consultar_monstro("Centaur")
+        ataques = _extrair_ataques_monstro(centauro)
+        self.assertIsNone(_expandir_multiataque(centauro, ataques))
+
     def test_multiaction_esta_preservada_no_bloco_mesmo_sem_resolucao_automatica(self):
         monstro = consultar_monstro("Aboleth")
         multiattack = next((a for a in monstro["acoes"] if a["nome"] == "Multiattack"), None)
