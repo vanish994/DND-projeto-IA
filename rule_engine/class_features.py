@@ -5,17 +5,29 @@ atributos e resultados da jogada, e recebe uma resolução determinística.
 """
 from __future__ import annotations
 
+import unicodedata
+
+
+def _normalizar(valor: object) -> str:
+    texto = unicodedata.normalize("NFKD", str(valor).strip().lower())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return texto.replace(" ", "_").replace("-", "_")
+
 
 def _mod(valor: int) -> int:
     return (int(valor) - 10) // 2
 
 
 def resolver_caracteristica(f: dict) -> dict:
-    classe = str(f.get("classe", f.get("class", ""))).lower()
-    recurso = str(f.get("recurso", f.get("feature", ""))).lower().replace(" ", "_")
+    classe = _normalizar(f.get("classe", f.get("class", "")))
+    recurso = _normalizar(f.get("recurso", f.get("feature", "")))
     nivel = int(f.get("nivel", f.get("level", 1)))
+    if not classe:
+        return {"resultado": "bloqueado", "motivo": "classe_ausente"}
     if not 1 <= nivel <= 20:
         return {"resultado": "bloqueado", "motivo": "nivel_invalido"}
+    if not recurso:
+        return {"resultado": "requer_caracteristica", "classe": classe, "nivel": nivel}
 
     if recurso in {"asi", "aumento_de_atributo", "aumento_de_atributo_ou_talento"}:
         atributo = f.get("atributo")
@@ -218,4 +230,13 @@ def resolver_caracteristica(f: dict) -> dict:
         if recurso == "matador_de_inimigos_favoritos":
             return {"resultado": "resolvido", "dado_marca_do_predador": "d10"}
 
-    return {"resultado": "resolvido", "caracteristica": recurso, "classe": classe, "nivel": nivel}
+    classes_conhecidas = {"barbaro", "bardo", "clerigo", "druida", "guerreiro", "monge", "paladino", "guardiao", "ladino", "feiticeiro", "bruxo", "mago", "artifice"}
+    if classe not in classes_conhecidas:
+        return {"resultado": "bloqueado", "motivo": "classe_desconhecida", "classe": classe}
+    return {
+        "resultado": "nao_implementado",
+        "caracteristica": recurso,
+        "classe": classe,
+        "nivel": nivel,
+        "motivo": "caracteristica_catalogada_sem_resolver_especifico",
+    }
