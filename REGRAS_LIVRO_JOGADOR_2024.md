@@ -458,3 +458,8 @@ O resolvedor de talentos agora retorna `nao_implementado` para talentos que só 
 ## Normalização de nomes de talentos
 
 O resolvedor normaliza acentos, espaços e hífens nos nomes dos talentos antes da consulta. Isso evita que variações de digitação em português causem falsos “talento desconhecido”. A normalização não significa que os efeitos do talento estejam implementados; os talentos sem ramo mecânico específico continuam retornando `nao_implementado`.
+
+
+## Auditoria adicional — efeitos parciais de talentos
+
+A revisão identificou talentos cujo resolvedor retornava `resolvido` após calcular apenas uma parte do efeito. Sortudo, Conjurador Ritualista, Líder Inspirador e três Dádivas Épicas agora permanecem `nao_implementado` até que seus efeitos e condições de uso sejam resolvidos por completo. Vigoroso permanece como resolução específica porque o cálculo de PV adicionais por nível é determinístico. Testes de regressão cobrem os casos rebaixados.
