@@ -121,13 +121,13 @@ def _aplicar_escalonamento_mecanico(nome: str, magia: dict[str, Any], aumento: i
         mecanica["dardos"] = base["dardos_base"] + base["dardos_por_nivel"] * aumento
     if "dados_dano_base" in base:
         dados_base = re.fullmatch(r"(\d+)d(\d+)", base["dados_dano_base"])
-        dados_extra = re.fullmatch(r"(\\d+)d(\\d+)", base["dados_dano_por_nivel"])
+        dados_extra = re.fullmatch(r"(\d+)d(\d+)", base["dados_dano_por_nivel"])
         if dados_base and dados_extra:
             quantidade = int(dados_base.group(1)) + int(dados_extra.group(1)) * aumento
             mecanica["dados_dano"] = f"{quantidade}d{dados_base.group(2)}"
     if "dados_cura_base" in base:
-        dados_base = re.fullmatch(r"(\\d+)d(\\d+)", base["dados_cura_base"])
-        dados_extra = re.fullmatch(r"(\\d+)d(\\d+)", base["dados_cura_por_nivel"])
+        dados_base = re.fullmatch(r"(\d+)d(\d+)", base["dados_cura_base"])
+        dados_extra = re.fullmatch(r"(\d+)d(\d+)", base["dados_cura_por_nivel"])
         if dados_base and dados_extra:
             quantidade = int(dados_base.group(1)) + int(dados_extra.group(1)) * aumento
             mecanica["dados_cura"] = f"{quantidade}d{dados_base.group(2)}"
