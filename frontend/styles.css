@@ -132,6 +132,10 @@ h1, h2, p { margin: 0; }
 .segmented .text-button[aria-pressed="true"] { border-color: var(--color-accent); background: var(--color-surface-raised); color: var(--color-accent-hover); }
 .form-error { flex: none; color: var(--color-danger); font-size: var(--text-sm); padding: 0 var(--space-6); margin: 0; }
 .form-error:empty { display: none; }
+
+/* Destaque acessível para dados e CDs mencionados na narração. */
+.chip-dado { display: inline-flex; align-items: center; gap: .3rem; margin: 0 .08rem; padding: .08rem .42rem; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface-raised); color: var(--color-accent-hover); font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dado-icone { display: inline-block; width: .62rem; height: .62rem; border: 1.5px solid currentColor; border-radius: .18rem; transform: rotate(45deg); opacity: .8; }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: 0 0 var(--space-4); font-size: var(--text-sm); }
 .facts dt { color: var(--color-text-muted); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
