@@ -964,10 +964,15 @@ def atacar_token_tatico(
             "critical": False,
         }).outcome
         dano = max(0, int(dano_resolvido.get("total", 0)))
+        dano_bruto = dano
+        defesas_dano = None
+        tipo_dano_ataque = str((CATALOGO_ARMAS.get(nome_arma or "") or {}).get("tipo", "contundente"))
         if alvo["kind"] == "enemy":
             estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
             from rule_engine.bestiary import consultar_monstro
             bloco_completo_alvo = consultar_monstro(alvo.get("monster_name") or alvo.get("name")) or {}
+            defesas_dano = _aplicar_defesas_monstro(dano, tipo_dano_ataque, bloco_completo_alvo)
+            dano = int(defesas_dano["dano"])
             fortitude = None
             hp_anterior = int(alvo["hp"])
             hp_resultante = max(0, hp_anterior - dano)
@@ -1010,11 +1015,55 @@ def atacar_token_tatico(
         "ca_alvo": int(alvo["ac"]),
         "rolagens": [rolagem, *rolagens_extra],
         "fortitude": fortitude,
+        "dano_bruto": dano_bruto if ataque.get("result") == "hit" else 0,
+        "defesas_dano": defesas_dano,
         "alcance_pes": alcance_tatico,
         "ataque_a_distancia": ataque_a_distancia,
         "nota": "Armas corpo a corpo e à distância usam o catálogo, alcance e estado de vantagem/desvantagem do motor. Munição não é rastreada no inventário nesta versão.",
     }
 
+
+
+def _normalizar_tipo_dano(tipo: str) -> str:
+    """Mapeia tipos do catálogo PT-BR e do SRD em uma chave comparável."""
+    import unicodedata
+    texto = unicodedata.normalize("NFKD", str(tipo or "").casefold())
+    texto = "".join(c for c in texto if not unicodedata.combining(c)).strip()
+    aliases = {
+        "contundente": "bludgeoning", "bludgeoning": "bludgeoning",
+        "perfurante": "piercing", "piercing": "piercing",
+        "cortante": "slashing", "slashing": "slashing",
+        "acido": "acid", "acid": "acid", "frio": "cold", "cold": "cold",
+        "fogo": "fire", "fire": "fire", "forca": "force", "force": "force",
+        "eletrico": "lightning", "raio": "lightning", "lightning": "lightning",
+        "necrotico": "necrotic", "necrotic": "necrotic",
+        "veneno": "poison", "poison": "poison", "psiquico": "psychic", "psychic": "psychic",
+        "radiante": "radiant", "radiant": "radiant", "trovejante": "thunder", "thunder": "thunder",
+    }
+    return aliases.get(texto, texto)
+
+
+def _aplicar_defesas_monstro(dano: int, tipo_dano: str, monstro: dict) -> dict:
+    """Aplica imunidade, resistência e vulnerabilidade conforme o bloco SRD."""
+    tipo = _normalizar_tipo_dano(tipo_dano)
+    resistencias = {_normalizar_tipo_dano(x) for x in (monstro.get("resistencias_dano") or [])}
+    imunidades = {_normalizar_tipo_dano(x) for x in (monstro.get("imunidades_dano") or [])}
+    vulnerabilidades = {_normalizar_tipo_dano(x) for x in (monstro.get("vulnerabilidades_dano") or [])}
+    if tipo in imunidades:
+        return {"dano": 0, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
+                "aplicacao": "imunidade", "fator": 0}
+    # Pela regra de D&D, resistência e vulnerabilidade ao mesmo dano se cancelam.
+    if tipo in resistencias and tipo in vulnerabilidades:
+        return {"dano": max(0, int(dano)), "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
+                "aplicacao": "resistencia_e_vulnerabilidade_canceladas", "fator": 1}
+    if tipo in resistencias:
+        return {"dano": max(0, int(dano)) // 2, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
+                "aplicacao": "resistencia", "fator": 0.5}
+    if tipo in vulnerabilidades:
+        return {"dano": max(0, int(dano)) * 2, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
+                "aplicacao": "vulnerabilidade", "fator": 2}
+    return {"dano": max(0, int(dano)), "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
+            "aplicacao": "normal", "fator": 1}
 
 
 def _acoes_monstro_como_lista(monstro: dict) -> list[str]:
