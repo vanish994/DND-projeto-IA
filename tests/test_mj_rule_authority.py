@@ -56,12 +56,55 @@ class MJRuleAuthorityTests(unittest.TestCase):
         self.assertEqual(resultado["motivo"], "atributo_incompativel_com_pericia")
         self.assertEqual(resultado["atributo_correto"], "forca")
 
-    def test_motor_nao_resolve_teste_sem_personagem_identificado(self):
+    def test_artifice_nao_conjura_magia_que_nao_esta_preparada(self):
+        artifice = {
+            "id": "artifice-1", "classe": "artifice", "nivel": 1,
+            "atributos": {"inteligencia": 16},
+            "conjuracao": {
+                "truques": ["Luz", "Raio de Gelo"],
+                "magias_preparadas": ["Curar Ferimentos"],
+                "espacos_totais": {"1": 2}, "espacos_restantes": {"1": 2},
+            },
+        }
         resultado = self.mj._tool("resolver_regra", {"fatos": {
-            "type": "ability_check", "ability": "forca", "dc": 10,
-        }}, [])
+            "type": "spell", "magia": "Alarme", "character_id": "artifice-1",
+        }}, [artifice])
         self.assertEqual(resultado["resultado"], "bloqueado")
-        self.assertEqual(resultado["motivo"], "personagem_ausente_ou_nao_identificado")
+        self.assertEqual(resultado["motivo"], "magia_nao_escolhida_na_ficha")
+
+    def test_artifice_conjura_magia_preparada_e_gasta_espaco(self):
+        artifice = {
+            "id": "artifice-1", "classe": "artifice", "nivel": 1,
+            "atributos": {"inteligencia": 16},
+            "conjuracao": {
+                "truques": ["Luz", "Raio de Gelo"],
+                "magias_preparadas": ["Curar Ferimentos", "Alarme", "Onda Trovejante"],
+                "espacos_totais": {"1": 2}, "espacos_restantes": {"1": 2},
+            },
+        }
+        atualizacoes = []
+        resultado = self.mj._tool("resolver_regra", {"fatos": {
+            "type": "spell", "magia": "Curar Ferimentos", "character_id": "artifice-1",
+        }}, [artifice], on_character_update=lambda p: atualizacoes.append(dict(p["conjuracao"]["espacos_restantes"])))
+        self.assertEqual(resultado["resultado"], "conjurada")
+        self.assertEqual(resultado["espacos_restantes"], {"1": 1})
+        self.assertEqual(atualizacoes, [{"1": 1}])
+
+    def test_artifice_nao_conjura_sem_espacos_restantes(self):
+        artifice = {
+            "id": "artifice-1", "classe": "artifice", "nivel": 1,
+            "atributos": {"inteligencia": 16},
+            "conjuracao": {
+                "truques": ["Luz", "Raio de Gelo"],
+                "magias_preparadas": ["Curar Ferimentos"],
+                "espacos_totais": {"1": 2}, "espacos_restantes": {"1": 0},
+            },
+        }
+        resultado = self.mj._tool("resolver_regra", {"fatos": {
+            "type": "spell", "magia": "Curar Ferimentos", "character_id": "artifice-1",
+        }}, [artifice])
+        self.assertEqual(resultado["resultado"], "bloqueado")
+        self.assertEqual(resultado["motivo"], "sem_espacos_restantes")
 
 
 if __name__ == "__main__":
