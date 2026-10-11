@@ -79,7 +79,7 @@ FERRAMENTAS_ARTESAO = {
     "Ferramentas de Carpinteiro", "Ferramentas de Cartógrafo", "Ferramentas de Sapateiro",
     "Utensílios de Cozinheiro", "Ferramentas de Vidreiro", "Ferramentas de Joalheiro",
     "Ferramentas de Coureiro", "Ferramentas de Pedreiro", "Suprimentos de Pintor",
-    "Ferramentas de Oleiro", "Ferramentas de Ferreiro", "Ferramentas de Funileiro",
+    "Ferramentas de Oleiro", "Ferramentas de Ferreiro",
     "Ferramentas de Tecelão", "Ferramentas de Entalhador",
 }
 QUANTIDADE_PERICIAS_CLASSE = {
