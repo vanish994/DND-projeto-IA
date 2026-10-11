@@ -744,6 +744,29 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "martial_feature", "feature": "evasao", "dano": 30, "sucesso": True})
         self.assertEqual(result.outcome["dano_final"], 0)
 
+    def test_martial_subclass_catalog_contains_all_four_fighter_subclasses(self):
+        from rule_engine import SUBCLASS_FEATURES
+        for name in ("campeao", "cavaleiro_mistico", "combatente_psiquico", "mestre_da_batalha"):
+            self.assertIn(name, SUBCLASS_FEATURES)
+        result = self.engine.evaluate({"type": "martial_subclass_feature", "subclasse": "campeao", "nivel": 3, "caracteristica": "critico_aprimorado"})
+        self.assertEqual(result.outcome["critico_com"], [19, 20])
+
+    def test_barbarian_subclasses_resolve_core_features(self):
+        result = self.engine.evaluate({"type": "martial_subclass_feature", "subclasse": "berserker", "nivel": 6, "caracteristica": "furia_irracional"})
+        self.assertIn("amedrontado", result.outcome["imunidades"])
+        result = self.engine.evaluate({"type": "martial_subclass_feature", "subclasse": "trilha_do_fanatico", "nivel": 3, "caracteristica": "furia_divina", "tipo_dano": "radiante"})
+        self.assertEqual(result.outcome["tipo"], "radiante")
+
+    def test_monk_and_rogue_subclasses_resolve_core_features(self):
+        result = self.engine.evaluate({"type": "martial_subclass_feature", "subclasse": "combatente_das_sombras", "nivel": 6, "caracteristica": "passo_da_sombra"})
+        self.assertEqual(result.outcome["teleporte"], 18)
+        result = self.engine.evaluate({"type": "martial_subclass_feature", "subclasse": "assassino", "nivel": 3, "caracteristica": "assassinar", "alvo_surpreso": True})
+        self.assertTrue(result.outcome["critico"])
+
+    def test_unavailable_subclass_feature_is_blocked(self):
+        result = self.engine.evaluate({"type": "martial_subclass_feature", "subclasse": "campeao", "nivel": 3, "caracteristica": "sobrevivente"})
+        self.assertEqual(result.outcome["resultado"], "bloqueado")
+
 
 if __name__ == "__main__":
     unittest.main()

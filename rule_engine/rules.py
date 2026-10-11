@@ -29,6 +29,7 @@ from .martial import (
     resolver_esquiva_sobrenatural, resolver_evasao, resolver_foco_monge,
     resolver_furia, resolver_maestria_arma, resolver_recuperar_folego,
 )
+from .martial_subclasses import resolver_subclasse_marcial
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -729,5 +730,11 @@ def build_default_engine() -> RuleEngine:
         description="Resolve Evasão em salvaguardas de Destreza para metade do dano.",
         priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "evasao",
         resolve=resolver_evasao, source="D&D 2024 — Evasão",
+    ))
+    engine.register(Rule(
+        rule_id="martial.subclass-feature",
+        description="Resolve características e efeitos centrais das subclasses marciais.",
+        priority=65, when=lambda f: f["type"] == "martial_subclass_feature",
+        resolve=resolver_subclasse_marcial, source="D&D 2024 — subclasses marciais",
     ))
     return engine

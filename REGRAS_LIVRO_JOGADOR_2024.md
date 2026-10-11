@@ -42,6 +42,10 @@ Foi concluída uma auditoria modular das 13 classes contra os livros locais. A m
 
 Implementados no `martial.py` e registrados no motor: Ataque Extra (incluindo os quatro ataques do Guerreiro no nível 20), Maestria em Arma, Fúria do Bárbaro, Recuperar Fôlego, Ataque Furtivo, Foco do Monge, Defletir Ataques, Esquiva Sobrenatural e Evasão. O lote inclui validação de usos, resistências, bônus de dano, progressão de dados, redução de dano e recuperação básica. As características marciais restantes — subclasses, Golpe Astuto, Surto de Ação, Indomável, Golpe Atordoante, recursos avançados de Fúria e demais efeitos por nível — permanecem no próximo lote.
 
+## Subclasses marciais — lote 1
+
+Foi criado o catálogo executável das subclasses de Guerreiro (Campeão, Cavaleiro Místico, Combatente Psíquico e Mestre da Batalha), Bárbaro (Árvore do Mundo, Berserker, Coração Selvagem/Caminho do Guerreiro Espiritual e Fanático), Monge (Mão Espalmada, Misericórdia, Sombras e Elementos) e Ladino (Adaga Espiritual, Assassino, Ladrão e Trapaceiro Arcano). O resolvedor já aplica efeitos centrais como Crítico Aprimorado, Frenesi, Fúria Irracional, Fúria Divina, Passo da Sombra, Mão de Cura/Dolo, Assassinar, Poder Psiônico e Maestrias da Árvore do Mundo. As características restantes de cada subclasse serão detalhadas em lotes seguintes.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

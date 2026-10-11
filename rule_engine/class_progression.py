@@ -17,7 +17,7 @@ FEATURES_BY_CLASS = {
 }
 
 SUBCLASSES_BY_CLASS = {
-    "barbaro": {"trilha_da_arvore_do_mundo", "trilha_do_berserker", "trilha_do_coracao_selvagem", "trilha_do_fanatico"},
+    "barbaro": {"trilha_da_arvore_do_mundo", "trilha_do_berserker", "trilha_do_coracao_selvagem", "caminho_do_guerreiro_espiritual", "trilha_do_fanatico"},
     "bardo": {"colegio_da_bravura", "colegio_da_danca", "colegio_do_conhecimento", "colegio_do_glamour", "colegio_dos_espiritos"},
     "clerigo": {"dominio_da_vida", "dominio_da_luz", "dominio_da_trickery", "dominio_da_guerra", "dominio_da_sepultura"},
     "druida": {"circulo_da_lua", "circulo_da_terra", "circulo_das_estrelas", "circulo_do_mar"},
