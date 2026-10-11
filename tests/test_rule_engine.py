@@ -1157,7 +1157,7 @@ class RuleEngineTests(unittest.TestCase):
     def test_bestiary_blocks_include_structured_traits_actions_and_legendary_actions(self):
         from rule_engine import BESTIARIO, consultar_bloco_completo, secao_monstro
         complete = consultar_bloco_completo("Aboleth")
-        bloco = complete["bloco_srd"]["stat_block"]
+        bloco = complete["bloco_srd"]
         self.assertTrue(bloco["traits"])
         self.assertIn("Tentacle", {acao["name"] for acao in bloco["actions"]})
         self.assertTrue(bloco["legendary_actions"]["actions"])
