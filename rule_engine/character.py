@@ -139,7 +139,7 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         raise ValueError("Antecedente inválido")
     if not str(fatos.get("name", "")).strip():
         raise ValueError("O personagem precisa de um nome")
-    escolha_origem = str(fatos.get("background_feat") or "")
+    escolha_origem = str(fatos.get("background_feat") or ANTECEDENTES.get(antecedente, {}).get("talento", ""))
     escolhas = {"iniciado_em_magia": escolha_origem.split(":", 1)[1]} if escolha_origem.startswith("iniciado_em_magia:") else {}
     return Personagem(
         nome=str(fatos["name"]).strip(), especie=especie, classe=classe, nivel=nivel,
@@ -154,7 +154,7 @@ def _talento_do_antecedente(antecedente: str, escolha: Any = None) -> str | None
     padrao = dados["talento"].split(":")[0]
     escolha = str(escolha).strip().lower() if escolha else None
     aceita_dadiva = padrao == "dadiva_sombria" or "dadiva_sombria" in dados["talentos_alternativos"]
-    if escolha in (None, padrao):
+    if escolha in (None, padrao, dados["talento"]):
         if padrao == "dadiva_sombria":
             raise ValueError("Escolha uma Dádiva Sombria para este antecedente")
         return padrao
