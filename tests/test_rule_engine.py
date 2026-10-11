@@ -984,6 +984,10 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(hidden.outcome["resultado"], "escondido")
         self.assertEqual(hidden.outcome["dc_para_encontrar"], 17)
 
+    def test_study_action_maps_knowledge_areas_to_intelligence_skills(self):
+        result = self.engine.evaluate({"type": "study_action", "area_conhecimento": "armadilhas", "valor_atributo": 16, "roll": 12, "cd": 15})
+        self.assertEqual(result.outcome["pericia"], "investigacao")
+        self.assertEqual(result.outcome["resultado"], "informacao_encontrada")
     def test_search_action_maps_the_four_phb_search_skills(self):
         result = self.engine.evaluate({"type": "search_action", "tipo_busca": "criatura_ou_objeto_escondido", "valor_atributo": 14, "roll": 12, "cd": 13})
         self.assertEqual(result.outcome["pericia"], "percepcao")
