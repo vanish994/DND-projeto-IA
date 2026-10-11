@@ -132,15 +132,18 @@ Até existir login, cada navegador gera um identificador próprio e o envia no c
 | `PATCH` | `/v1/campanhas/{id}` | Renomeia (`{"titulo": "..."}`) |
 | `DELETE` | `/v1/campanhas/{id}` | Apaga a campanha e as mensagens |
 | `POST` | `/v1/campanhas/{id}/mensagens` | Envia uma mensagem ao MJ e salva a troca |
-| `GET` | `/v1/catalogo/personagens` | Espécies, classes, antecedentes (PHB 2024 + Ravenloft), talentos de origem e Dádivas Sombrias |
+| `GET` | `/v1/catalogo/personagens` | Espécies, classes, antecedentes, escolhas de espécie e ferramentas de antecedente |
 | `GET` | `/v1/catalogo/equipamento` | Armas, armaduras, perícias por atributo e proficiências de arma do catálogo oficial |
 | `GET` | `/v1/catalogo/magias` | Magias do catálogo, com classe e nível para filtrar |
+| `GET` | `/v1/catalogo/conjuracao` | Truques, magias preparadas e espaços por classe e nível, conforme o motor |
 | `GET` | `/v1/campanhas/{id}/personagens` | Lista as fichas do grupo da campanha |
-| `POST` | `/v1/campanhas/{id}/personagens` | Cria uma ficha validada pelo Rule Engine (atributos, antecedente e aumentos) |
+| `POST` | `/v1/campanhas/{id}/personagens` | Cria uma ficha validada pelo Rule Engine, incluindo herança dracônica, ferramenta e pacote de equipamento do antecedente |
 | `GET` | `/v1/campanhas/{id}/personagens/{pid}` | Retorna a ficha |
 | `PUT` | `/v1/campanhas/{id}/personagens/{pid}` | Refaz a ficha, revalidando pelo motor |
 | `PATCH` | `/v1/campanhas/{id}/personagens/{pid}` | Atualiza os PV atuais (`{"pv_atual": n}`, limitado ao máximo) |
 | `DELETE` | `/v1/campanhas/{id}/personagens/{pid}` | Apaga a ficha |
+
+A criação exige as escolhas que completam a ficha: Draconato precisa de Herança Dracônica; antecedentes que deixam a ferramenta em aberto exigem uma opção da categoria correspondente; todos os antecedentes exigem a escolha do pacote A ou B. O motor devolve `escolhas_pendentes` para fichas que ainda precisem ser concluídas. A API de conjuração valida magias e espaços; a progressão de Artífice tem validação específica, enquanto outras listas de classe ainda não são validadas integralmente.
 
 ### Bloco derivado da ficha
 
