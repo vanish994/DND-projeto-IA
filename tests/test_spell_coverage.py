@@ -64,6 +64,32 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertEqual(result["mecanica"]["alvos"], 4)
         self.assertEqual(result["mecanica"]["bonus"], "1d4")
 
+    def test_healing_word_scales_and_uses_bonus_action(self):
+        result = resolver_magia({"magia": "palavra curativa", "espaco": 2})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["dados_cura"], "2d4")
+        self.assertEqual(result["mecanica"]["acao"], "bonus")
+        self.assertTrue(result["mecanica"]["soma_modificador_conjuracao"])
+
+    def test_thunderwave_returns_save_area_and_push(self):
+        result = resolver_magia({"magia": "onda trovejante", "espaco": 2})
+        self.assertEqual(result["mecanica"]["dados_dano"], "3d8")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "constituicao")
+        self.assertTrue(result["mecanica"]["sucesso_metade"])
+        self.assertEqual(result["mecanica"]["area"]["lado_m"], 4.5)
+        self.assertEqual(result["mecanica"]["empurra_m"], 3)
+
+    def test_mage_armor_blocks_target_already_wearing_armor(self):
+        result = resolver_magia({"magia": "armadura arcana", "alvo_veste_armadura": True})
+        self.assertEqual(result["resultado"], "bloqueado")
+        self.assertEqual(result["motivo"], "alvo_ja_veste_armadura")
+
+    def test_mage_armor_returns_structured_armor_class(self):
+        result = resolver_magia({"magia": "armadura arcana"})
+        self.assertEqual(result["mecanica"]["ca_base"], 13)
+        self.assertTrue(result["mecanica"]["adiciona_modificador_destreza"])
+        self.assertTrue(result["mecanica"]["exige_alvo_sem_armadura"])
+
     def test_missing_components_still_blocks_spell(self):
         result = resolver_magia({"magia": "bola de fogo", "componentes_disponiveis": ["V"]})
         self.assertEqual(result["resultado"], "bloqueado")
