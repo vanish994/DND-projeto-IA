@@ -1,0 +1,61 @@
+import unittest
+
+from rule_engine import build_default_engine, resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica
+
+
+class AbilityCheckTests(unittest.TestCase):
+    def test_skill_check_uses_skill_default_ability_and_proficiency_once(self):
+        result = resolver_teste_habilidade({"pericia": "furtividade", "valor_atributo": 16, "nivel": 5, "proficiente": True, "roll": 10, "cd": 15})
+        self.assertEqual(result["atributo"], "destreza")
+        self.assertEqual(result["bonus_proficiencia_aplicado"], 3)
+        self.assertEqual(result["total"], 16)
+        self.assertEqual(result["resultado"], "sucesso")
+
+    def test_expertise_doubles_proficiency_but_not_attribute(self):
+        result = resolver_teste_habilidade({"pericia": "arcanismo", "valor_atributo": 14, "nivel": 9, "expertise": True, "roll": 5, "cd": 15})
+        self.assertEqual(result["bonus_proficiencia_aplicado"], 8)
+        self.assertEqual(result["total"], 10)
+        self.assertEqual(result["resultado"], "falha")
+
+    def test_advantage_and_disadvantage_cancel(self):
+        result = resolver_teste_habilidade({"pericia": "percepcao", "modificador_atributo": 2, "dados": [4, 18], "vantagem": True, "desvantagem": True, "cd": 15})
+        self.assertEqual(result["dado"], 4)
+        self.assertFalse(result["vantagem"])
+        self.assertFalse(result["desvantagem"])
+
+    def test_tool_and_skill_proficiency_grant_advantage_not_double_proficiency(self):
+        result = resolver_teste_habilidade({"pericia": "investigacao", "modificador_atributo": 1, "bonus_proficiencia": 3, "proficiente": True, "proficiente_ferramenta": True, "proficiente_pericia": True, "dados": [8, 12], "cd": 15})
+        self.assertTrue(result["vantagem_por_pericia_e_ferramenta"])
+        self.assertEqual(result["bonus_proficiencia_aplicado"], 3)
+        self.assertEqual(result["dado"], 12)
+
+    def test_passive_check_adds_five_for_advantage_and_minus_five_for_disadvantage(self):
+        advantage = resolver_teste_passivo({"pericia": "percepcao", "modificador_atributo": 3, "proficiente": True, "bonus_proficiencia": 2, "vantagem": True})
+        disadvantage = resolver_teste_passivo({"pericia": "percepcao", "modificador_atributo": 3, "proficiente": True, "bonus_proficiencia": 2, "desvantagem": True})
+        self.assertEqual(advantage["valor_passivo"], 20)
+        self.assertEqual(disadvantage["valor_passivo"], 10)
+
+    def test_group_check_requires_at_least_half_successes(self):
+        result = resolver_teste_grupo({"participantes": [True, False, True, False, False]})
+        self.assertEqual(result["sucessos_necessarios"], 3)
+        self.assertEqual(result["resultado"], "falha")
+
+    def test_heroic_inspiration_requires_resource_and_uses_new_roll(self):
+        blocked = resolver_inspiracao_heroica({"dado_original": 4, "rerrolagem": 17})
+        self.assertEqual(blocked["resultado"], "bloqueado")
+        result = resolver_inspiracao_heroica({"tem_inspiracao_heroica": True, "dado_original": 4, "rerrolagem": 17})
+        self.assertEqual(result["dado_usado"], 17)
+        self.assertTrue(result["inspiracao_heroica_consumida"])
+
+    def test_engine_registers_new_rule_types(self):
+        engine = build_default_engine()
+        result = engine.evaluate({"type": "skill_check", "pericia": "atletismo", "modificador_atributo": 3, "roll": 12, "cd": 15})
+        self.assertEqual(result.outcome["resultado"], "sucesso")
+        passive = engine.evaluate({"type": "passive_check", "pericia": "percepcao", "modificador_atributo": 2})
+        self.assertEqual(passive.outcome["valor_passivo"], 12)
+        group = engine.evaluate({"type": "group_check", "participantes": [True, True, False]})
+        self.assertEqual(group.outcome["resultado"], "sucesso")
+
+
+if __name__ == "__main__":
+    unittest.main()
