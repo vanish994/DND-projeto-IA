@@ -14,5 +14,3 @@ services:
         value: https://api.groq.com/openai/v1
       - key: LLM_MODEL
         value: llama-3.3-70b-versatile
-      - key: DATABASE_URL
-        sync: false
