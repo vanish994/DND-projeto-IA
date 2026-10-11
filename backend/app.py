@@ -1050,12 +1050,13 @@ def _extrair_ataques_monstro(monstro: dict) -> list[dict]:
             texto, re.I,
         )
         dano_match = re.search(r"Hit:\s*\d+\s*\((\d+d\d+(?:\s*[+-]\s*\d+)?)\)\s*([A-Za-z]+)?\s*damage", texto, re.I)
-        alcance_match = re.search(r"reach\s+(\d+)\s*ft\.|range\s+(\d+)/(\d+)\s*ft\.|range\s+(\d+)\s*ft\.", texto, re.I)
-        if not (nome_match and bonus_match and dano_match and alcance_match):
+        alcance_corpo_match = re.search(r"reach\s+(\d+)\s*ft\.", texto, re.I)
+        alcance_distancia_match = re.search(r"range\s+(\d+)(?:/(\d+))?\s*ft\.", texto, re.I)
+        if not (nome_match and bonus_match and dano_match and (alcance_corpo_match or alcance_distancia_match)):
             continue
-        reach = int(alcance_match.group(1)) if alcance_match.group(1) else 0
-        range_ft = int(alcance_match.group(2) or alcance_match.group(4) or 0)
-        max_range_ft = int(alcance_match.group(3) or range_ft)
+        reach = int(alcance_corpo_match.group(1)) if alcance_corpo_match else 0
+        range_ft = int(alcance_distancia_match.group(1)) if alcance_distancia_match else 0
+        max_range_ft = int(alcance_distancia_match.group(2) or range_ft) if alcance_distancia_match else 0
         resultado.append({
             "nome": nome_match.group(1).strip(),
             "bonus_ataque": int(bonus_match.group(1)),
