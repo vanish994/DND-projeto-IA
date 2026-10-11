@@ -440,3 +440,6 @@ A ordem recomendada permanece:
 8. Catálogo detalhado das magias e características de classe.
 
 A lista acima é a referência atual para determinar quando o Rule Engine estará realmente completo.
+## Auditoria de falsos positivos — características de classe
+
+Corrigido o resolvedor `class_features.py`: uma característica desconhecida ou catalogada sem resolução específica não pode mais retornar `resolvido` por padrão. O resolvedor retorna `nao_implementado`, solicita a característica quando ela não foi informada e bloqueia classes desconhecidas. Nomes de classes e características agora normalizam acentos e hífens, importante para entradas em português. Foram adicionados cinco testes de regressão. Este ajuste melhora a confiabilidade da auditoria, mas não significa que todas as características estejam implementadas; as lacunas agora ficam explícitas.
