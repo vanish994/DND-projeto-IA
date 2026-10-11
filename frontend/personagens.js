@@ -98,10 +98,12 @@
     const pv = el('span', {className: 'hp-value', textContent: `${p.pv_atual} / ${p.pv_maximo}`});
     const ajustar = async (delta) => {
       try {
+        menos.disabled = true; mais.disabled = true;
         const novo = await api(url(`/${encodeURIComponent(p.id)}`), {method: 'PATCH', body: JSON.stringify({ajuste_pv: delta})});
         Object.assign(p, novo);
         pv.textContent = `${p.pv_atual} / ${p.pv_maximo}`;
-      } catch (erro) { pv.textContent = `Erro: ${erro.message}`; }
+        menos.disabled = false; mais.disabled = false;
+      } catch (erro) { pv.textContent = `Erro: ${erro.message}`; menos.disabled = false; mais.disabled = false; }
     };
     const menos = el('button', {type: 'button', className: 'icon-button', textContent: '−', ariaLabel: 'Perder 1 PV'});
     const mais = el('button', {type: 'button', className: 'icon-button', textContent: '+', ariaLabel: 'Recuperar 1 PV'});
