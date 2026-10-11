@@ -1047,7 +1047,7 @@
     for (const magia of magias) {
       const botao = el('button', {type: 'button', className: 'botao-magia', 'aria-pressed': 'false'},
         el('span', {className: 'magia-nome', textContent: magia.nome}),
-        el('span', {className: 'magia-meta', textContent: nome(magia.escola)});
+        el('span', {className: 'magia-meta', textContent: nome(magia.escola)}));
       botao.dataset.nome = magia.nome;
       botao.addEventListener('click', () => {
         const i = selecionadas.indexOf(magia.nome);
