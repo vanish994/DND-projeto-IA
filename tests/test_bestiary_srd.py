@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 
 from rule_engine.bestiary import BESTIARIO, consultar_monstro
-from backend.app import _extrair_ataques_monstro
+from backend.app import _aplicar_defesas_monstro, _extrair_ataques_monstro
 
 
 class BestiarySrdIntegrationTests(unittest.TestCase):
@@ -39,6 +39,23 @@ class BestiarySrdIntegrationTests(unittest.TestCase):
         self.assertEqual(arco["dano"], "1d6+2")
         self.assertEqual(arco["alcance_minimo_distancia"], 80)
         self.assertEqual(arco["alcance_maximo_distancia"], 320)
+
+    def test_resistencias_imunidades_e_vulnerabilidades_de_dano(self):
+        resistente = {"resistencias_dano": ["piercing"]}
+        imune = {"imunidades_dano": ["poison"]}
+        vulneravel = {"vulnerabilidades_dano": ["bludgeoning"]}
+        self.assertEqual(_aplicar_defesas_monstro(7, "perfurante", resistente)["dano"], 3)
+        self.assertEqual(_aplicar_defesas_monstro(7, "veneno", imune)["dano"], 0)
+        self.assertEqual(_aplicar_defesas_monstro(7, "contundente", vulneravel)["dano"], 14)
+
+    def test_resistencia_e_vulnerabilidade_do_mesmo_tipo_se_cancelam(self):
+        monstro = {
+            "resistencias_dano": ["piercing"],
+            "vulnerabilidades_dano": ["perfurante"],
+        }
+        resultado = _aplicar_defesas_monstro(7, "piercing", monstro)
+        self.assertEqual(resultado["dano"], 7)
+        self.assertEqual(resultado["aplicacao"], "resistencia_e_vulnerabilidade_canceladas")
 
     def test_multiataque_expande_apenas_sequencias_sem_alternativas(self):
         from backend.app import _expandir_multiataque
