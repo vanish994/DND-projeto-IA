@@ -117,8 +117,12 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         incapacitantes_atacante = {"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & atacante
         if incapacitantes_atacante:
             return {**resultado, "resultado": "bloqueado", "result": "blocked", "motivo": "atacante_incapacitado", "condicoes": sorted(incapacitantes_atacante)}
-        vantagem = bool({"cego", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo) or "invisivel" in atacante
-        desvantagem = bool({"cego", "envenenado", "contido", "caido"} & atacante) or "invisivel" in alvo
+        if "enfeiticado" in atacante and fatos.get("alvo_e_enfeiticador", False):
+            return {**resultado, "resultado": "bloqueado", "result": "blocked", "motivo": "nao_pode_atacar_ou_afetar_enfeiticador"}
+        atacante_invisivel_visto = bool(fatos.get("alvo_pode_ver_atacante", False))
+        alvo_invisivel_visto = bool(fatos.get("atacante_pode_ver_alvo", False))
+        vantagem = bool({"cego", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo) or ("invisivel" in atacante and not atacante_invisivel_visto)
+        desvantagem = bool({"cego", "envenenado", "contido", "caido"} & atacante) or ("invisivel" in alvo and not alvo_invisivel_visto)
         if "agarrado" in atacante and not fatos.get("alvo_e_agarrador", False):
             desvantagem = True
         if "amedrontado" in atacante and fatos.get("fonte_no_campo_de_visao", True):
