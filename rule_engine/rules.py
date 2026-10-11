@@ -23,6 +23,7 @@ from .magic_equipment import (
     resolver_conjuracao, resolver_carga, resolver_duas_armas,
 )
 from .catalog import buscar_catalogo, listar_catalogo
+from .character import criar_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao, resolver_multiclasse, resolver_progressao
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -632,5 +633,42 @@ def build_default_engine() -> RuleEngine:
             "names": listar_catalogo(f["category"]),
         },
         source="D&D 2024 — catálogos",
+    ))
+    engine.register(Rule(
+        rule_id="character.creation",
+        description="Valida espécie, classe, nível, atributos, subclasse e talentos.",
+        priority=50,
+        when=lambda f: f["type"] == "character_creation",
+        resolve=lambda f: {
+            "resultado": "criado", "personagem": criar_personagem(f),
+        },
+        source="D&D 2024 — criação de personagens",
+    ))
+    engine.register(Rule(
+        rule_id="character.ability-scores",
+        description="Gera atributos pela matriz padrão ou compra por pontos.",
+        priority=50,
+        when=lambda f: f["type"] == "ability_generation",
+        resolve=lambda f: {
+            "resultado": "gerado",
+            "atributos": gerar_atributos_matriz_padrao() if f.get("method") == "matriz_padrao" else gerar_atributos_compra_pontos(f["scores"]),
+        },
+        source="D&D 2024 — criação de personagens",
+    ))
+    engine.register(Rule(
+        rule_id="character.level-up",
+        description="Resolve progressão de nível, aumento de atributo, talento e subclasse.",
+        priority=50,
+        when=lambda f: f["type"] == "level_up",
+        resolve=resolver_progressao,
+        source="D&D 2024 — progressão",
+    ))
+    engine.register(Rule(
+        rule_id="character.multiclass",
+        description="Valida os pré-requisitos de atributo para multiclasse.",
+        priority=50,
+        when=lambda f: f["type"] == "multiclass",
+        resolve=resolver_multiclasse,
+        source="D&D 2024 — multiclasse",
     ))
     return engine

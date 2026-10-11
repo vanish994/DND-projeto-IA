@@ -616,6 +616,55 @@ class RuleEngineTests(unittest.TestCase):
         listed = self.engine.evaluate({"type": "catalog_list", "category": "armaduras"})
         self.assertIn("Placas", listed.outcome["names"])
 
+    def test_standard_array_and_point_buy(self):
+        from rule_engine import gerar_atributos_matriz_padrao, gerar_atributos_compra_pontos
+        self.assertEqual(sum(gerar_atributos_matriz_padrao().values()), 72)
+        bought = gerar_atributos_compra_pontos({
+            "forca": 15, "destreza": 14, "constituicao": 13,
+            "inteligencia": 10, "sabedoria": 10, "carisma": 8,
+        })
+        self.assertEqual(bought["forca"], 15)
+
+    def test_character_creation_validates_class_species_and_subclass_level(self):
+        result = self.engine.evaluate({
+            "type": "character_creation", "name": "Lia", "species": "humano",
+            "class": "guerreiro", "level": 3,
+            "ability_scores": {"forca": 15, "destreza": 14, "constituicao": 13,
+                                "inteligencia": 10, "sabedoria": 10, "carisma": 8},
+            "subclass": "campeao", "background": "soldado",
+        })
+        self.assertEqual(result.outcome["resultado"], "criado")
+        self.assertEqual(result.outcome["personagem"].bonus_proficiencia, 2)
+
+    def test_subclass_cannot_be_selected_before_level_three(self):
+        with self.assertRaises(ValueError):
+            self.engine.evaluate({
+                "type": "character_creation", "name": "Lia", "species": "humano",
+                "class": "guerreiro", "level": 2, "subclass": "campeao",
+                "ability_scores": {"forca": 15, "destreza": 14, "constituicao": 13,
+                                    "inteligencia": 10, "sabedoria": 10, "carisma": 8},
+            })
+
+    def test_level_up_grants_subclass_and_asi_or_feat_choices(self):
+        subclass = self.engine.evaluate({"type": "level_up", "class": "mago", "current_level": 2})
+        self.assertTrue(subclass.outcome["escolha_subclasse"])
+        asi = self.engine.evaluate({"type": "level_up", "class": "mago", "current_level": 3})
+        self.assertEqual(asi.outcome["escolha"], "aumento_de_atributo_ou_talento")
+
+    def test_multiclass_checks_prerequisites(self):
+        permitted = self.engine.evaluate({
+            "type": "multiclass", "new_class": "mago",
+            "ability_scores": {"forca": 8, "destreza": 10, "constituicao": 10,
+                                "inteligencia": 13, "sabedoria": 10, "carisma": 10},
+        })
+        self.assertEqual(permitted.outcome["resultado"], "permitido")
+        blocked = self.engine.evaluate({
+            "type": "multiclass", "new_class": "paladino",
+            "ability_scores": {"forca": 12, "destreza": 10, "constituicao": 10,
+                                "inteligencia": 10, "sabedoria": 10, "carisma": 12},
+        })
+        self.assertEqual(blocked.outcome["resultado"], "bloqueado")
+
 
 if __name__ == "__main__":
     unittest.main()

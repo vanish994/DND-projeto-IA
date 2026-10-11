@@ -28,6 +28,10 @@ O núcleo do Bloco 4 foi iniciado com cálculo de CA, armaduras, escudos, profic
 
 Ainda faltam descrições completas dos efeitos individuais das 390 magias, fabricação detalhada por ferramenta, veículos, listas de equipamentos iniciais por classe/origem, progressão de espaços por classe e todas as regras de maestria em resolução de ataque.
 
+## Bloco 5 — criação de personagens, classes e subclasses
+
+O núcleo foi iniciado com nove espécies, doze classes, subclasses a partir do nível 3, matriz padrão, compra por pontos, validação de atributos, criação de ficha, Bônus de Proficiência, Dados de Vida, progressão de nível, escolhas de Aumento de Atributo/Talento e pré-requisitos de multiclasse. Ainda faltam os traços completos de cada espécie, antecedentes, características individuais das doze classes, subclasses, talentos completos, progressão detalhada de espaços e equipamento inicial.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.
