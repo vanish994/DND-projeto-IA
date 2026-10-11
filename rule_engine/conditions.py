@@ -1,4 +1,4 @@
-"""Estado persistente e efeitos das 16 condições do Livro do Jogador 2024."""
+"""Estado persistente e efeitos das 15 condições do Livro do Jogador 2024."""
 from __future__ import annotations
 from dataclasses import dataclass, field
 import unicodedata
