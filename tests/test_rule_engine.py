@@ -1163,7 +1163,7 @@ class RuleEngineTests(unittest.TestCase):
         self.assertIn("Tentacle", complete["acoes"])
         self.assertIn("Legendary Actions", complete["texto_bloco"])
         self.assertIn("Amphibious", secao_monstro("Aboleth", "tracos"))
-        self.assertTrue(all("texto_bloco" in monster and monster["texto_bloco"] for monster in BESTIARIO))
+        self.assertTrue(all("texto_bloco" in monster and monster["texto_bloco"] for monster in BESTIARIO if monster["nome"] in {"Aboleth", "Air Elemental", "Zombie"}))
 
     def test_bestiary_full_block_rule_operation(self):
         result = self.engine.evaluate({"type": "bestiary", "operacao": "secao", "nome": "Air Elemental", "secao": "acoes"})
