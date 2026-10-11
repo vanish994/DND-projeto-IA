@@ -57,6 +57,22 @@ class BestiarySrdIntegrationTests(unittest.TestCase):
         self.assertEqual(resultado["dano"], 7)
         self.assertEqual(resultado["aplicacao"], "resistencia_e_vulnerabilidade_canceladas")
 
+    def test_ataque_com_dano_fixo_e_extraido_sem_inventar_dados(self):
+        from backend.app import _extrair_ataques_monstro
+
+        monstro = {
+            "acoes": [{
+                "nome": "Touch",
+                "desc": "Melee Spell Attack: +4 to hit, reach 5 ft., one target. Hit: 5 necrotic damage."
+            }]
+        }
+        ataques = _extrair_ataques_monstro(monstro)
+        self.assertEqual(len(ataques), 1)
+        self.assertEqual(ataques[0]["dano"], "5")
+        self.assertTrue(ataques[0]["dano_fixo"])
+        self.assertEqual(ataques[0]["dano_medio"], 5)
+        self.assertEqual(ataques[0]["tipo_dano"], "necrotic")
+
     def test_multiataque_expande_apenas_sequencias_sem_alternativas(self):
         from backend.app import _expandir_multiataque
 
