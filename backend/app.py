@@ -1952,24 +1952,47 @@ def atacar_com_monstro_tatico(
                         duracao_condicao = "até o fim do próximo turno"
                     elif "until the start of its next turn" in efeito_texto:
                         duracao_condicao = "até o início do próximo turno"
+                    texto_salvaguarda_repetida = any(frase in efeito_texto for frase in (
+                        "repeat the saving throw at the end of each of its turns",
+                        "repeat the save at the end of each of its turns",
+                        "repeats the saving throw at the end of each of its turns",
+                    ))
                     if alvo["kind"] == "hero":
                         ficha_condicionada = repo.obter_personagem(jogador, campanha_id, alvo["character_id"])
                         if ficha_condicionada:
                             estado_condicionado = _condicoes_da_ficha(ficha_condicionada)
                             for condicao in condicoes_aplicar:
                                 estado_condicionado.aplicar(condicao, duracao_condicao)
-                            _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha_condicionada, estado_condicionado)
+                            ficha_condicionada = _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha_condicionada, estado_condicionado)
+                            metadados_salvaguarda = dict(ficha_condicionada.get("salvaguardas_fim_condicoes") or {})
+                            for condicao in condicoes_aplicar:
+                                if texto_salvaguarda_repetida:
+                                    metadados_salvaguarda[normalizar_condicao(condicao)] = {
+                                        "atributo": atributo_pt, "cd": dc_efeito,
+                                    }
+                                else:
+                                    metadados_salvaguarda.pop(normalizar_condicao(condicao), None)
+                            dados_ficha_condicionada = {k: v for k, v in ficha_condicionada.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+                            dados_ficha_condicionada["salvaguardas_fim_condicoes"] = metadados_salvaguarda
+                            repo.atualizar_dados_ficha(jogador, campanha_id, alvo["character_id"], dados_ficha_condicionada)
                     else:
                         estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
                         for token_bruto in estado_bruto.get("tokens", []):
                             if token_bruto.get("id") == alvo["id"]:
                                 condicoes_atuais = token_bruto.setdefault("conditions", [])
                                 duracoes_atuais = token_bruto.setdefault("condition_durations", {})
+                                saves_fim = token_bruto.setdefault("condition_save_to_end", {})
                                 for condicao in condicoes_aplicar:
                                     if condicao not in condicoes_atuais:
                                         condicoes_atuais.append(condicao)
                                     if duracao_condicao:
                                         duracoes_atuais[condicao] = duracao_condicao
+                                    if texto_salvaguarda_repetida:
+                                        saves_fim[normalizar_condicao(condicao)] = {
+                                            "atributo": atributo_pt, "cd": dc_efeito,
+                                        }
+                                    else:
+                                        saves_fim.pop(normalizar_condicao(condicao), None)
                         repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
                     efeito["condicoes_aplicadas"] = condicoes_aplicar
                     efeito["duracao_texto"] = duracao_condicao or efeito_texto
