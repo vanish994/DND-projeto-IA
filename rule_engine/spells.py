@@ -106,7 +106,8 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
 
 
 def _aplicar_escalonamento_mecanico(nome: str, magia: dict[str, Any], aumento: int) -> dict[str, Any] | None:
-    base = MECANICAS_MAGIA.get(_normalizar_nome_magia(nome))
+    chave_normalizada = _normalizar_nome_magia(nome)
+    base = next((mecanica for chave, mecanica in MECANICAS_MAGIA.items() if _normalizar_nome_magia(chave) == chave_normalizada), None)
     if base is None:
         return None
     mecanica = dict(base)
