@@ -30,8 +30,25 @@ CLASSES = {
     "feiticeiro": {"dado_vida": 6, "atributo_primario": "carisma"},
     "bruxo": {"dado_vida": 8, "atributo_primario": "carisma"},
     "mago": {"dado_vida": 6, "atributo_primario": "inteligencia"},
+    "artifice": {"dado_vida": 8, "atributo_primario": "inteligencia"},
 }
-SUBCLASSES = {classe: {"nivel": 3} for classe in CLASSES}
+SUBCLASSES = {classe: {"nivel": 3, "nomes": set()} for classe in CLASSES}
+SUBCLASSES["artifice"]["nomes"].update({"reanimador"})
+SUBCLASSES["bardo"]["nomes"].update({"colegio_dos_espiritos"})
+SUBCLASSES["clerigo"]["nomes"].update({"dominio_da_sepultura"})
+SUBCLASSES["guardiao"]["nomes"].update({"guardiao_oculto"})
+SUBCLASSES["ladino"]["nomes"].update({"fantasma"})
+SUBCLASSES["feiticeiro"]["nomes"].update({"feiticaria_das_sombras"})
+SUBCLASSES["bruxo"]["nomes"].update({"patrono_morto_vivo"})
+SUBCLASSES_RAVENLOFT = {
+    "reanimador": {"classe": "artifice", "nivel": 3},
+    "colegio_dos_espiritos": {"classe": "bardo", "nivel": 3},
+    "dominio_da_sepultura": {"classe": "clerigo", "nivel": 3},
+    "guardiao_oculto": {"classe": "guardiao", "nivel": 3},
+    "fantasma": {"classe": "ladino", "nivel": 3},
+    "feiticaria_das_sombras": {"classe": "feiticeiro", "nivel": 3},
+    "patrono_morto_vivo": {"classe": "bruxo", "nivel": 3},
+}
 TALENTOS = {
     "alerta", "artista", "atacante_selvagem", "curandeiro", "defensivo",
     "especialista_em_armaduras_leves", "especialista_em_armaduras_medias",
@@ -95,8 +112,15 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         raise ValueError("O nível deve estar entre 1 e 20")
     atributos = validar_atributos(fatos["ability_scores"])
     subclasse = fatos.get("subclass")
-    if subclasse and nivel < SUBCLASSES[classe]["nivel"]:
-        raise ValueError("A subclasse só pode ser escolhida no nível adequado")
+    if subclasse:
+        subclasse = str(subclasse).lower()
+        if nivel < SUBCLASSES[classe]["nivel"]:
+            raise ValueError("A subclasse só pode ser escolhida no nível adequado")
+        conhecida = subclasse in SUBCLASSES[classe]["nomes"]
+        # Subclasses não detalhadas ainda permanecem aceitas para permitir a expansão
+        # progressiva do catálogo das classes do Livro do Jogador.
+        if subclasse in SUBCLASSES_RAVENLOFT and SUBCLASSES_RAVENLOFT[subclasse]["classe"] != classe:
+            raise ValueError("A subclasse não pertence à classe escolhida")
     talentos = set(fatos.get("feats", ()))
     if not talentos <= TALENTOS:
         raise ValueError("Talento inválido")
@@ -133,6 +157,7 @@ def resolver_multiclasse(fatos: Mapping[str, Any]) -> dict[str, Any]:
         "monge": {"destreza": 13, "sabedoria": 13}, "ladino": {"destreza": 13},
         "bardo": {"carisma": 13}, "clerigo": {"sabedoria": 13}, "druida": {"sabedoria": 13},
         "feiticeiro": {"carisma": 13}, "bruxo": {"carisma": 13}, "mago": {"inteligencia": 13},
+        "artifice": {"inteligencia": 13},
     }[classe]
     valido = all(atributos[nome] >= valor for nome, valor in requisitos.items())
     return {"resultado": "permitido" if valido else "bloqueado", "requisitos": requisitos}

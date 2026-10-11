@@ -25,7 +25,7 @@ from .magic_equipment import (
     resolver_duas_armas,
 )
 from .catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS, CATALOGO_EQUIPAMENTOS, CATALOGO_MAGIAS, buscar_catalogo, listar_catalogo
-from .character import CLASSES, ESPECIES, SUBCLASSES, TALENTOS, Personagem, criar_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao, resolver_multiclasse, resolver_progressao
+from .character import CLASSES, ESPECIES, SUBCLASSES, SUBCLASSES_RAVENLOFT, TALENTOS, Personagem, criar_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao, resolver_multiclasse, resolver_progressao
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -51,7 +51,7 @@ __all__ = [
     "resolver_duas_armas",
     "CATALOGO_ARMAS", "CATALOGO_ARMADURAS", "CATALOGO_EQUIPAMENTOS", "CATALOGO_MAGIAS",
     "buscar_catalogo", "listar_catalogo",
-    "CLASSES", "ESPECIES", "SUBCLASSES", "TALENTOS", "Personagem", "criar_personagem",
+    "CLASSES", "ESPECIES", "SUBCLASSES", "SUBCLASSES_RAVENLOFT", "TALENTOS", "Personagem", "criar_personagem",
     "gerar_atributos_compra_pontos", "gerar_atributos_matriz_padrao", "resolver_multiclasse",
     "resolver_progressao",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",

@@ -32,6 +32,8 @@ Ainda faltam descrições completas dos efeitos individuais das 390 magias, fabr
 
 O núcleo foi iniciado com nove espécies, doze classes, subclasses a partir do nível 3, matriz padrão, compra por pontos, validação de atributos, criação de ficha, Bônus de Proficiência, Dados de Vida, progressão de nível, escolhas de Aumento de Atributo/Talento e pré-requisitos de multiclasse. Ainda faltam os traços completos de cada espécie, antecedentes, características individuais das doze classes, subclasses, talentos completos, progressão detalhada de espaços e equipamento inicial.
 
+Correção de cobertura: Artífice foi adicionado como décima terceira classe, com Dado de Vida d8, Inteligência como atributo principal e requisito de Inteligência 13 para multiclasse. Também foram catalogadas as sete subclasses apresentadas em *Ravenloft*: Reanimador (Artífice), Colégio dos Espíritos (Bardo), Domínio da Sepultura (Clérigo), Guardião Oculto (Guardião), Fantasma (Ladino), Feitiçaria das Sombras (Feiticeiro) e Patrono Morto-Vivo (Bruxo), todas disponíveis a partir do nível 3.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

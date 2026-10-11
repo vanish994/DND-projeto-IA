@@ -665,6 +665,36 @@ class RuleEngineTests(unittest.TestCase):
         })
         self.assertEqual(blocked.outcome["resultado"], "bloqueado")
 
+    def test_artificer_is_a_playable_class(self):
+        from rule_engine import CLASSES
+        self.assertEqual(CLASSES["artifice"]["dado_vida"], 8)
+        result = self.engine.evaluate({
+            "type": "character_creation", "name": "Nilo", "species": "gnomo",
+            "class": "artifice", "level": 1,
+            "ability_scores": {"forca": 8, "destreza": 14, "constituicao": 13,
+                                "inteligencia": 15, "sabedoria": 10, "carisma": 10},
+        })
+        self.assertEqual(result.outcome["resultado"], "criado")
+
+    def test_ravenloft_subclasses_are_available_at_level_three(self):
+        from rule_engine import SUBCLASSES_RAVENLOFT
+        self.assertEqual(len(SUBCLASSES_RAVENLOFT), 7)
+        cases = [
+            ("artifice", "reanimador"), ("bardo", "colegio_dos_espiritos"),
+            ("clerigo", "dominio_da_sepultura"), ("guardiao", "guardiao_oculto"),
+            ("ladino", "fantasma"), ("feiticeiro", "feiticaria_das_sombras"),
+            ("bruxo", "patrono_morto_vivo"),
+        ]
+        scores = {"forca": 13, "destreza": 13, "constituicao": 13,
+                  "inteligencia": 13, "sabedoria": 13, "carisma": 13}
+        for classe, subclasse in cases:
+            result = self.engine.evaluate({
+                "type": "character_creation", "name": "Teste", "species": "humano",
+                "class": classe, "level": 3, "subclass": subclasse,
+                "ability_scores": scores,
+            })
+            self.assertEqual(result.outcome["resultado"], "criado")
+
 
 if __name__ == "__main__":
     unittest.main()
