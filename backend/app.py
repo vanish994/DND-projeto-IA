@@ -552,11 +552,44 @@ def atualizar_magias_personagem(
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
     ficha = {k: v for k, v in personagem.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+    espacos_totais = {str(k): int(v) for k, v in dados.espacos_totais.items()}
+    conjuracao_anterior = personagem.get("conjuracao") or {}
+    restantes_anteriores = conjuracao_anterior.get("espacos_restantes") or {}
+    if conjuracao_anterior.get("espacos_totais") == espacos_totais and restantes_anteriores:
+        espacos_restantes = {
+            circulo: max(0, min(total, int(restantes_anteriores.get(circulo, total))))
+            for circulo, total in espacos_totais.items() if total > 0
+        }
+    else:
+        espacos_restantes = {circulo: total for circulo, total in espacos_totais.items() if total > 0}
     ficha["conjuracao"] = {
         "truques": truques,
         "magias_preparadas": preparadas,
-        "espacos_totais": dados.espacos_totais,
+        "espacos_totais": espacos_totais,
+        "espacos_restantes": espacos_restantes,
     }
+    atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, ficha)
+    if atualizado is None:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return atualizado
+
+
+@app.post("/v1/campanhas/{campanha_id}/personagens/{personagem_id}/descanso-longo")
+def recuperar_espacos_descanso_longo(
+    campanha_id: str,
+    personagem_id: str,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    personagem = _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+    ficha = {
+        k: v for k, v in personagem.items()
+        if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}
+    }
+    conjuracao = dict(ficha.get("conjuracao") or {})
+    totais = {str(k): int(v) for k, v in (conjuracao.get("espacos_totais") or {}).items() if int(v) > 0}
+    conjuracao["espacos_restantes"] = dict(totais)
+    ficha["conjuracao"] = conjuracao
     atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, ficha)
     if atualizado is None:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
