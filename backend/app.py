@@ -1268,7 +1268,7 @@ def atacar_com_monstro_tatico(
         texto_acao = str(selecionado["texto"])
         import re
         save_match = re.search(
-            r"must succeed on a DC (\\d+) (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw or (.*?)(?:\\.|$)",
+            r"must succeed on a DC (\d+) (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw or (.*?)(?:\.|$)",
             texto_acao, re.I,
         )
         if save_match:
