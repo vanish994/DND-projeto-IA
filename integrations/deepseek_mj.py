@@ -134,20 +134,21 @@ class DeepSeekMJ:
 
     def __init__(self, client: Any | None = None, *, model: str | None = None):
         _carregar_env_local()
-        self.uses_tokenharbor = bool(os.getenv("TOKENHARBOR_API_KEY"))
-        default_model = "deepseek-v4.1-flash:free" if os.getenv("TOKENHARBOR_API_KEY") else "deepseek-flash"
+        # Prefere a API oficial DeepSeek; mantém TokenHarbor apenas como fallback legado.
+        deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        tokenharbor_key = os.getenv("TOKENHARBOR_API_KEY")
+        self.uses_tokenharbor = bool(not deepseek_key and tokenharbor_key)
+        default_model = "deepseek-v4.1-flash:free" if self.uses_tokenharbor else "deepseek-chat"
         if client is None:
             from openai import OpenAI
 
-            tokenharbor_key = os.getenv("TOKENHARBOR_API_KEY")
-            deepseek_key = os.getenv("DEEPSEEK_API_KEY")
-            api_key = tokenharbor_key or deepseek_key
+            api_key = deepseek_key or tokenharbor_key
             if not api_key:
-                raise RuntimeError("Defina TOKENHARBOR_API_KEY ou DEEPSEEK_API_KEY")
-            if tokenharbor_key:
-                base_url = os.getenv("TOKENHARBOR_BASE_URL", "https://tokenharbor.ai/v1")
-            else:
+                raise RuntimeError("Defina DEEPSEEK_API_KEY (API oficial) ou TOKENHARBOR_API_KEY (legado)")
+            if deepseek_key:
                 base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+            else:
+                base_url = os.getenv("TOKENHARBOR_BASE_URL", "https://tokenharbor.ai/v1")
             client = OpenAI(
                 api_key=api_key,
                 base_url=base_url,
