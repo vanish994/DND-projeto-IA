@@ -333,10 +333,28 @@
         el('dt', {textContent: 'Armaduras'}), el('dd', {textContent: (p.proficiencias_classe?.armaduras || []).map(nome).join(', ') || '—'}),
         el('dt', {textContent: 'Ferramentas'}), el('dd', {textContent: [...(p.proficiencias_classe?.ferramentas || []), p.ferramenta].filter(Boolean).join(', ') || '—'}))));
 
-    if (p.equipamento_antecedente) {
+    if (p.heranca_draconica) {
+      const heranca = p.heranca_draconica;
+      const sopro = heranca.sopro || {};
+      caixa.append(painel('Herança Dracônica',
+        el('p', {className: 'linha-resumo', textContent: heranca.linhagem}),
+        el('div', {className: 'chips'},
+          chipDado(String(sopro.dado || '1d10'), `Sopro · ${sopro.tipo_dano}`, 'chip-magia'),
+          chipDado(`CD ${sopro.cd}`, `Salvaguarda de ${String(sopro.salvaguarda || '').toLocaleLowerCase('pt-BR')}`, 'chip-magia'),
+          chipDado(`${sopro.usos} uso(s)`, 'Recarga: descanso longo', 'chip-dano')),
+        meta(`Formas: ${(sopro.formas || []).join(' ou ')}.`),
+        meta(`Resistência a ${heranca.resistencia}. ${heranca.fonte}.`)));
+    }
+
+    if (p.equipamento_antecedente?.A) {
+      const equipamento = p.equipamento_antecedente;
+      const escolha = String(equipamento.escolha || '').toUpperCase();
       caixa.append(painel('Equipamento inicial do antecedente',
-        meta(`Opção A: ${p.equipamento_antecedente.A}`),
-        meta(`Opção B: ${p.equipamento_antecedente.B}`)));
+        escolha
+          ? meta(`Opção escolhida: ${escolha} — ${equipamento[escolha]}`)
+          : el('p', {className: 'form-error', textContent: 'Nenhuma opção escolhida.'}),
+        escolha ? meta(`Opção recusada: ${escolha === 'A' ? `B (${equipamento.B})` : `A (${equipamento.A})`}`)
+          : meta(`Opção A: ${equipamento.A} · Opção B: ${equipamento.B}`)));
     }
 
     const apagar = el('button', {type: 'button', className: 'danger-button', textContent: 'Apagar personagem'});
