@@ -197,12 +197,12 @@ class BackendMapaTaticoTests(unittest.TestCase):
                 "title": "Teste de área", "terrain": "forest",
                 "tokens": [
                     {"id": "heroi-vex", "kind": "hero", "character_id": self.hero["id"], "x": 1, "y": 1},
-                    {"id": "aliado-teste", "kind": "hero", "character_id": self.hero["id"], "x": 2, "y": 1},
+                    {"id": "inimigo-bandido", "kind": "enemy", "monster_name": "Bandit", "x": 2, "y": 1},
                 ],
             })
             self.assertEqual(response.status_code, 200, response.text)
             response = self.client.post(self.url + "/conjurar", headers=self.headers, json={
-                "atacante_id": "heroi-vex", "alvo_id": "aliado-teste", "magia": "Onda Trovejante",
+                "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandido", "magia": "Onda Trovejante",
             })
             self.assertEqual(response.status_code, 200, response.text)
             body = response.json()
@@ -225,6 +225,18 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertIn(body["ataque"]["result"], {"hit", "miss"})
         self.assertGreaterEqual(body["dano"], 0)
         self.assertEqual(body["bonus_ataque"], 3)
+
+    def test_parser_ignora_acao_sem_mecanica_de_ataque(self):
+        ataques = backend_app._extrair_ataques_monstro({"acoes": [
+            {"nome": "Multiattack", "desc": "The creature makes two attacks."},
+            {"nome": "Bite", "desc": "Melee Attack Roll: +4, reach 5 ft. Hit: 7 (2d4 + 2) Piercing damage."},
+        ]})
+        self.assertEqual(len(ataques), 1)
+        self.assertEqual(ataques[0]["nome"], "Bite")
+        self.assertEqual(ataques[0]["bonus_ataque"], 4)
+        self.assertEqual(ataques[0]["dano"], "2d4+2")
+        self.assertEqual(ataques[0]["alcance_corpo_a_corpo"], 5)
+
 
     def test_ataque_fora_de_alcance_e_rejeitado(self):
         self.save_encounter(hero_x=1, hero_y=1, enemy_x=5, enemy_y=1)
