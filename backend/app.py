@@ -879,6 +879,7 @@ def atacar_token_tatico(
     geometria = resolver_ataque_tatico({
         "distancia": distancia_pes, "alcance": alcance_tatico, "alcance_maximo": alcance_tatico if ataque_a_distancia else None,
         "ataque_a_distancia": ataque_a_distancia,
+        "desvantagem": bool(ataque_a_distancia and distancia_pes <= 5 and alvo["kind"] == "enemy"),
         "origem": (int(atacante["x"]), int(atacante["y"])),
         "alvo": (int(alvo["x"]), int(alvo["y"])),
         "atacante": (int(atacante["x"]), int(atacante["y"])),
@@ -1042,8 +1043,9 @@ def conjurar_no_mapa_tatico(
     if mecanica.get("tipo") == "ataque_magico":
         alcance_pes = 120 if chave_magia == "raio de fogo" else round(float(mecanica.get("alcance_m", 0)) * 3.28084)
         geometria = resolver_ataque_tatico({
-            "distancia": distancia_pes, "alcance": 5, "alcance_maximo": alcance_pes,
+            "distancia": distancia_pes, "alcance": alcance_pes, "alcance_maximo": alcance_pes,
             "ataque_a_distancia": True,
+            "desvantagem": bool(distancia_pes <= 5 and alvo["kind"] == "enemy"),
             "origem": (int(conjurador["x"]), int(conjurador["y"])),
             "alvo": (int(alvo["x"]), int(alvo["y"])),
             "atacante": (int(conjurador["x"]), int(conjurador["y"])),
