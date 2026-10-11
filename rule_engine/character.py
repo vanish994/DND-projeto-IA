@@ -74,6 +74,14 @@ PERICIAS_CLASSE_OPCOES = {
     "mago": {"arcanismo", "historia", "intuicao", "investigacao", "medicina", "religiao"},
     "artifice": {"arcanismo", "historia", "investigacao", "medicina", "natureza", "percepcao", "prestidigitacao"},
 }
+FERRAMENTAS_ARTESAO = {
+    "Suprimentos de Alquimista", "Suprimentos de Cervejeiro", "Suprimentos de Calígrafo",
+    "Ferramentas de Carpinteiro", "Ferramentas de Cartógrafo", "Ferramentas de Sapateiro",
+    "Utensílios de Cozinheiro", "Ferramentas de Vidreiro", "Ferramentas de Joalheiro",
+    "Ferramentas de Coureiro", "Ferramentas de Pedreiro", "Suprimentos de Pintor",
+    "Ferramentas de Oleiro", "Ferramentas de Ferreiro", "Ferramentas de Funileiro",
+    "Ferramentas de Tecelão", "Ferramentas de Entalhador",
+}
 QUANTIDADE_PERICIAS_CLASSE = {
     "barbaro": 2, "bardo": 3, "clerigo": 2, "druida": 2, "guerreiro": 2,
     "monge": 2, "paladino": 2, "guardiao": 3, "ladino": 4,
@@ -110,6 +118,7 @@ class Personagem:
     classes_multiclasse: dict[str, int] = field(default_factory=dict)
     escolhas_talentos: dict[str, str] = field(default_factory=dict)
     pericias_classe: set[str] = field(default_factory=set)
+    ferramenta_artesao: str | None = None
 
     @property
     def bonus_proficiencia(self) -> int:
@@ -181,6 +190,13 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         invalidas = pericias_classe - PERICIAS_CLASSE_OPCOES[classe]
         if invalidas:
             raise ValueError("Perícia não disponível para esta classe: " + ", ".join(sorted(invalidas)))
+    ferramenta_artesao = fatos.get("artisan_tool_proficiency", fatos.get("ferramenta_artesao"))
+    if ferramenta_artesao:
+        ferramenta_artesao = str(ferramenta_artesao).strip()
+        if classe != "artifice" or ferramenta_artesao not in FERRAMENTAS_ARTESAO:
+            raise ValueError("Ferramenta de artesão inválida para esta classe")
+    elif classe == "artifice" and ("class_skill_proficiencies" in fatos or "pericias_classe" in fatos):
+        raise ValueError("Escolha um tipo de Ferramentas de Artesão para o Artífice")
     antecedente = str(fatos.get("background", "")).strip().lower()
     if antecedente in ANTECEDENTES:
         if "background_increases" in fatos:
@@ -198,7 +214,7 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         nome=str(fatos["name"]).strip(), especie=especie, classe=classe, nivel=nivel,
         atributos=atributos, antecedente=antecedente,
         subclasse=subclasse, talentos=talentos, escolhas_talentos=escolhas,
-        pericias_classe=pericias_classe,
+        pericias_classe=pericias_classe, ferramenta_artesao=ferramenta_artesao,
     )
 
 
@@ -254,8 +270,15 @@ def ficha_personagem(personagem: Personagem) -> dict[str, Any]:
         "pericias_classe": pericias_classe,
         "quantidade_pericias_classe": QUANTIDADE_PERICIAS_CLASSE[personagem.classe],
         "proficiencias_salvaguarda": list(PROFICIENCIAS_SALVAGUARDA_CLASSE[personagem.classe]),
-        "proficiencias_classe": dict(PROFICIENCIAS_CLASSE.get(personagem.classe, {})),
-        "proficiencias_pendentes": len(pericias_classe) != QUANTIDADE_PERICIAS_CLASSE[personagem.classe],
+        "proficiencias_classe": {
+            **dict(PROFICIENCIAS_CLASSE.get(personagem.classe, {})),
+            **({"ferramentas": ["Ferramentas de Ladrão", "Ferramentas de Funileiro", *([personagem.ferramenta_artesao] if personagem.ferramenta_artesao else [])]} if personagem.classe == "artifice" else {}),
+        },
+        "ferramenta_artesao": personagem.ferramenta_artesao,
+        "proficiencias_pendentes": (
+            len(pericias_classe) != QUANTIDADE_PERICIAS_CLASSE[personagem.classe]
+            or (personagem.classe == "artifice" and not personagem.ferramenta_artesao)
+        ),
         "ferramenta": antecedente["ferramenta"] if antecedente else None,
         "equipamento_antecedente": antecedente["equipamento"] if antecedente else None,
     }
