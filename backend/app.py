@@ -191,7 +191,6 @@ class AtualizarCondicaoPersonagem(BaseModel):
 
 class SalvaguardaFimTurno(BaseModel):
     condicao: str = Field(min_length=1, max_length=40)
-    rolagem: int = Field(ge=1, le=20)
     modificador: int = Field(ge=-30, le=30)
     cd: int = Field(ge=1, le=50)
 
@@ -1057,18 +1056,65 @@ def avancar_turno_tatico(
         if token_bruto_atual:
             duracoes_encerradas.extend(_expirar_duracoes_textuais_token(token_bruto_atual, "fim"))
             duracoes_encerradas.extend(_reduzir_duracoes_numericas_token(token_bruto_atual))
-    # Resolve explicit saves-to-end effects at the end of the active creature's turn.
-    # The effect must request the save; ordinary timed conditions are not guessed.
+    # Resolve saves-to-end effects registered on the creature. The effect that
+    # applies a condition stores metadata in condition_save_to_end:
+    # {condition: {"ability": "wis", "dc": 13}}. Roll is server-side.
     salvaguardas_resolvidas = []
+    if token_atual:
+        ficha_atual = None
+        token_bruto_atual = next((t for t in bruto.get("tokens", []) if t.get("id") == token_atual["id"]), None)
+        if token_atual["kind"] == "hero":
+            ficha_atual = repo.obter_personagem(jogador, campanha_id, token_atual["character_id"])
+            configuracoes = (ficha_atual or {}).get("salvaguardas_fim_condicoes") or {}
+            estado_condicoes = _condicoes_da_ficha(ficha_atual) if ficha_atual else None
+            condicoes_ativas = estado_condicoes.ativas if estado_condicoes else set()
+        else:
+            configuracoes = (token_bruto_atual or {}).get("condition_save_to_end") or {}
+            condicoes_ativas = {normalizar_condicao(c) for c in ((token_bruto_atual or {}).get("conditions") or [])}
+        for nome_condicao, config in configuracoes.items():
+            condicao = normalizar_condicao(nome_condicao)
+            if condicao not in condicoes_ativas or not isinstance(config, dict):
+                continue
+            cd = config.get("dc")
+            modificador = config.get("modifier", config.get("modificador", 0))
+            if isinstance(cd, bool) or not isinstance(cd, int) or not 1 <= cd <= 50:
+                continue
+            if isinstance(modificador, bool) or not isinstance(modificador, int) or not -30 <= modificador <= 30:
+                continue
+            rolagem = secrets.randbelow(20) + 1
+            total = rolagem + modificador
+            sucesso = total >= cd
+            if sucesso:
+                if estado_condicoes:
+                    estado_condicoes.remover(condicao)
+                    _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha_atual, estado_condicoes)
+                elif token_bruto_atual:
+                    token_bruto_atual["conditions"] = [
+                        c for c in token_bruto_atual.get("conditions", [])
+                        if normalizar_condicao(c) != condicao
+                    ]
+                    duracoes = token_bruto_atual.get("condition_durations") or {}
+                    for chave in list(duracoes):
+                        if normalizar_condicao(chave) == condicao:
+                            duracoes.pop(chave, None)
+                    token_bruto_atual["condition_durations"] = duracoes
+                    (token_bruto_atual.get("condition_save_to_end") or {}).pop(nome_condicao, None)
+            salvaguardas_resolvidas.append({
+                "token_id": token_atual["id"], "condicao": condicao,
+                "rolagem": rolagem, "modificador": modificador, "total": total, "cd": cd,
+                "resultado": "encerrada" if sucesso else "continua", "encerrada": sucesso,
+                "automatica": True,
+            })
     for tentativa in (pedido.salvaguardas if pedido else []):
         condicao = normalizar_condicao(tentativa.condicao)
+        rolagem = secrets.randbelow(20) + 1
         if token_atual and token_atual["kind"] == "hero":
             ficha = repo.obter_personagem(jogador, campanha_id, token_atual["character_id"])
             if not ficha:
                 continue
             condicoes = _condicoes_da_ficha(ficha)
             resultado_save = condicoes.encerrar_por_salvaguarda(
-                condicao, tentativa.rolagem, tentativa.modificador, tentativa.cd
+                condicao, rolagem, tentativa.modificador, tentativa.cd
             )
             if resultado_save.get("encerrada"):
                 _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, condicoes)
@@ -1097,7 +1143,7 @@ def avancar_turno_tatico(
                 token_bruto_atual["condition_durations"] = duracoes
             salvaguardas_resolvidas.append({
                 "token_id": token_atual["id"], "condicao": condicao,
-                "rolagem": tentativa.rolagem, "modificador": tentativa.modificador,
+                "rolagem": rolagem, "modificador": tentativa.modificador,
                 "total": total, "cd": tentativa.cd,
                 "resultado": "encerrada" if sucesso else "continua",
                 "encerrada": sucesso,
