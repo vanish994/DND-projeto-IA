@@ -183,11 +183,17 @@ class AtualizarEquipamentoPersonagem(BaseModel):
     escudo: bool = False
 
 
+class SalvaguardaCondicaoFimTurno(BaseModel):
+    cd: int = Field(ge=1, le=50)
+    atributo: str = Field(pattern="^(forca|destreza|constituicao|inteligencia|sabedoria|carisma)$")
+
+
 class AtualizarCondicaoPersonagem(BaseModel):
     operacao: str = Field(pattern="^(apply|remove|tick|query)$")
     condicao: str | None = Field(default=None, max_length=40)
     duracao: int | str | None = None
     unidades: int = Field(default=1, ge=1, le=100)
+    salvaguarda_fim_turno: SalvaguardaCondicaoFimTurno | None = None
 
 class SalvaguardaFimTurno(BaseModel):
     condicao: str = Field(min_length=1, max_length=40)
@@ -845,7 +851,21 @@ def atualizar_condicoes_personagem(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if pedido.operacao in {"apply", "remove", "tick"}:
         ficha = _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, estado)
-    return {"personagem_id": personagem_id, "condicoes_ativas": sorted(estado.ativas), "duracoes": dict(estado.duracoes), "exaustao_nivel": estado.exaustao, "resolucao": resultado}
+        metadados = dict(ficha.get("salvaguardas_fim_condicoes") or {})
+        if pedido.operacao == "apply" and pedido.condicao:
+            chave_condicao = normalizar_condicao(pedido.condicao)
+            if pedido.salvaguarda_fim_turno:
+                metadados[chave_condicao] = pedido.salvaguarda_fim_turno.model_dump()
+            else:
+                metadados.pop(chave_condicao, None)
+        elif pedido.operacao == "remove" and pedido.condicao:
+            metadados.pop(normalizar_condicao(pedido.condicao), None)
+        elif pedido.operacao == "tick":
+            metadados = {k: v for k, v in metadados.items() if normalizar_condicao(k) in estado.ativas}
+        dados_ficha = {k: v for k, v in ficha.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+        dados_ficha["salvaguardas_fim_condicoes"] = metadados
+        ficha = repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, dados_ficha) or ficha
+    return {"personagem_id": personagem_id, "condicoes_ativas": sorted(estado.ativas), "duracoes": dict(estado.duracoes), "salvaguardas_fim_condicoes": ficha.get("salvaguardas_fim_condicoes", {}), "exaustao_nivel": estado.exaustao, "resolucao": resultado}
 
 
 def _calcular_ca_ficha(personagem: dict) -> int:
@@ -1075,8 +1095,29 @@ def avancar_turno_tatico(
             condicao = normalizar_condicao(nome_condicao)
             if condicao not in condicoes_ativas or not isinstance(config, dict):
                 continue
-            cd = config.get("dc")
-            modificador = config.get("modifier", config.get("modificador", 0))
+            cd = config.get("dc", config.get("cd"))
+            modificador = config.get("modifier", config.get("modificador"))
+            atributo = config.get("ability", config.get("atributo"))
+            if atributo:
+                aliases_atributo = {"str": "forca", "dex": "destreza", "con": "constituicao", "int": "inteligencia", "wis": "sabedoria", "cha": "carisma"}
+                atributo = aliases_atributo.get(str(atributo).lower(), str(atributo).lower())
+                if atributo not in {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"}:
+                    continue
+                if ficha_atual:
+                    modificador = int((ficha_atual.get("modificadores") or {}).get(atributo, 0))
+                    profs = ficha_atual.get("proficiencias_salvaguarda") or ficha_atual.get("proficiencias_salvacao") or []
+                    if isinstance(profs, str):
+                        profs = [profs]
+                    if atributo in {str(p).casefold() for p in profs}:
+                        modificador += int(ficha_atual.get("bonus_proficiencia", 2))
+                else:
+                    from rule_engine.bestiary import consultar_monstro
+                    monstro_salva = consultar_monstro((token_bruto_atual or {}).get("monster_name", ""))
+                    if not monstro_salva:
+                        continue
+                    bonus_salvas = monstro_salva.get("salvaguardas") or {}
+                    mods_salvas = monstro_salva.get("modificadores") or {}
+                    modificador = int(bonus_salvas.get(atributo, mods_salvas.get(atributo, 0)))
             if isinstance(cd, bool) or not isinstance(cd, int) or not 1 <= cd <= 50:
                 continue
             if isinstance(modificador, bool) or not isinstance(modificador, int) or not -30 <= modificador <= 30:
