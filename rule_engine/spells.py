@@ -32,6 +32,7 @@ _DETALHADAS = {
     "onda trovejante": (1, "evocação", "V, S", False, "2d8 dano trovejante; cubo de 4,5m; salvaguarda de Constituição reduz à metade; falha empurra 3m", {"dano": "+1d8 por círculo"}),
     "armadura arcana": (1, "abjuração", "V, S, M (um pedaço de couro curtido)", False, "CA base 13 + modificador de Destreza por 8 horas; alvo voluntário sem armadura", {}),
     "benção": (1, "encantamento", "V, S, M (uma gota de água benta)", True, "até três criaturas adicionam 1d4", {"alvos": "+1 por círculo"}),
+    "escudo da fé": (1, "abjuração", "V, S, M (um pergaminho com texto sagrado)", True, "+2 CA para uma criatura; duração de até 10 minutos; ação bônus", {}),
     "raio místico": (0, "evocação", "V, S", False, "1d10 dano energético", {"raios": "+1 nos níveis 5, 11 e 17"}),
     "bola de fogo": (3, "evocação", "V, S, M (uma bola de guano de morcego e enxofre)", False, "8d6 dano ígneo em esfera de 6m", {"dano": "+1d6 por círculo"}),
     "relâmpago": (3, "evocação", "V, S, M (um pouco de pelo e uma haste de âmbar, cristal ou vidro)", False, "8d6 dano elétrico em linha", {"dano": "+1d6 por círculo"}),
@@ -88,6 +89,11 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
         "tipo": "beneficio", "alvos_base": 3, "alvos_por_nivel": 1,
         "bonus": "1d4", "aplica_a": ["jogadas_de_ataque", "salvaguardas"],
         "concentracao": True,
+    },
+    "escudo da fé": {
+        "tipo": "beneficio_defensivo", "bonus_ca": 2, "alcance_m": 18,
+        "duracao": "ate_10_minutos", "concentracao": True, "acao": "bonus",
+        "alvos_base": 1,
     },
     "bola de fogo": {
         "tipo": "dano_em_area", "dados_dano_base": "8d6", "dados_dano_por_nivel": "1d6",
