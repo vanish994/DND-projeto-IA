@@ -9,6 +9,8 @@ from .combat_special import (
     resolver_escape_agarramento,
 )
 from .engine import Rule, RuleEngine
+from .ability_checks import resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica, resolver_salvaguarda, resolver_iniciativa
+from .exploration_actions import resolver_acao_esconder, resolver_acao_influenciar, resolver_fim_esconderijo, resolver_acao_procurar, resolver_acao_ajudar, resolver_acao_estudar, resolver_acao_esquivar
 from .combat_geometry import (
     resolver_ataque_geometria, resolver_alcance, resolver_cobertura,
     resolver_queda, resolver_linha_de_visao, espaco_por_tamanho,
@@ -470,7 +472,7 @@ def build_default_engine() -> RuleEngine:
         description="Estabiliza uma criatura com 0 PV.",
         priority=50,
         when=lambda f: f["type"] == "stabilize",
-        resolve=lambda f: estabilizar(f["estado"], teste_medicina=f.get("medicine_test")),
+        resolve=lambda f: estabilizar(f["estado"], teste_medicina=f.get("medicine_test"), kit_medico=bool(f.get("healer_kit", False))),
         source="D&D 2024 — Estabilização",
     ))
     engine.register(Rule(
@@ -926,5 +928,84 @@ def build_default_engine() -> RuleEngine:
         description="Consulta monstros do SRD 5.2.1, filtra o catálogo e calcula XP de ND ou encontro.",
         priority=80, when=lambda f: f["type"] == "bestiary",
         resolve=resolver_bestiario, source="SRD 5.2.1 — bestiário",
+    ))
+    engine.register(Rule(
+        rule_id="ability.skill-check",
+        description="Resolve teste ativo de habilidade com perícia, proficiência, vantagem e modificadores.",
+        priority=75, when=lambda f: f["type"] == "skill_check",
+        resolve=resolver_teste_habilidade, source="D&D 2024 — Testes de D20 e perícias",
+    ))
+    engine.register(Rule(
+        rule_id="ability.passive-check",
+        description="Calcula teste passivo com ajuste de vantagem ou desvantagem.",
+        priority=75, when=lambda f: f["type"] == "passive_check",
+        resolve=resolver_teste_passivo, source="D&D 2024 — Testes passivos",
+    ))
+    engine.register(Rule(
+        rule_id="ability.group-check",
+        description="Resolve teste de grupo pela regra de pelo menos metade dos participantes.",
+        priority=75, when=lambda f: f["type"] == "group_check",
+        resolve=resolver_teste_grupo, source="D&D 2024 — Testes em grupo",
+    ))
+    engine.register(Rule(
+        rule_id="heroic-inspiration.reroll",
+        description="Consome Inspiração Heroica para rerrolar um d20 e usar o novo resultado.",
+        priority=75, when=lambda f: f["type"] == "heroic_inspiration",
+        resolve=resolver_inspiracao_heroica, source="D&D 2024 — Inspiração Heroica",
+    ))
+
+    engine.register(Rule(
+        rule_id="saving-throw.complete",
+        description="Resolve salvaguarda com atributo, bônus de proficiência e vantagem/desvantagem.",
+        priority=120, when=lambda f: f["type"] == "saving_throw_check",
+        resolve=resolver_salvaguarda, source="D&D 2024 — Salvaguardas",
+    ))
+    engine.register(Rule(
+        rule_id="initiative.complete",
+        description="Resolve iniciativa como teste de Destreza com bônus e vantagem/desvantagem.",
+        priority=120, when=lambda f: f["type"] == "initiative_check",
+        resolve=resolver_iniciativa, source="D&D 2024 — Iniciativa",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.hide",
+        description="Resolve a ação Esconder-se com os requisitos do PHB 2024.",
+        priority=70, when=lambda f: f["type"] == "hide_action",
+        resolve=resolver_acao_esconder, source="D&D 2024 — Esconder-se",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.influence",
+        description="Resolve a ação Influenciar com disposição, perícia social e CD padrão.",
+        priority=70, when=lambda f: f["type"] == "influence_action",
+        resolve=resolver_acao_influenciar, source="D&D 2024 — Influenciar",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.hide-event",
+        description="Encerra esconderijo quando ocorre som alto, descoberta, ataque ou magia verbal.",
+        priority=70, when=lambda f: f["type"] == "hide_event",
+        resolve=resolver_fim_esconderijo, source="D&D 2024 — Esconder-se",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.search",
+        description="Resolve Search usando as perícias sugeridas pelo PHB 2024.",
+        priority=70, when=lambda f: f["type"] == "search_action",
+        resolve=resolver_acao_procurar, source="D&D 2024 — Search",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.help",
+        description="Prepara vantagem para o próximo teste ou ataque com a ação Ajuda.",
+        priority=70, when=lambda f: f["type"] == "help_action",
+        resolve=resolver_acao_ajudar, source="D&D 2024 — Help",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.study",
+        description="Resolve Study usando as perícias de Inteligência do PHB 2024.",
+        priority=70, when=lambda f: f["type"] == "study_action",
+        resolve=resolver_acao_estudar, source="D&D 2024 — Study",
+    ))
+    engine.register(Rule(
+        rule_id="combat.dodge",
+        description="Resolve Esquivar: ataques contra a criatura têm desvantagem se ela vir o atacante; salvaguardas de Destreza têm vantagem.",
+        priority=70, when=lambda f: f["type"] == "dodge_action",
+        resolve=resolver_acao_esquivar, source="D&D 2024 — Esquivar",
     ))
     return engine
