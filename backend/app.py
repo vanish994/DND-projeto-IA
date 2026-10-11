@@ -542,6 +542,8 @@ def salvar_mapa_tatico(
     personagens = repo.listar_personagens(jogador, campanha_id) or []
     por_id = {p["id"]: p for p in personagens}
     monstros = {m["nome"]: m for m in BESTIARIO}
+    estado_anterior = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+    tokens_anteriores = {t.get("id"): t for t in estado_anterior.get("tokens", [])}
     tokens, ids = [], set()
     for token in pedido.tokens:
         if token.id in ids:
@@ -556,7 +558,10 @@ def salvar_mapa_tatico(
             m = monstros.get(token.monster_name or "")
             if not m:
                 raise HTTPException(status_code=422, detail="Selecione um monstro do bestiário oficial disponível no projeto")
-            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": int(m["pv"]), "maxHp": int(m["pv"])})
+            anterior = tokens_anteriores.get(token.id, {})
+            hp_maximo = int(m["pv"])
+            hp_atual = max(0, min(hp_maximo, int(anterior.get("hp", hp_maximo)))) if anterior.get("monster_name") == m["nome"] else hp_maximo
+            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": hp_atual, "maxHp": hp_maximo})
         else:
             raise HTTPException(status_code=422, detail="Use um personagem ou monstro do catálogo")
     estado = {"title": pedido.title, "terrain": pedido.terrain, "tokens": tokens, "bloqueados": [], "terreno_dificil": []}
