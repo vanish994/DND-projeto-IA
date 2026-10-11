@@ -20,7 +20,7 @@ for bruto, meta in CATALOGO_MAGIAS.items():
     partes = re.split(r"\s{2,}", bruto.strip())
     nome = _nome_limpo(partes[0])
     if nome and nome.lower() not in {"a opção que você escolheu para golpes abençoados", "após usar", "como uma ação usar"}:
-        MAGIAS.setdefault(nome.lower(), {"nome": nome, "circulo": 0, "escola": meta["escola"].lower(), "componentes": "V, S" + (", M" if meta.get("material") else ""), "concentracao": bool(meta.get("concentracao")), "ritual": bool(meta.get("ritual")), "duracao": "concentração" if meta.get("concentracao") else "instantânea"})
+        MAGIAS.setdefault(nome.lower(), {"nome": nome, "circulo": None, "escola": meta["escola"].lower(), "componentes": "V, S" + (", M" if meta.get("material") else ""), "concentracao": bool(meta.get("concentracao")), "ritual": bool(meta.get("ritual")), "duracao": "concentração" if meta.get("concentracao") else "instantânea"})
 
 # Entradas de referência com círculo, componentes e efeitos precisos do PHB 2024.
 _DETALHADAS = {
@@ -52,8 +52,8 @@ def listar_magias(escola: str | None = None, circulo: int | None = None) -> list
     if escola:
         resultado = [m for m in resultado if m["escola"] == escola.lower()]
     if circulo is not None:
-        resultado = [m for m in resultado if m["circulo"] == int(circulo)]
-    return sorted(resultado, key=lambda m: (m["circulo"], m["nome"]))
+        resultado = [m for m in resultado if m["circulo"] is not None and m["circulo"] == int(circulo)]
+    return sorted(resultado, key=lambda m: (m["circulo"] is None, m["circulo"] if m["circulo"] is not None else 99, m["nome"]))
 
 
 def _normalizar_nome_magia(nome: str) -> str:
@@ -90,6 +90,14 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
     magia = obter_magia(nome)
     if not magia:
         return {"resultado": "bloqueado", "motivo": "magia_desconhecida", "magia": nome}
+    if magia.get("circulo") is None:
+        return {
+            "resultado": "nao_implementado",
+            "motivo": "magia_catalogada_sem_resolucao_especifica",
+            "motivo_secundario": "circulo_da_magia_nao_catalogado",
+            "magia": magia["nome"],
+            "escola": magia["escola"],
+        }
     try:
         usado = int(fatos.get("espaco", fatos.get("spell_level", magia["circulo"])))
         aumento = _circulo_efetivo(magia["circulo"], usado)
