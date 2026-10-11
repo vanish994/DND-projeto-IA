@@ -5,6 +5,7 @@ metadados executáveis, componentes, concentração, efeitos e escalonamento.
 """
 from __future__ import annotations
 import re
+import unicodedata
 from typing import Any
 from .catalog import CATALOGO_MAGIAS
 
@@ -55,11 +56,30 @@ def listar_magias(escola: str | None = None, circulo: int | None = None) -> list
     return sorted(resultado, key=lambda m: (m["circulo"], m["nome"]))
 
 
+def _normalizar_nome_magia(nome: str) -> str:
+    texto = unicodedata.normalize("NFKD", str(nome).strip().lower())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return re.sub(r"\\s+", " ", texto).replace("-", " ")
+
+
 def obter_magia(nome: str) -> dict[str, Any] | None:
-    return MAGIAS.get(nome.lower())
+    direta = MAGIAS.get(str(nome).strip().lower())
+    if direta is not None:
+        return direta
+    chave = _normalizar_nome_magia(nome)
+    for magia in MAGIAS.values():
+        if _normalizar_nome_magia(magia["nome"]) == chave:
+            return magia
+    return None
 
 
 def _circulo_efetivo(base: int, usado: int) -> int:
+    if not 0 <= usado <= 9:
+        raise ValueError("O espaço de magia deve estar entre 0 e 9")
+    if base == 0 and usado != 0:
+        raise ValueError("Truques não usam espaços de magia")
+    if base > 0 and usado == 0:
+        raise ValueError("Magias de círculo 1 ou superior exigem espaço de magia")
     if usado < base:
         raise ValueError("O espaço usado não pode ser inferior ao círculo da magia")
     return usado - base
@@ -70,10 +90,10 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
     magia = obter_magia(nome)
     if not magia:
         return {"resultado": "bloqueado", "motivo": "magia_desconhecida", "magia": nome}
-    usado = int(fatos.get("espaco", fatos.get("spell_level", magia["circulo"])))
     try:
+        usado = int(fatos.get("espaco", fatos.get("spell_level", magia["circulo"])))
         aumento = _circulo_efetivo(magia["circulo"], usado)
-    except ValueError as erro:
+    except (TypeError, ValueError) as erro:
         return {"resultado": "bloqueado", "motivo": "circulo_invalido", "detalhe": str(erro)}
     componentes = set(magia["componentes"].replace("(", ",").replace(")", ",").split(","))
     requeridos = {c.strip() for c in componentes if c.strip() in {"V", "S", "M"}}
