@@ -227,6 +227,48 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertGreaterEqual(body["dano"], 0)
         self.assertEqual(body["bonus_ataque"], 3)
 
+    def test_multiataque_resolve_cada_ataque_separadamente(self):
+        response = self.client.put(self.url, headers=self.headers, json={
+            "title": "Teste multiataque", "terrain": "dungeon",
+            "tokens": [
+                {"id": "heroi-vex", "kind": "hero", "character_id": self.hero["id"], "x": 1, "y": 1},
+                {"id": "inimigo-dretch", "kind": "enemy", "monster_name": "Dretch", "x": 2, "y": 1},
+            ],
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        response = self.client.post(self.url + "/ataque-monstro", headers=self.headers, json={
+            "atacante_id": "inimigo-dretch", "alvo_id": "heroi-vex", "acao": "Multiattack",
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body["multiataque"])
+        self.assertEqual(body["sequencia"], ["Bite", "Claws"])
+        self.assertEqual(len(body["ataques_resolvidos"]), 2)
+        self.assertEqual(body["total_dano"], sum(a["dano"] for a in body["ataques_resolvidos"]))
+
+    def test_ataque_de_lobo_aplica_caido_apos_falha_na_salvaguarda(self):
+        response = self.client.put(self.url, headers=self.headers, json={
+            "title": "Teste condição", "terrain": "forest",
+            "tokens": [
+                {"id": "heroi-vex", "kind": "hero", "character_id": self.hero["id"], "x": 1, "y": 1},
+                {"id": "inimigo-lobo", "kind": "enemy", "monster_name": "Wolf", "x": 2, "y": 1},
+            ],
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        # d20 de ataque = 10, dois dados de dano = 1, salvaguarda de Força = 1.
+        with patch.object(backend_app.secrets, "randbelow", side_effect=[9, 0, 0, 0]):
+            response = self.client.post(self.url + "/ataque-monstro", headers=self.headers, json={
+                "atacante_id": "inimigo-lobo", "alvo_id": "heroi-vex", "acao": "Bite",
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["efeitos"][0]["cd"], 11)
+        self.assertFalse(body["efeitos"][0]["sucesso"])
+        self.assertIn("prone", body["efeitos"][0]["condicoes_aplicadas"])
+        raw = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
+        token = next(t for t in raw["tokens"] if t["id"] == "heroi-vex")
+        self.assertIn("prone", token["conditions"])
+
     def test_zumbi_usa_undead_fortitude_ao_chegar_a_zero_pv(self):
         response = self.client.put(self.url, headers=self.headers, json={
             "title": "Teste de fortitude", "terrain": "dungeon",
