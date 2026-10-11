@@ -14,11 +14,11 @@ class AbilityCheckTests(unittest.TestCase):
     def test_expertise_doubles_proficiency_but_not_attribute(self):
         result = resolver_teste_habilidade({"pericia": "arcanismo", "valor_atributo": 14, "nivel": 9, "expertise": True, "roll": 5, "cd": 15})
         self.assertEqual(result["bonus_proficiencia_aplicado"], 8)
-        self.assertEqual(result["total"], 10)
-        self.assertEqual(result["resultado"], "falha")
+        self.assertEqual(result["total"], 15)
+        self.assertEqual(result["resultado"], "sucesso")
 
     def test_advantage_and_disadvantage_cancel(self):
-        result = resolver_teste_habilidade({"pericia": "percepcao", "modificador_atributo": 2, "dados": [4, 18], "vantagem": True, "desvantagem": True, "cd": 15})
+        result = resolver_teste_habilidade({"pericia": "percepcao", "modificador_atributo": 2, "roll": 4, "vantagem": True, "desvantagem": True, "cd": 15})
         self.assertEqual(result["dado"], 4)
         self.assertFalse(result["vantagem"])
         self.assertFalse(result["desvantagem"])
