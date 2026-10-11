@@ -217,6 +217,8 @@ def resolver_iniciativa(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
         return {"resultado": "bloqueado", "motivo": "resultado_de_d20_ausente"}
     dados = dict(fatos)
+    if bool(dados.get("surpreendido", dados.get("surprised", False))):
+        dados["desvantagem"] = True
     dados["atributo"] = "destreza"
     if "modificador_atributo" not in dados and "valor_atributo" not in dados and "ability_score" not in dados:
         dados["modificador_atributo"] = int(dados["modificador_destreza"])
