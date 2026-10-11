@@ -195,11 +195,14 @@ class BackendMapaTaticoTests(unittest.TestCase):
         try:
             response = self.client.put(self.url, headers=self.headers, json={
                 "title": "Teste de área", "terrain": "forest",
-                "tokens": [{"id": "heroi-vex", "kind": "hero", "character_id": self.hero["id"], "x": 1, "y": 1}],
+                "tokens": [
+                    {"id": "heroi-vex", "kind": "hero", "character_id": self.hero["id"], "x": 1, "y": 1},
+                    {"id": "aliado-teste", "kind": "hero", "character_id": self.hero["id"], "x": 2, "y": 1},
+                ],
             })
             self.assertEqual(response.status_code, 200, response.text)
             response = self.client.post(self.url + "/conjurar", headers=self.headers, json={
-                "atacante_id": "heroi-vex", "alvo_id": "heroi-vex", "magia": "Onda Trovejante",
+                "atacante_id": "heroi-vex", "alvo_id": "aliado-teste", "magia": "Onda Trovejante",
             })
             self.assertEqual(response.status_code, 200, response.text)
             body = response.json()
