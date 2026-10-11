@@ -2185,6 +2185,27 @@ def sugerir_monstros(fatos: dict) -> list[dict]:
     return candidatos[:int(limite)] if limite is not None else candidatos
 
 
+def validar_uso_monstro(fatos: dict) -> dict:
+    """Valida uso das regras oficiais sem opinar sobre história ou narração."""
+    nome = str(fatos.get("nome", ""))
+    monstro = consultar_monstro(nome)
+    if monstro is None:
+        return {"resultado": "bloqueado", "motivo": "monstro_desconhecido"}
+    campos_protegidos = {"ca", "pv", "dados_pv", "nd", "xp", "tipo", "tamanho", "alinhamento", "texto_bloco"}
+    alteracoes = set(fatos.get("alteracoes", {}))
+    proibidos = sorted(alteracoes & campos_protegidos)
+    if proibidos:
+        return {"resultado": "bloqueado", "motivo": "alteracao_de_dado_oficial", "campos": proibidos}
+    return {
+        "resultado": "validado",
+        "nome": monstro["nome"],
+        "origem": "SRD 5.2.1",
+        "regras_oficiais": True,
+        "narrativa": "não avaliada pelo motor",
+        "criatividade_do_mj": "preservada",
+    }
+
+
 def resolver_bestiario(fatos: dict) -> dict:
     """Resolve operações auditáveis sobre o catálogo do bestiário."""
     operacao = str(fatos.get("operacao", "consultar")).lower()
@@ -2213,6 +2234,8 @@ def resolver_bestiario(fatos: dict) -> dict:
             "escolha": "MJ",
             "origem": "SRD 5.2.1",
         }
+    if operacao == "validar_uso":
+        return validar_uso_monstro(fatos)
     if operacao == "xp_nd":
         return {"resultado": "resolvido", "nd": str(fatos["nd"]), "xp": xp_por_nd(fatos["nd"])}
     if operacao == "xp_encontro":

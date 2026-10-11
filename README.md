@@ -41,4 +41,8 @@ O MJ é um bloco separado do motor. Ele envia apenas os critérios do momento da
 
 O resultado contém apenas resumos dos candidatos, a origem `SRD 5.2.1` e `escolha: "MJ"`. Depois que o MJ escolhe um nome, o bloco pode ser recuperado com `bloco_completo`. Critérios não presentes no catálogo, como ambiente narrativo, não são inferidos silenciosamente: devem ser convertidos pelo bloco do MJ em filtros explícitos de tipo, tamanho, alinhamento ou ND.
 
+### Limite de responsabilidade do motor
+
+O motor é **somente normativo**. Ele confere a existência do monstro, os dados oficiais, as ações e as consequências mecânicas. Ele não narra, não cria história, não escolhe o rumo da campanha, não avalia a qualidade da ideia do MJ e não substitui a criatividade do MJ. A operação `validar_uso` bloqueia apenas alterações silenciosas em dados oficiais como CA, PV, ND, tipo ou bloco de regras; decisões narrativas continuam fora do motor.
+
 A estimativa de “mais de 300 monstros” não corresponde ao PDF SRD 5.2.1 presente na biblioteca ativa: a extração verificável dessa fonte resulta em 232 blocos completos. O catálogo não inventa entradas para preencher essa diferença.

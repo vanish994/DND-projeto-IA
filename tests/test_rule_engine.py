@@ -1037,6 +1037,16 @@ class RuleEngineTests(unittest.TestCase):
         self.assertTrue(all(monster["tipo"] == "beast" for monster in result.outcome["candidatos"]))
         self.assertNotIn("monstro_escolhido", result.outcome)
 
+    def test_bestiary_validates_rules_without_controlling_mj_narrative(self):
+        valid = self.engine.evaluate({"type": "bestiary", "operacao": "validar_uso", "nome": "Wolf"})
+        self.assertEqual(valid.outcome["resultado"], "validado")
+        self.assertEqual(valid.outcome["narrativa"], "não avaliada pelo motor")
+        blocked = self.engine.evaluate({
+            "type": "bestiary", "operacao": "validar_uso", "nome": "Wolf",
+            "alteracoes": {"ca": 30},
+        })
+        self.assertEqual(blocked.outcome["motivo"], "alteracao_de_dado_oficial")
+
     def test_second_batch_bard_cleric_and_druid_features(self):
         bard = self.engine.evaluate({"type": "class_feature", "classe": "bardo", "recurso": "inspiracao_de_bardo", "nivel": 10, "carisma": 18})
         self.assertEqual(bard.outcome["dado"], "d10")

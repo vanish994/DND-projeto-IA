@@ -96,6 +96,8 @@ O bestiário agora contém os **232 blocos completos** identificados no SRD comp
 
 O fluxo de seleção foi separado do MJ: a operação `bestiary/sugerir` recebe filtros explícitos do momento da campanha e retorna candidatos do catálogo em ordem determinística. O resultado informa `escolha: "MJ"`; o motor não escolhe, não cria variantes e bloqueia nomes desconhecidos. Depois da escolha, `bloco_completo` entrega o registro integral oficial.
 
+O limite arquitetural está explícito: o motor apenas impõe a resolução mecânica das regras e não interfere em história, narração, tom, decisões de campanha ou criatividade do MJ. `validar_uso` rejeita somente alterações silenciosas nos dados oficiais do bloco; narrativa e intenção dramática não são avaliadas.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.
