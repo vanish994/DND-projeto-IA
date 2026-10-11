@@ -7,7 +7,7 @@ from typing import Any, Mapping
 from .core import bonus_proficiencia as calcular_bonus_proficiencia, modificador_atributo, resolver_teste_d20
 
 PERICIAS = {
-    "acrobacia": "destreza", "adestramento": "sabedoria", "adestrar_animais": "sabedoria",
+    "acrobacia": "destreza", "adestrar_animais": "sabedoria",
     "arcanismo": "inteligencia", "atletismo": "forca", "atuacao": "carisma",
     "enganacao": "carisma", "furtividade": "destreza", "historia": "inteligencia",
     "intuicao": "sabedoria", "intimidacao": "carisma", "investigacao": "inteligencia",
@@ -27,8 +27,10 @@ _ATRIBUTOS = {
     "car": "carisma", "charisma": "carisma", "carisma": "carisma",
 }
 
-def _int(value: Any, default: int = 0) -> int:
-    return default if value is None else int(value)
+def _normalizar_pericia(valor: Any) -> str:
+    nome = str(valor).strip().lower().replace(" ", "_")
+    aliases = {"adestramento": "adestrar_animais", "animal_handling": "adestrar_animais", "sleight_of_hand": "prestidigitacao", "performance": "atuacao", "deception": "enganacao", "stealth": "furtividade", "history": "historia", "insight": "intuicao", "intimidation": "intimidacao", "investigation": "investigacao", "medicine": "medicina", "nature": "natureza", "perception": "percepcao", "persuasion": "persuasao", "religion": "religiao", "survival": "sobrevivencia", "acrobatics": "acrobacia", "athletics": "atletismo", "arcana": "arcanismo"}
+    return aliases.get(nome, nome)
 
 def _atributo_e_modificador(fatos: Mapping[str, Any], pericia: str | None = None) -> tuple[str | None, int]:
     atributo_bruto = fatos.get("atributo") or fatos.get("ability")
@@ -51,7 +53,7 @@ def _bonus_prof(fatos: Mapping[str, Any]) -> int:
 
 def _modificadores(fatos: Mapping[str, Any], pericia: str | None = None) -> dict[str, Any]:
     atributo, mod_atributo = _atributo_e_modificador(fatos, pericia)
-    proficiente = bool(fatos.get("proficiente", fatos.get("proficient", False)))
+    proficiente = bool(fatos.get("proficiente", fatos.get("proficient", fatos.get("proficiente_pericia", fatos.get("skill_proficient", False)))))
     expertise = bool(fatos.get("expertise", fatos.get("especialista", False)))
     proficiente = proficiente or expertise
     pb = _bonus_prof(fatos)
@@ -83,12 +85,17 @@ def _modificadores(fatos: Mapping[str, Any], pericia: str | None = None) -> dict
 
 def _cd(fatos: Mapping[str, Any]) -> int | None:
     valor = fatos.get("cd", fatos.get("dc"))
-    return None if valor is None else int(valor)
+    if valor is None:
+        return None
+    if isinstance(valor, str) and not valor.strip().isdigit():
+        inverso = {nome: cd for cd, nome in CDS_PADRAO.items()}
+        return inverso.get(valor.strip().lower().replace(" ", "_"))
+    return int(valor)
 
 def resolver_teste_habilidade(fatos: Mapping[str, Any]) -> dict[str, Any]:
     """Resolve um teste ativo com atributo, perícia, proficiência e modificadores explícitos."""
     pericia_raw = fatos.get("pericia", fatos.get("skill"))
-    pericia = str(pericia_raw).strip().lower().replace(" ", "_") if pericia_raw else None
+    pericia = _normalizar_pericia(pericia_raw) if pericia_raw else None
     if pericia and pericia not in PERICIAS:
         return {"resultado": "bloqueado", "motivo": "pericia_desconhecida", "pericia": pericia}
     if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
