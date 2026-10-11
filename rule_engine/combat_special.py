@@ -48,7 +48,7 @@ def resolver_empurrar(fatos: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def resolver_agarrar(fatos: Mapping[str, Any]) -> dict[str, Any]:
-    """Resolve Agarrar, aplicando a condição Imobilizado em caso de falha."""
+    """Resolve Agarrar; uma falha na salvaguarda aplica a condição Agarrado."""
     cd = cd_ataque_desarmado(fatos)
     if not alvo_pode_ser_afetado(fatos):
         return {"tipo": "agarrar", "resultado": "bloqueado", "motivo": "tamanho_invalido", "cd": cd}
@@ -57,7 +57,7 @@ def resolver_agarrar(fatos: Mapping[str, Any]) -> dict[str, Any]:
         return {"tipo": "agarrar", "resultado": "resistido", "cd": cd, "total": total}
     return {
         "tipo": "agarrar", "resultado": "aplicado", "cd": cd, "total": total,
-        "condicao": "imobilizado",
+        "condicao": "agarrado",
     }
 
 
@@ -67,7 +67,7 @@ def resolver_escape_agarramento(fatos: Mapping[str, Any]) -> dict[str, Any]:
     cd = int(fatos["cd_agarramento"])
     return {
         "tipo": "escape_agarramento",
-        "resultado": "escapou" if total >= cd else "continua_imobilizado",
+        "resultado": "escapou" if total >= cd else "continua_agarrado",
         "total": total,
         "cd": cd,
     }
