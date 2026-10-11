@@ -171,6 +171,15 @@ def validar_escolhas_artifice(
 
     progresso = progresso_artifice(nivel, inteligencia)
     permitidas = {normalizar_nome_magia(nome): circulo for nome, circulo in ARTIFICER_SPELL_LEVELS.items()}
+
+    # A mesma magia não pode ocupar duas escolhas de truque/preparação.
+    truques_normalizados = [normalizar_nome_magia(nome) for nome in truques]
+    preparados_normalizados = [normalizar_nome_magia(nome) for nome in magias_preparadas]
+    if len(set(truques_normalizados)) != len(truques_normalizados):
+        raise ValueError("Não repita truques")
+    if len(set(preparados_normalizados)) != len(preparados_normalizados):
+        raise ValueError("Não repita magias preparadas")
+
     if len(truques) != progresso["truques"]:
         raise ValueError(f"Artífice de nível {nivel} deve registrar exatamente {progresso['truques']} truques")
     if len(magias_preparadas) != progresso["magias_preparadas"]:
@@ -188,7 +197,15 @@ def validar_escolhas_artifice(
         if not obter_magia(nome):
             raise ValueError(f"Magia ausente do catálogo: {nome}")
     esperados = progresso["espacos_totais"]
-    recebidos = {str(k): int(v) for k, v in espacos_totais.items() if int(v) != 0}
+    recebidos: dict[str, int] = {}
+    for chave, valor in espacos_totais.items():
+        chave = str(chave)
+        if chave not in {"1", "2", "3", "4", "5"}:
+            raise ValueError(f"Círculo de espaços inválido: {chave}")
+        if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
+            raise ValueError("Quantidade de espaços deve ser um inteiro não negativo")
+        if valor:
+            recebidos[chave] = valor
     if recebidos != esperados:
         raise ValueError(f"Espaços de magia incorretos para Artífice nível {nivel}; esperado {esperados}")
     return progresso
