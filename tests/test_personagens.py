@@ -190,5 +190,6 @@ class BackendPersonagensTests(unittest.TestCase):
         self.client.post(f"/v1/campanhas/{self.cid}/mensagens", json={"mensagem": "Olá"}, headers=self.h)
         _, historico = self.mj.chamadas[-1]
         self.assertEqual(historico[0]["role"], "system")
-        self.assertIn("Personagem 1", historico[0]["content"])
-        self.assertNotIn("Vex", historico[0]["content"])
+        self.assertIn("FICHA AUTORITATIVA #1", historico[0]["content"])
+        self.assertIn("nome=Vex", historico[0]["content"])
+        self.assertIn("classe=mago", historico[0]["content"])
