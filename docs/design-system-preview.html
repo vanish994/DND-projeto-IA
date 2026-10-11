@@ -4,7 +4,60 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Taverna editorial — design system</title>
 <style>
 :root{color-scheme:dark;--bg:#0e1012;--surface:#15171a;--raised:#1c1f23;--text:#f5f1e9;--muted:#a6a09a;--line:rgba(245,241,233,.12);--accent:#d8a06f;--accent-hi:#f1c28d;--accent-ink:#21170f;--green:#7ecb9d;--red:#e37979;--display:Georgia,"Times New Roman",serif;--body:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--focus:0 0 0 3px var(--bg),0 0 0 5px var(--accent-hi)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);line-height:1.55}.wrap{max-width:1180px;margin:auto;padding:clamp(18px,4vw,48px)}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:12px 0 20px}.brand{font-size:13px;letter-spacing:.15em;font-weight:800;color:var(--accent-hi)}.pill{color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:12px}.eyebrow{font-size:11px;letter-spacing:.18em;color:var(--accent);font-weight:800;text-transform:uppercase}.hero{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:center;padding:56px 0 42px}.hero h1{font:400 clamp(42px,7vw,78px)/.98 var(--display);letter-spacing:-.04em;margin:12px 0 18px}.hero p{color:var(--muted);max-width:46ch}.tagline{color:var(--text)!important;font-size:18px}.preview{height:min(72vh,620px);min-height:420px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:18px;background:linear-gradient(150deg,rgba(216,160,111,.08),transparent 48%),var(--surface);box-shadow:0 18px 55px #0005;overflow:hidden}.chat-head{display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--line)}.campaign{font:20px var(--display)}.sub{color:var(--muted);font-size:12px}.status{color:var(--green);font-size:12px}.chat-body{padding:18px 16px 12px;flex:1;min-height:0;overflow-y:auto}.msg{display:flex;gap:10px;margin:10px 0 18px;max-width:90%}.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:10px;flex:none}.bubble{font-size:14px}.player{margin-left:auto;flex-direction:row-reverse}.player .avatar{background:var(--raised);color:var(--accent-hi);border:1px solid var(--line)}.player .bubble{background:var(--raised);padding:10px 12px;border-radius:14px 4px 14px 14px}.composer{display:flex;gap:10px;padding:12px;border-top:1px solid var(--line);align-items:center}.input{flex:1;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--muted);padding:12px;min-height:48px}.button{border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:800;padding:0 18px;min-height:48px}.section{border-top:1px solid var(--line);padding:32px 0}.section h2{font:28px var(--display);margin:0 0 18px}.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.swatch{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}.color{height:72px}.swatch small{display:block;padding:8px 10px;color:var(--muted);font-size:11px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}.card p{color:var(--muted);font-size:14px}.title-sample{font:28px var(--display)}.body-sample{font-size:16px;line-height:1.6}.focus{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 16px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:800;box-shadow:var(--focus)}.contrast{width:100%;border-collapse:collapse;font-size:14px}.contrast td,.contrast th{padding:10px;border-bottom:1px solid var(--line);text-align:left}.contrast td:last-child{color:var(--green);font-weight:700}.foot{color:var(--muted);font-size:12px;padding:22px 0}.dice{width:26px;height:26px;vertical-align:middle;margin-right:8px}@media(max-width:720px){.hero{grid-template-columns:1fr;gap:24px;padding-top:36px}.swatches{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.top{align-items:flex-start}.pill{font-size:11px}.preview{height:min(68dvh,620px);min-height:400px}.chat-body{min-height:0}}
-.home-screen{max-width:520px;margin:16px auto 0;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}.home-bar{display:flex;justify-content:space-between;align-items:center;padding:15px 16px;border-bottom:1px solid var(--line)}.home-title{font:24px var(--display);margin:0}.campaign-list{padding:8px 14px 14px}.campaign-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 2px;border-bottom:1px solid var(--line)}.campaign-row:last-child{border-bottom:0}.campaign-name{font-weight:700}.campaign-meta{font-size:12px;color:var(--muted);margin-top:2px}.resume{min-height:44px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--accent-hi);padding:0 13px;font-weight:700}.home-new{width:100%;min-height:48px;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:800;margin-top:12px}.home-note{font-size:13px;color:var(--muted);max-width:520px;margin:8px auto 0} </style></head>
+.home-screen{max-width:520px;margin:16px auto 0;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}.home-bar{display:flex;justify-content:space-between;align-items:center;padding:15px 16px;border-bottom:1px solid var(--line)}.home-title{font:24px var(--display);margin:0}.campaign-list{padding:8px 14px 14px}.campaign-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 2px;border-bottom:1px solid var(--line)}.campaign-row:last-child{border-bottom:0}.campaign-name{font-weight:700}.campaign-meta{font-size:12px;color:var(--muted);margin-top:2px}.resume{min-height:44px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--accent-hi);padding:0 13px;font-weight:700}.home-new{width:100%;min-height:48px;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:800;margin-top:12px}.home-note{font-size:13px;color:var(--muted);max-width:520px;margin:8px auto 0} /* 06 · Ficha */
+.ficha{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.painel{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+.painel-titulo{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:800;margin-bottom:12px}
+.nameplate{font:28px var(--display);margin:0}
+.linha-resumo{color:var(--muted);font-size:14px;margin:4px 0 0}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.badge{border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.badge-hi{border-color:rgba(216,160,111,.42);color:var(--accent-hi)}
+.badge-magic{border-color:rgba(159,183,212,.55);color:#9fb7d4}
+.pv-bar{height:12px;border:1px solid var(--line);border-radius:999px;background:var(--bg);overflow:hidden;margin:14px 0 10px}
+.pv-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--accent) 35%,var(--green))}
+.pv-linha{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.pv-num{font:36px var(--display);margin:0}
+.pv-num small{font-size:18px;color:var(--muted)}
+.pv-estado{color:var(--accent);font-weight:700;font-size:14px}
+.pv-ctrl{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pv-ctrl button{min-width:48px;min-height:48px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--text);font-weight:700}
+.blocos{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}
+.bloco-valor{background:#0a0c0e;border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center}
+.bloco-valor b{display:block;font:28px var(--display);font-weight:400}
+.bloco-valor i{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-style:normal}
+.bloco-valor u{display:block;font-size:11px;color:var(--muted);text-decoration:none}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:rgba(245,241,233,.04);font-size:14px}
+.chip.amber{border-color:rgba(216,160,111,.42);color:var(--accent-hi)}
+.chip.red{border-color:rgba(227,121,121,.55);color:var(--red)}
+.chip small{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.dado-mini{width:14px;height:14px;border:1px solid currentColor;border-radius:4px;flex:none;position:relative}
+.dado-mini::after{content:"";position:absolute;inset:2px;background:currentColor;opacity:.55}
+.atributos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.atributo{background:#0a0c0e;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.atributo b{display:block;font:36px var(--display);font-weight:400;line-height:1}
+.atributo i{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-style:normal;font-weight:800}
+.atributo span{display:block;font-size:12px;color:var(--muted)}
+.pericia{display:grid;grid-template-columns:20px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.pericia:last-child{border-bottom:0}
+.pericia em{color:var(--muted);font-size:12px;font-style:normal}
+.marca{width:12px;height:12px;border-radius:50%;border:1px solid var(--muted);margin:0 auto}
+.marca.on{background:var(--accent);border-color:var(--accent)}
+.total{font-weight:700}
+.total.on{color:var(--accent-hi)}
+.passos{display:flex;gap:4px;list-style:none;padding:0;margin:0 0 14px}
+.passo{flex:1;text-align:center;position:relative;color:var(--muted);font-size:11px}
+.passo b{display:grid;place-items:center;width:28px;height:28px;margin:0 auto 6px;border-radius:50%;border:1px solid var(--line);background:var(--bg);font-size:11px;position:relative}
+.passo.on b{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.passo.done b{border-color:rgba(216,160,111,.42);color:var(--accent-hi)}
+.passo:not(:first-child):before{content:"";position:absolute;top:14px;left:-50%;width:100%;height:2px;background:var(--line)}
+.passo.done:before{background:rgba(216,160,111,.42)}
+.escolhas{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.escolha{display:flex;gap:12px;align-items:flex-start;min-height:48px;padding:12px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;background:var(--raised)}
+.escolha b{font:18px var(--display);font-weight:400}
+.escolha span{display:block;color:var(--muted);font-size:13px}
+@media(max-width:720px){.atributos{grid-template-columns:repeat(2,1fr)}.escolhas{grid-template-columns:1fr}}  </style></head>
 <body><main class="wrap">
 <header class="top"><div class="brand"><svg class="dice" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 28 9v14l-12 7L4 23V9z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m4 9 12 7 12-7M16 16v14M10 6l12 20M22 6 10 26" fill="none" stroke="currentColor" stroke-width="1" opacity=".55"/></svg>D&D PROJETO IA</div><span class="pill">DESIGN SYSTEM · V1</span></header>
 <section class="hero"><div><p class="eyebrow">Taverna editorial · mobile-first</p><h1>A mesa continua no seu bolso.</h1><p class="tagline">RPG de mesa, com campanha que acompanha o jogador.</p><p>Carvão profundo, âmbar discreto e uma interface de conversa que mantém a história em primeiro plano. A inspiração vem da agência narrativa de Tales RPG e AI Dungeon, aplicada à experiência de mesa do D&D Projeto IA.</p><span class="focus">Retomar campanha</span></div>
@@ -13,5 +66,66 @@
 <section class="section"><p class="eyebrow">02 · Tipografia e componentes</p><h2>Editorial no título. Simples no uso.</h2><div class="grid"><article class="card"><div class="title-sample">Nome da campanha</div><p>Georgia para títulos curtos. Inter/system-ui para mensagens e controles.</p></article><article class="card"><div class="body-sample">Uma frase por ação. O MJ conduz a narrativa; o motor confere as regras.</div><p>Corpo 16 px, line-height 1.6 e largura de leitura confortável.</p></article><article class="card"><button class="focus" type="button">Nova campanha</button><p>Ação primária âmbar, alvo de toque mínimo 48 px e anel de foco visível.</p></article></div></section>
 <section class="section"><p class="eyebrow">03 · Contraste</p><h2>Legibilidade para a sessão inteira.</h2><table class="contrast"><thead><tr><th>Par</th><th>Contraste</th><th>WCAG AA</th></tr></thead><tbody><tr><td>Texto / fundo</td><td>16.92:1</td><td>Passa</td></tr><tr><td>Texto secundário / painel</td><td>6.94:1</td><td>Passa</td></tr><tr><td>Âmbar / fundo</td><td>8.33:1</td><td>Passa</td></tr><tr><td>Texto do botão / âmbar</td><td>7.69:1</td><td>Passa</td></tr></tbody></table></section>
 <section class="section"><p class="eyebrow">04 · Regras de experiência</p><div class="grid"><article class="card"><h3>Campanhas</h3><p>Trocar de campanha muda o contexto; não apaga o histórico anterior.</p></article><article class="card"><h3>Celular</h3><p>Viewport fixa, sem scroll da página: só o histórico rola; compositor acima do teclado e safe area.</p></article><article class="card"><h3>Agência</h3><p>O jogador escolhe o rumo. O MJ narra; o motor valida a mecânica oficial.</p></article></div></section>
-<section class="section"><p class="eyebrow">05 · Início do jogador</p><h2>Só campanha e próxima ação.</h2><p>Os itens técnicos 03 e 04 ficam no guia; não aparecem na tela de início.</p><div class="home-screen"><div class="home-bar"><span class="brand">D&D PROJETO IA</span><span class="pill">2 campanhas</span></div><div class="campaign-list"><p class="eyebrow">SUAS CAMPANHAS</p><div class="campaign-row"><div><div class="campaign-name">A queda de Mirabar</div><div class="campaign-meta">Última sessão · hoje</div></div><button class="resume" type="button">Retomar</button></div><div class="campaign-row"><div><div class="campaign-name">Os portões de Baldur</div><div class="campaign-meta">Última sessão · há 3 dias</div></div><button class="resume" type="button">Retomar</button></div><button class="home-new" type="button">+ Nova campanha</button></div></div><p class="home-note">Sem status do motor, bloco explicativo ou documentação na primeira tela.</p></section><p class="foot">Base visual preservada do frontend atual. Sem fontes externas ou assets proprietários. Cores e regras completas: docs/DESIGN_SYSTEM.md e frontend/design-tokens.css.</p>
+<section class="section"><p class="eyebrow">05 · Início do jogador</p><h2>Só campanha e próxima ação.</h2><p>Os itens técnicos 03 e 04 ficam no guia; não aparecem na tela de início.</p><div class="home-screen"><div class="home-bar"><span class="brand">D&D PROJETO IA</span><span class="pill">2 campanhas</span></div><div class="campaign-list"><p class="eyebrow">SUAS CAMPANHAS</p><div class="campaign-row"><div><div class="campaign-name">A queda de Mirabar</div><div class="campaign-meta">Última sessão · hoje</div></div><button class="resume" type="button">Retomar</button></div><div class="campaign-row"><div><div class="campaign-name">Os portões de Baldur</div><div class="campaign-meta">Última sessão · há 3 dias</div></div><button class="resume" type="button">Retomar</button></div><button class="home-new" type="button">+ Nova campanha</button></div></div><p class="home-note">Sem status do motor, bloco explicativo ou documentação na primeira tela.</p></section><section class="section"><p class="eyebrow">06 · Ficha e criação de personagem</p><h2>Dados em primeiro plano, cálculo fora do navegador.</h2>
+<p style="color:var(--muted);max-width:70ch">A ficha exibe o bloco que o motor devolve: CA, ataque, dano, salvaguardas e perícias prontos. Cartões afundados sobre painéis, chips de dados e uma barra de PV que diz por extenso como o personagem está.</p>
+<div class="grid" style="grid-template-columns:1.15fr .85fr;align-items:start">
+<div class="ficha">
+  <div class="painel">
+    <div class="nameplate">Bruenor</div>
+    <p class="linha-resumo">Anão · Guerreiro nível 1 · Soldado</p>
+    <div class="badges"><span class="badge badge-hi">Proficiência +2</span><span class="badge">Dado de Vida d10</span><span class="badge">Médio · 9 m</span></div>
+    <div class="pv-bar"><span style="width:58%"></span></div>
+    <div class="pv-linha"><p class="pv-num">7<small> / 12 PV</small></p><span class="pv-estado">Ferido</span></div>
+    <div class="pv-ctrl"><button type="button">−5</button><button type="button">−1</button><button type="button">+1</button><button type="button">+5</button></div>
+  </div>
+  <div class="painel">
+    <p class="painel-titulo">Bloco de combate</p>
+    <div class="blocos">
+      <div class="bloco-valor"><i>CA</i><b>18</b><u>classe de armadura</u></div>
+      <div class="bloco-valor"><i>Iniciativa</i><b>+2</b><u>Destreza</u></div>
+      <div class="bloco-valor"><i>Proficiência</i><b>+2</b></div>
+      <div class="bloco-valor"><i>Deslocamento</i><b>9 m</b></div>
+      <div class="bloco-valor"><i>Dado de Vida</i><b>d10</b></div>
+    </div>
+    <div class="chips"><span class="chip amber"><span class="dado-mini"></span><small>Ataque</small>d20 +5</span><span class="chip red"><span class="dado-mini"></span><small>Dano</small>1d8 + 3</span></div>
+  </div>
+  <div class="painel">
+    <p class="painel-titulo">Atributos</p>
+    <div class="atributos">
+      <div class="atributo"><i>FOR</i><b>17</b><span>+3</span></div>
+      <div class="atributo"><i>DES</i><b>14</b><span>+2</span></div>
+      <div class="atributo"><i>CON</i><b>14</b><span>+2</span></div>
+    </div>
+  </div>
+</div>
+<div class="ficha">
+  <div class="painel">
+    <p class="painel-titulo">Perícias</p>
+    <div class="pericia"><span class="marca on"></span>Atletismo<em>FOR</em><span class="total on">+5</span></div>
+    <div class="pericia"><span class="marca"></span>Acrobacia<em>DES</em><span class="total">+2</span></div>
+    <div class="pericia"><span class="marca on"></span>Intimidação<em>CAR</em><span class="total on">+1</span></div>
+  </div>
+  <div class="painel">
+    <p class="painel-titulo">Espaços de magia</p>
+    <div class="chips"><span class="chip"><span class="dado-mini"></span>1º círculo</span><span class="chip"><span class="dado-mini"></span><span class="dado-mini"></span>2/2 restantes</span></div>
+  </div>
+  <div class="painel">
+    <p class="painel-titulo">Assistente · passo 3 de 7</p>
+    <ol class="passos">
+      <li class="passo done"><b>✓</b>Nome</li>
+      <li class="passo done"><b>✓</b>Espécie</li>
+      <li class="passo on"><b>3</b>Classe</li>
+      <li class="passo"><b>4</b>Perícias</li>
+      <li class="passo"><b>5</b>Antecedente</li>
+      <li class="passo"><b>6</b>Atributos</li>
+      <li class="passo"><b>7</b>Revisão</li>
+    </ol>
+    <div class="escolhas">
+      <div class="escolha"><span><b>Guerreiro</b><span>Dado de Vida d10 · Força</span></span></div>
+      <div class="escolha" style="border-left-color:var(--line)"><span><b>Mago</b><span>Dado de Vida d6 · Inteligência</span></span></div>
+    </div>
+  </div>
+</div>
+</div></section>
+<p class="foot">Base visual preservada do frontend atual. Sem fontes externas ou assets proprietários. Cores e regras completas: docs/DESIGN_SYSTEM.md e frontend/design-tokens.css.</p>
 </main></body></html>
