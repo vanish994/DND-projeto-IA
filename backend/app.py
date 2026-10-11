@@ -1046,7 +1046,7 @@ def _extrair_ataques_monstro(monstro: dict) -> list[dict]:
             continue
         nome_match = re.match(r"^([^.:\n]{2,90})[.:]", texto.strip())
         bonus_match = re.search(
-            r"(?:Melee|Ranged|Melee or Ranged)(?: Weapon)? Attack(?: Roll)?:\s*([+-]\d+)(?:\s+to hit)?",
+            r"(?:Melee|Ranged|Melee or Ranged)(?: Weapon| Spell)? Attack(?: Roll)?:\s*([+-]\d+)(?:\s+to hit)?",
             texto, re.I,
         )
         dano_match = re.search(r"Hit:\s*\d+\s*\((\d+d\d+(?:\s*[+-]\s*\d+)?)\)\s*([A-Za-z]+)?\s*damage", texto, re.I)
