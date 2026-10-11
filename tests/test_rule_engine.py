@@ -969,7 +969,7 @@ class RuleEngineTests(unittest.TestCase):
 
     def test_damage_to_already_unconscious_target_is_not_instant_death_by_overflow_rule(self):
         estado = EstadoVital(10, 0, inconsciente=True)
-        result = self.engine.evaluate({"type": "damage", "estado": estado, "amount": 10})
+        result = self.engine.evaluate({"type": "damage_application", "estado": estado, "damage": 10})
         self.assertNotEqual(result.outcome.get("estado"), "morto")
         self.assertEqual(estado.salvaguardas_falha, 1)
     def test_condition_aliases_and_exhaustion_levels_are_normalized(self):
