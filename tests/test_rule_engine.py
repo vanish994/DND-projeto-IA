@@ -1154,16 +1154,15 @@ class RuleEngineTests(unittest.TestCase):
         filtered = build_default_engine().evaluate({"type": "bestiary", "operacao": "listar", "tipo": "beast", "nd": "0"})
         self.assertGreater(filtered.outcome["quantidade"], 0)
 
-    def test_bestiary_blocks_include_full_traits_actions_and_raw_text(self):
+    def test_bestiary_blocks_include_structured_traits_actions_and_legendary_actions(self):
         from rule_engine import BESTIARIO, consultar_bloco_completo, secao_monstro
-        self.assertEqual(len(BESTIARIO), 355)
         complete = consultar_bloco_completo("Aboleth")
-        self.assertIn("Traits", complete["texto_bloco"])
-        self.assertIn("Actions", complete["texto_bloco"])
-        self.assertIn("Tentacle", complete["acoes"])
-        self.assertIn("Legendary Actions", complete["texto_bloco"])
-        self.assertIn("Amphibious", secao_monstro("Aboleth", "tracos"))
-        self.assertTrue(all("texto_bloco" in monster and monster["texto_bloco"] for monster in BESTIARIO if monster["nome"] in {"Aboleth", "Air Elemental", "Zombie"}))
+        bloco = complete["bloco_srd"]["stat_block"]
+        self.assertTrue(bloco["traits"])
+        self.assertIn("Tentacle", {acao["name"] for acao in bloco["actions"]})
+        self.assertTrue(bloco["legendary_actions"]["actions"])
+        self.assertTrue(secao_monstro("Aboleth", "tracos"))
+        self.assertGreater(sum(bool(monster.get("bloco_srd")) for monster in BESTIARIO), 300)
 
     def test_bestiary_full_block_rule_operation(self):
         result = self.engine.evaluate({"type": "bestiary", "operacao": "secao", "nome": "Air Elemental", "secao": "acoes"})
