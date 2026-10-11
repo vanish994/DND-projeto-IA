@@ -534,5 +534,13 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertNotIn("prone", bandido.get("condition_durations", {}))
 
 
+    def test_duracao_numerica_de_monstro_continua_ativa_ate_zerar(self):
+        token = {"conditions": ["prone"], "condition_durations": {"prone": 2}}
+        encerradas = backend_app._reduzir_duracoes_numericas_token(token)
+        self.assertEqual(encerradas, [])
+        self.assertEqual(token["condition_durations"]["prone"], 1)
+        self.assertIn("prone", token["conditions"])
+
+
 if __name__ == "__main__":
     unittest.main()
