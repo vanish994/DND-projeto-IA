@@ -1203,6 +1203,8 @@ def atacar_token_tatico(
     ataque = engine.evaluate({"type": "attack", "roll": rolagem, "modifier": bonus, "target_ac": ca_efetiva}).outcome
     if rolagem == 1:
         ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
+    elif ataque.get("result") == "hit" and efeitos_ataque.get("acerto_critico_automatico"):
+        ataque = {**ataque, "critical": True, "reason": "critical_due_to_condition"}
     dano = 0
     dano_bruto = 0
     defesas_dano = None
