@@ -18,6 +18,22 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertEqual(result["upcasting"], 1)
         self.assertIn("escalonamento", result)
 
+    def test_spell_names_are_normalized_without_accents(self):
+        result = resolver_magia({"magia": "RAIO MISTICO"})
+        self.assertEqual(result["magia"], "Raio Místico")
+        self.assertEqual(result["resultado"], "conjurada")
+
+    def test_cantrips_cannot_spend_spell_slots(self):
+        result = resolver_magia({"magia": "raio místico", "espaco": 1})
+        self.assertEqual(result["resultado"], "bloqueado")
+        self.assertEqual(result["motivo"], "circulo_invalido")
+        self.assertIn("Truques não usam espaços", result["detalhe"])
+
+    def test_spell_slot_above_ninth_level_is_blocked(self):
+        result = resolver_magia({"magia": "bola de fogo", "espaco": 10})
+        self.assertEqual(result["resultado"], "bloqueado")
+        self.assertEqual(result["motivo"], "circulo_invalido")
+
     def test_missing_components_still_blocks_spell(self):
         result = resolver_magia({"magia": "bola de fogo", "componentes_disponiveis": ["V"]})
         self.assertEqual(result["resultado"], "bloqueado")
