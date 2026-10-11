@@ -18,6 +18,14 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertEqual(result["upcasting"], 1)
         self.assertIn("escalonamento", result)
 
+    def test_unknown_spell_levels_are_not_misclassified_as_cantrips(self):
+        from rule_engine import listar_magias
+        unknown = next(nome for nome, magia in MAGIAS.items() if magia["circulo"] is None)
+        result = resolver_magia({"magia": unknown})
+        self.assertEqual(result["resultado"], "nao_implementado")
+        self.assertEqual(result["motivo_secundario"], "circulo_da_magia_nao_catalogado")
+        self.assertNotIn(unknown, {m["nome"].lower() for m in listar_magias(circulo=0)})
+
     def test_spell_names_are_normalized_without_accents(self):
         result = resolver_magia({"magia": "RAIO MISTICO"})
         self.assertEqual(result["magia"], "Raio Místico")
