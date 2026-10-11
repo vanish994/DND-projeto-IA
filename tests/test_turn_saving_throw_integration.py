@@ -32,6 +32,28 @@ class TurnSavingThrowPayloadTests(unittest.TestCase):
         request = AcaoAvancarTurno.model_validate({})
         self.assertEqual(request.salvaguardas, [])
 
+    def test_condition_application_accepts_repeat_save_metadata(self):
+        from backend.app import AtualizarCondicaoPersonagem
+
+        request = AtualizarCondicaoPersonagem.model_validate({
+            "operacao": "apply",
+            "condicao": "paralisado",
+            "duracao": "até o fim do próximo turno",
+            "salvaguarda_fim_turno": {"atributo": "sabedoria", "cd": 15},
+        })
+        self.assertEqual(request.salvaguarda_fim_turno.atributo, "sabedoria")
+        self.assertEqual(request.salvaguarda_fim_turno.cd, 15)
+
+    def test_condition_application_rejects_invalid_save_ability(self):
+        from backend.app import AtualizarCondicaoPersonagem
+
+        with self.assertRaises(ValidationError):
+            AtualizarCondicaoPersonagem.model_validate({
+                "operacao": "apply",
+                "condicao": "paralisado",
+                "salvaguarda_fim_turno": {"atributo": "sorte", "cd": 15},
+            })
+
 
 if __name__ == "__main__":
     unittest.main()
