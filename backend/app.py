@@ -691,6 +691,15 @@ def mensagem_mj(
     return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta)
 
 
+def _validar_turno_ativo(estado: dict, token_id: str) -> None:
+    if estado.get("combate_ativo") and estado.get("token_ativo") != token_id:
+        raise HTTPException(status_code=409, detail={
+            "motivo": "turno_de_outra_criatura",
+            "token_ativo": estado.get("token_ativo"),
+            "token_solicitado": token_id,
+        })
+
+
 def _condicoes_da_ficha(ficha: dict) -> EstadoCondicoes:
     return EstadoCondicoes(
         ativas=set(ficha.get("condicoes_ativas") or []),
@@ -1021,6 +1030,7 @@ def mover_token_tatico(
     token = next((t for t in tokens if t["id"] == pedido.token_id), None)
     if token is None:
         raise HTTPException(status_code=404, detail="Token não encontrado no encontro")
+    _validar_turno_ativo(estado, token["id"])
     destino = (pedido.destino_x, pedido.destino_y)
     if any(t["id"] != token["id"] and (t["x"], t["y"]) == destino for t in tokens):
         raise HTTPException(status_code=409, detail="A casa de destino já está ocupada")
@@ -1077,6 +1087,7 @@ def atacar_token_tatico(
     alvo = next((t for t in tokens if t["id"] == pedido.alvo_id), None)
     if not atacante or not alvo:
         raise HTTPException(status_code=404, detail="Atacante ou alvo não encontrado")
+    _validar_turno_ativo(estado, atacante["id"])
     if atacante["id"] == alvo["id"]:
         raise HTTPException(status_code=422, detail="Um token não pode atacar a si mesmo")
     if atacante["kind"] != "hero":
@@ -1464,6 +1475,7 @@ def atacar_com_monstro_tatico(
     alvo = next((t for t in tokens if t["id"] == pedido.alvo_id), None)
     if not atacante or not alvo:
         raise HTTPException(status_code=404, detail="Atacante ou alvo não encontrado")
+    _validar_turno_ativo(estado, atacante["id"])
     if atacante["kind"] != "enemy":
         raise HTTPException(status_code=422, detail="Esta rota é exclusiva para tokens de monstros")
     if alvo["kind"] != "hero":
@@ -1720,6 +1732,7 @@ def conjurar_no_mapa_tatico(
     alvo = next((t for t in tokens if t["id"] == pedido.alvo_id), None)
     if not conjurador or not alvo:
         raise HTTPException(status_code=404, detail="Conjurador ou alvo não encontrado")
+    _validar_turno_ativo(estado, conjurador["id"])
     if conjurador["kind"] != "hero":
         raise HTTPException(status_code=422, detail="Somente personagens com ficha podem conjurar nesta versão")
     if alvo["hp"] <= 0:
