@@ -384,6 +384,19 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertTrue(mapa["combate_ativo"])
         self.assertEqual(mapa["rodada"], 1)
 
+    def test_iniciativa_impede_acao_fora_do_turno(self):
+        self.save_encounter()
+        with patch.object(backend_app.secrets, "randbelow", side_effect=[10, 10]):
+            inicio = self.client.post(self.url + "/iniciativa/iniciar", headers=self.headers)
+        self.assertEqual(inicio.status_code, 200, inicio.text)
+        ativo = inicio.json()["mapa"]["token_ativo"]
+        fora_do_turno = "inimigo-bandido" if ativo == "heroi-vex" else "heroi-vex"
+        response = self.client.post(self.url + "/mover", headers=self.headers, json={
+            "token_id": fora_do_turno, "destino_x": 4, "destino_y": 1,
+        })
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["detail"]["motivo"], "turno_de_outra_criatura")
+
     def test_condicao_que_zerou_deslocamento_impede_movimento(self):
         condicao = self.client.post(
             f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/condicoes",
