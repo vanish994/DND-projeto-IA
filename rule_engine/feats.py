@@ -75,7 +75,14 @@ RAVENLOFT_ORIGIN_FEATS = {
             "uso_gasto_somente_em_sucesso",
         ],
     },
-    "sobrevivente": {"categoria": "origem", "fonte": "ravenloft", "efeitos": []},
+    "sobrevivente": {
+        "categoria": "origem",
+        "fonte": "ravenloft",
+        "efeitos": [
+            "hipervigilancia_rerrolar_d20_iniciativa_9_ou_menos_usa_novo",
+            "controlar_se_reacao_soma_bp_em_resistencia_falha_contra_enfeiticado_ou_amedrontado_1_por_descanso_longo",
+        ],
+    },
 }
 ORIGIN_FEATS.update(RAVENLOFT_ORIGIN_FEATS)
 

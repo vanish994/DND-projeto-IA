@@ -69,6 +69,13 @@ class AntecedentesTests(unittest.TestCase):
         self.assertIn("usos_iguais_bonus_proficiencia_por_descanso_longo", efeitos)
         self.assertIn("uso_gasto_somente_em_sucesso", efeitos)
 
+    def test_sobrevivente_tem_efeitos_catalogados(self):
+        from rule_engine.feats import FEATS
+        efeitos = FEATS["sobrevivente"]["efeitos"]
+        self.assertEqual(len(efeitos), 2)
+        self.assertTrue(efeitos[0].startswith("hipervigilancia"))
+        self.assertTrue(efeitos[1].startswith("controlar_se"))
+
     def test_investigador_aceita_olho_agucado_ou_dadiva(self):
         self.assertIn("olho_agucado", criar_personagem(fatos(background="investigador")).talentos)
         p = criar_personagem(fatos(background="investigador", background_feat="observadores"))
