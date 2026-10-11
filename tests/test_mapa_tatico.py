@@ -267,9 +267,11 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(body["efeitos"][0]["cd"], 11)
         self.assertFalse(body["efeitos"][0]["sucesso"])
         self.assertIn("prone", body["efeitos"][0]["condicoes_aplicadas"])
-        raw = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
-        token = next(t for t in raw["tokens"] if t["id"] == "heroi-vex")
-        self.assertIn("prone", token["conditions"])
+        ficha = self.repo.obter_personagem("jogador-mapa", self.cid, self.hero["id"])
+        self.assertIn("caido", ficha.get("condicoes_ativas", []))
+        mapa = self.client.get(self.url, headers=self.headers).json()["mapa"]
+        token = next(t for t in mapa["tokens"] if t["id"] == "heroi-vex")
+        self.assertIn("caido", token["conditions"])
 
     def test_zumbi_usa_undead_fortitude_ao_chegar_a_zero_pv(self):
         response = self.client.put(self.url, headers=self.headers, json={
