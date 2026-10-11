@@ -954,6 +954,24 @@ class RuleEngineTests(unittest.TestCase):
         result = resolver_efeitos_condicao({"action": "save", "target_conditions": ["frightened", "poisoned"]})
         self.assertFalse(result["desvantagem_salvaguardas"])
         self.assertTrue(result["desvantagem_testes_habilidade"])
+    def test_exhaustion_reduces_speed_and_does_not_mislabel_other_conditions(self):
+        from rule_engine import resolver_efeitos_condicao
+        result = resolver_efeitos_condicao({"action": "move", "target_conditions": ["exhaustion"], "exhaustion_niveis": 3})
+        self.assertEqual(result["modificador_d20"], -6)
+        self.assertEqual(result["deslocamento_reduzido_m"], 4.5)
+        self.assertFalse(result["morre_no_nivel_6"])
+
+    def test_long_rest_does_not_erase_temporary_hit_points_by_default(self):
+        estado = EstadoVital(20, 10, pv_temporarios=5)
+        self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 8})
+        self.assertEqual(estado.pv_atuais, 20)
+        self.assertEqual(estado.pv_temporarios, 5)
+
+    def test_damage_to_already_unconscious_target_is_not_instant_death_by_overflow_rule(self):
+        estado = EstadoVital(10, 0, inconsciente=True)
+        result = self.engine.evaluate({"type": "damage", "estado": estado, "amount": 10})
+        self.assertNotEqual(result.outcome.get("estado"), "morto")
+        self.assertEqual(estado.salvaguardas_falha, 1)
     def test_condition_aliases_and_exhaustion_levels_are_normalized(self):
         estado = __import__("rule_engine", fromlist=["EstadoCondicoes"]).EstadoCondicoes()
         result = self.engine.evaluate({"type": "condition_state", "estado": estado, "operation": "apply", "condition": "Poisoned", "duration": 2})
