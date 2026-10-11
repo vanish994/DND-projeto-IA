@@ -888,7 +888,17 @@ def atacar_token_tatico(
         prof_armas = set(profs.get("armas", [])) if isinstance(profs, dict) else set()
         armas_simples = {"Clava", "Clava Grande", "Adaga", "Dardo", "Machadinha", "Martelo Leve", "Maça", "Cajado", "Funda", "Azagaia", "Arco Curto", "Besta Leve"}
         categoria_arma = "simples" if nome_arma in armas_simples else "marciais"
-        if categoria_arma not in prof_armas:
+        alias_prof = {
+            "Besta de Mão": "bestas_de_mao", "Espada Longa": "espadas_longas",
+            "Rapieira": "rapieiras", "Espada Curta": "espadas_curtas",
+            "Adaga": "adagas", "Dardo": "dardos", "Funda": "fundas",
+            "Cajado": "cajados", "Besta Leve": "bestas_leves", "Clava": "clavas",
+            "Clava Grande": "clavas_grandes", "Machadinha": "machadinhas",
+            "Azagaia": "azagaias", "Martelo Leve": "martelos_leves", "Maça": "macas",
+            "Cimitarra": "cimitarras", "Foice": "foices", "Lança": "lancas",
+        }
+        proficiente = categoria_arma in prof_armas or alias_prof.get(nome_arma) in prof_armas
+        if not proficiente:
             raise HTTPException(status_code=422, detail="A ficha não confirma proficiência com esta arma")
         if int(arma.get("alcance", 0)) > 0:
             raise HTTPException(status_code=422, detail="Armas à distância/arremesso ainda não estão implementadas neste ataque; use uma arma corpo a corpo")
