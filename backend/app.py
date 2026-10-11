@@ -36,7 +36,7 @@ from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, Q
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
 from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS
 from rule_engine.ability_checks import resolver_salvaguarda
-from rule_engine.conditions import EstadoCondicoes, resolver_efeitos_condicao
+from rule_engine.conditions import EstadoCondicoes, normalizar_condicao, resolver_efeitos_condicao
 
 logger = logging.getLogger(__name__)
 
@@ -709,6 +709,42 @@ def _condicoes_da_ficha(ficha: dict) -> EstadoCondicoes:
     )
 
 
+def _duracao_textual_expira(duracao: Any, momento: str) -> bool:
+    if not isinstance(duracao, str):
+        return False
+    texto = duracao.casefold()
+    if momento == "fim":
+        return "até o fim do próximo turno" in texto or "until the end of its next turn" in texto
+    return "até o início do próximo turno" in texto or "until the start of its next turn" in texto
+
+
+def _expirar_duracoes_textuais_ficha(repo: RepositorioCampanhas, jogador: str, campanha_id: str, ficha: dict, momento: str) -> list[str]:
+    estado = _condicoes_da_ficha(ficha)
+    encerradas = []
+    for condicao, duracao in list(estado.duracoes.items()):
+        if _duracao_textual_expira(duracao, momento):
+            estado.remover(condicao)
+            encerradas.append(normalizar_condicao(condicao))
+    if encerradas:
+        _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, estado)
+    return encerradas
+
+
+def _expirar_duracoes_textuais_token(token: dict, momento: str) -> list[str]:
+    duracoes = token.get("condition_durations") or {}
+    condicoes = token.get("conditions") or []
+    encerradas = []
+    for condicao, duracao in list(duracoes.items()):
+        if _duracao_textual_expira(duracao, momento):
+            chave = normalizar_condicao(condicao)
+            token["conditions"] = [c for c in condicoes if normalizar_condicao(c) != chave]
+            condicoes = token["conditions"]
+            duracoes.pop(condicao, None)
+            encerradas.append(chave)
+    token["condition_durations"] = duracoes
+    return encerradas
+
+
 def _salvar_condicoes_ficha(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem: dict, estado: EstadoCondicoes) -> dict:
     dados = {k: v for k, v in personagem.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
     dados["condicoes_ativas"] = sorted(estado.ativas)
@@ -970,17 +1006,23 @@ def avancar_turno_tatico(
     if token_atual and token_atual["kind"] == "hero":
         ficha = repo.obter_personagem(jogador, campanha_id, token_atual["character_id"])
         if ficha:
+            duracoes_encerradas.extend(_expirar_duracoes_textuais_ficha(repo, jogador, campanha_id, ficha, "fim"))
+            ficha = repo.obter_personagem(jogador, campanha_id, token_atual["character_id"]) or ficha
             condicoes = _condicoes_da_ficha(ficha)
-            if condicoes.duracoes:
+            if any(isinstance(d, int) and not isinstance(d, bool) for d in condicoes.duracoes.values()):
                 try:
                     resultado_tick = build_default_engine().evaluate({
                         "type": "condition_state", "estado": condicoes,
                         "operation": "tick", "units": 1,
                     }).outcome
-                    duracoes_encerradas = resultado_tick.get("encerradas", [])
+                    duracoes_encerradas.extend(resultado_tick.get("encerradas", []))
                     _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, condicoes)
                 except (TypeError, ValueError, KeyError) as exc:
                     raise HTTPException(status_code=422, detail=str(exc)) from exc
+    elif token_atual and token_atual["kind"] == "enemy":
+        token_bruto_atual = next((t for t in bruto.get("tokens", []) if t.get("id") == token_atual["id"]), None)
+        if token_bruto_atual:
+            duracoes_encerradas.extend(_expirar_duracoes_textuais_token(token_bruto_atual, "fim"))
     vivos = {t["id"] for t in estado["tokens"] if int(t.get("hp", 0)) > 0}
     iniciativa_viva = [item for item in iniciativa if item["token_id"] in vivos]
     bruto["iniciativa"] = iniciativa_viva
@@ -1002,10 +1044,23 @@ def avancar_turno_tatico(
         rodada = int(bruto.get("rodada", 1)) + voltas
         bruto["combate_ativo"] = True
     bruto["rodada"] = rodada
+    duracoes_inicio_encerradas = []
+    if bruto.get("combate_ativo") and iniciativa_viva:
+        proximo_token_id = iniciativa_viva[int(bruto["turno_indice"])]["token_id"]
+        proximo_token = next((t for t in estado["tokens"] if t["id"] == proximo_token_id), None)
+        if proximo_token and proximo_token["kind"] == "hero":
+            ficha_proximo = repo.obter_personagem(jogador, campanha_id, proximo_token["character_id"])
+            if ficha_proximo:
+                duracoes_inicio_encerradas.extend(_expirar_duracoes_textuais_ficha(repo, jogador, campanha_id, ficha_proximo, "inicio"))
+        elif proximo_token and proximo_token["kind"] == "enemy":
+            token_bruto_proximo = next((t for t in bruto.get("tokens", []) if t.get("id") == proximo_token_id), None)
+            if token_bruto_proximo:
+                duracoes_inicio_encerradas.extend(_expirar_duracoes_textuais_token(token_bruto_proximo, "inicio"))
     repo.salvar_mapa_tatico(jogador, campanha_id, bruto)
     return {
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "turno_encerrado": atual["token_id"], "duracoes_encerradas": duracoes_encerradas,
+        "duracoes_inicio_encerradas": duracoes_inicio_encerradas,
         "rodada": bruto.get("rodada", rodada),
     }
 
