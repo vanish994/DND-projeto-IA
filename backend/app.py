@@ -385,6 +385,28 @@ def _campanha_ou_404(repo: RepositorioCampanhas, jogador: str, campanha_id: str)
     return campanha
 
 
+def _diagnostico_erro_provedor(exc: Exception) -> tuple[str, int | None]:
+    """Converte falhas comuns do provedor em instruções seguras para o jogador."""
+    tipo = type(exc).__name__
+    status = getattr(exc, "status_code", None)
+
+    if tipo in {"AuthenticationError", "InvalidAPIKeyError"} or status == 401:
+        return ("O provedor recusou a chave de API. Confira TOKENHARBOR_API_KEY no Render.", status or 401)
+    if tipo == "PermissionDeniedError" or status == 403:
+        return ("O provedor negou acesso ao modelo. Confira a conta, permissões e modelo configurado.", status or 403)
+    if tipo == "RateLimitError" or status == 429:
+        return ("O provedor atingiu um limite ou não tem cota disponível. Aguarde e confira os créditos/limites da conta.", status or 429)
+    if tipo == "NotFoundError" or status == 404:
+        return ("O modelo ou endpoint configurado não foi encontrado. Confira DEEPSEEK_MODEL e TOKENHARBOR_BASE_URL no Render.", status or 404)
+    if tipo in {"APITimeoutError", "TimeoutError"}:
+        return ("O provedor demorou demais para responder. Tente novamente em instantes.", status)
+    if tipo in {"APIConnectionError", "ConnectionError"}:
+        return ("Não foi possível conectar ao provedor. Verifique o serviço e tente novamente.", status)
+    if status is not None:
+        return (f"O provedor respondeu com erro HTTP {status}. Consulte os logs do serviço no Render.", status)
+    return ("Falha temporária ao consultar o provedor. Consulte os logs do serviço no Render e tente novamente.", None)
+
+
 def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str) -> str:
     historico = repo.historico_llm(jogador, campanha_id, HISTORICO_MAX)
     contexto_personagem = _resumo_grupo(repo, jogador, campanha_id)
@@ -407,8 +429,12 @@ def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanh
         else:
             resposta = mj.responder(texto, historico)
     except Exception as exc:
-        logger.exception("Falha na chamada do provedor do MJ: %s", type(exc).__name__)
-        raise HTTPException(status_code=502, detail="Falha ao consultar o MJ configurado") from exc
+        detalhe, status_provedor = _diagnostico_erro_provedor(exc)
+        logger.exception(
+            "Falha na chamada do provedor do MJ: tipo=%s status_provedor=%s",
+            type(exc).__name__, status_provedor,
+        )
+        raise HTTPException(status_code=502, detail=detalhe) from exc
     repo.registrar_troca(jogador, campanha_id, texto, resposta)
     return resposta
 
