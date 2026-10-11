@@ -51,6 +51,12 @@ class AbilityCheckTests(unittest.TestCase):
         result = resolver_teste_habilidade({"pericia": "atletismo", "roll": 12, "cd": 15})
         self.assertEqual(result["resultado"], "bloqueado")
         self.assertEqual(result["motivo"], "modificador_de_atributo_ausente")
+    def test_heroic_inspiration_can_reroll_any_die_not_only_a_d20(self):
+        result = resolver_inspiracao_heroica({"tem_inspiracao_heroica": True, "dado_original": 2, "rerrolagem": 5, "lados_dado": 6})
+        self.assertEqual(result["dado_usado"], 5)
+        self.assertTrue(result["inspiracao_heroica_consumida"])
+        delayed = resolver_inspiracao_heroica({"tem_inspiracao_heroica": True, "dado_original": 2, "rerrolagem": 5, "lados_dado": 6, "imediatamente_apos_rolar": False})
+        self.assertEqual(delayed["resultado"], "bloqueado")
     def test_saving_throw_uses_attribute_proficiency_and_d20_rules(self):
         result = resolver_salvaguarda({"atributo": "destreza", "valor_atributo": 14, "nivel": 5, "proficiencias_salvaguarda": ["destreza"], "roll": 10, "cd": 14})
         self.assertEqual(result["bonus_proficiencia_aplicado"], 3)
