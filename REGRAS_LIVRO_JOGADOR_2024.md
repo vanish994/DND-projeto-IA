@@ -147,6 +147,12 @@ A lista oficial do PHB 2024 contém **15 condições**, não 16. `Lento/Slowed` 
 
 Atualizado o rastreador de turnos: Surpresa não remove ação, ação bônus, reação nem movimento no primeiro turno. A condição de surpreendido agora é aplicada à rolagem de iniciativa como desvantagem, conforme o PHB 2024.
 
+## Correção de descanso e estabilização
+
+`EstadoVital` agora pode rastrear Dados de Vida máximos e disponíveis: o Descanso Curto consome os dados usados, e o Descanso Longo recupera todos os dados gastos, além dos PV e da redução de um nível de Exaustão. Estabilizar não é mais sucesso automático: exige teste de Sabedoria (Medicina) CD 10 ou uso de kit médico.
+
+Testes de regressão adicionados. A validação final depende da execução da suíte no branch.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
