@@ -131,7 +131,8 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         raise ValueError("Talento inválido")
     antecedente = str(fatos.get("background", "")).strip().lower()
     if antecedente in ANTECEDENTES:
-        atributos = aplicar_aumentos_antecedente(antecedente, atributos, fatos.get("background_increases", {}))
+        if "background_increases" in fatos:
+            atributos = aplicar_aumentos_antecedente(antecedente, atributos, fatos["background_increases"])
         talento_origem = _talento_do_antecedente(antecedente, fatos.get("background_feat"))
         if talento_origem:
             talentos.add(talento_origem)
