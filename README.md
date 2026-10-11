@@ -142,6 +142,9 @@ Até existir login, cada navegador gera um identificador próprio e o envia no c
 | `PUT` | `/v1/campanhas/{id}/personagens/{pid}` | Refaz a ficha, revalidando pelo motor |
 | `PATCH` | `/v1/campanhas/{id}/personagens/{pid}` | Atualiza os PV atuais (`{"pv_atual": n}`, limitado ao máximo) |
 | `DELETE` | `/v1/campanhas/{id}/personagens/{pid}` | Apaga a ficha |
+| `PATCH` | `/v1/campanhas/{id}/personagens/{pid}/proficiencias` | Atualiza perícias de classe e escolhas pendentes da ficha |
+| `PATCH` | `/v1/campanhas/{id}/personagens/{pid}/magias` | Registra truques, magias e espaços validados pelo motor |
+| `PATCH` | `/v1/campanhas/{id}/personagens/{pid}/equipamento` | Equipa arma, armadura e escudo com verificação de proficiência |
 
 A criação exige as escolhas que completam a ficha: Draconato precisa de Herança Dracônica; antecedentes que deixam a ferramenta em aberto exigem uma opção da categoria correspondente; todos os antecedentes exigem a escolha do pacote A ou B. O motor devolve `escolhas_pendentes` para fichas que ainda precisem ser concluídas. A API de conjuração valida magias e espaços; a progressão de Artífice tem validação específica, enquanto outras listas de classe ainda não são validadas integralmente.
 
