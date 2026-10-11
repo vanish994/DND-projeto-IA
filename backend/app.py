@@ -953,6 +953,7 @@ def atacar_token_tatico(
     if rolagem == 1:
         ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
     dano = 0
+    fortitude = None
     if ataque.get("result") == "hit":
         dados_dano = list(dados_arma)
         if ataque.get("critical") and nome_arma:
@@ -1012,6 +1013,7 @@ def atacar_token_tatico(
         "arma": nome_arma or "Ataque desarmado",
         "ca_alvo": int(alvo["ac"]),
         "rolagens": [rolagem, *rolagens_extra],
+        "fortitude": fortitude,
         "alcance_pes": alcance_tatico,
         "ataque_a_distancia": ataque_a_distancia,
         "nota": "Armas corpo a corpo e à distância usam o catálogo, alcance e estado de vantagem/desvantagem do motor. Munição não é rastreada no inventário nesta versão.",
