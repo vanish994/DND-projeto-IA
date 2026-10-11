@@ -79,6 +79,15 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertEqual(result["mecanica"]["area"]["lado_m"], 4.5)
         self.assertEqual(result["mecanica"]["empurra_m"], 3)
 
+    def test_burning_hands_scales_fire_damage_and_cone_area(self):
+        result = resolver_magia({"magia": "mãos flamejantes", "espaco": 3})
+        self.assertEqual(result["mecanica"]["dados_dano"], "5d6")
+        self.assertEqual(result["mecanica"]["tipo_dano"], "igneo")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "destreza")
+        self.assertTrue(result["mecanica"]["sucesso_metade"])
+        self.assertEqual(result["mecanica"]["area"]["forma"], "cone")
+        self.assertEqual(result["mecanica"]["area"]["comprimento_m"], 4.5)
+
     def test_mage_armor_blocks_target_already_wearing_armor(self):
         result = resolver_magia({"magia": "armadura arcana", "alvo_veste_armadura": True})
         self.assertEqual(result["resultado"], "bloqueado")
