@@ -117,9 +117,11 @@ def curar(estado: EstadoVital, quantidade: int) -> dict[str, Any]:
 
 def salvaguarda_contra_morte(estado: EstadoVital, rolagem: int) -> dict[str, Any]:
     """Resolve uma Salvaguarda contra a Morte quando a criatura está a 0 PV."""
-    if estado.morto or estado.pv_atuais > 0 or not estado.inconsciente:
+    if estado.morto or estado.pv_atuais > 0 or not estado.inconsciente or estado.estavel:
         raise ValueError("A criatura não pode fazer esta Salvaguarda contra a Morte")
     rolagem = int(rolagem)
+    if not 1 <= rolagem <= 20:
+        raise ValueError("A rolagem da Salvaguarda contra a Morte deve estar entre 1 e 20")
     if rolagem == 1:
         estado.salvaguardas_falha = min(3, estado.salvaguardas_falha + 2)
         resultado = "falha"
@@ -216,12 +218,20 @@ def resolver_descanso(fatos: Mapping[str, Any]) -> dict[str, Any]:
             estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0)
         )
     elif tipo == "longo":
+        if interrompido:
+            if duracao >= 1:
+                resultado = descanso_curto(estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0))
+                resultado.update({"descanso": "curto", "resultado": "beneficios_de_descanso_curto_antes_da_interrupcao"})
+                return resultado
+            return {"descanso": "longo", "resultado": "interrompido_antes_de_uma_hora"}
         if duracao < 8:
             return {"descanso": "longo", "resultado": "duracao_insuficiente"}
         if float(fatos.get("hours_since_last_long_rest", 16)) < 16:
             return {"descanso": "longo", "resultado": "intervalo_insuficiente"}
-        if interrompido:
-            return {"descanso": "longo", "resultado": "interrompido"}
+        sono = float(fatos.get("sleep_hours", 6))
+        atividade_leve = float(fatos.get("light_activity_hours", 2))
+        if sono < 6 or atividade_leve > 2:
+            return {"descanso": "longo", "resultado": "sono_ou_atividade_invalida"}
         resultado = descanso_longo(estado)
     else:
         raise ValueError("Tipo de descanso inválido")
