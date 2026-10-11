@@ -28,6 +28,7 @@ from sqlalchemy import (
     insert,
     select,
     update,
+    case,
 )
 from sqlalchemy.engine import Engine
 
@@ -309,6 +310,24 @@ class RepositorioCampanhas:
             valores["pv_atual"] = max(0, min(pv_atual, pv_maximo))
         with self.engine.begin() as conn:
             conn.execute(update(personagens).where(personagens.c.id == personagem_id).values(**valores))
+        return self.obter_personagem(jogador_id, campanha_id, personagem_id)
+
+    def ajustar_pv_personagem(self, jogador_id: str, campanha_id: str, personagem_id: str, delta: int) -> dict[str, Any] | None:
+        """Aplica dano/cura como operação atômica, sem valores absolutos obsoletos."""
+        atual = self.obter_personagem(jogador_id, campanha_id, personagem_id)
+        if atual is None:
+            return None
+        maximo = int(atual["pv_maximo"])
+        novo = personagens.c.pv_atual + int(delta)
+        limitado = case((novo < 0, 0), (novo > maximo, maximo), else_=novo)
+        with self.engine.begin() as conn:
+            resultado = conn.execute(
+                update(personagens)
+                .where(personagens.c.id == personagem_id, personagens.c.campanha_id == campanha_id)
+                .values(pv_atual=limitado, atualizado_em=_agora())
+            )
+            if resultado.rowcount == 0:
+                return None
         return self.obter_personagem(jogador_id, campanha_id, personagem_id)
 
     def apagar_personagem(self, jogador_id: str, campanha_id: str, personagem_id: str) -> bool:
