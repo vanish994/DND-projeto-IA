@@ -158,6 +158,12 @@ class AcaoConjurarTatico(BaseModel):
     espaco: int | None = Field(default=None, ge=0, le=9)
     cobertura: str = Field(default="nenhuma", pattern="^(nenhuma|meia|tres_quartos|total)$")
 
+class AcaoMonstroTatico(BaseModel):
+    atacante_id: str = Field(min_length=1, max_length=80)
+    alvo_id: str = Field(min_length=1, max_length=80)
+    acao: str | None = Field(default=None, max_length=100)
+    cobertura: str = Field(default="nenhuma", pattern="^(nenhuma|meia|tres_quartos|total)$")
+
 
 class AtualizarMagiasPersonagem(BaseModel):
     truques: list[str] = Field(default_factory=list, max_length=20)
@@ -973,6 +979,147 @@ def atacar_token_tatico(
         "alcance_pes": alcance_tatico,
         "ataque_a_distancia": ataque_a_distancia,
         "nota": "Armas corpo a corpo e à distância usam o catálogo, alcance e estado de vantagem/desvantagem do motor. Munição não é rastreada no inventário nesta versão.",
+    }
+
+
+
+def _acoes_monstro_como_lista(monstro: dict) -> list[str]:
+    """Normaliza as ações do bloco SRD sem inventar ataques ausentes."""
+    acoes = monstro.get("acoes", [])
+    if isinstance(acoes, str):
+        return [linha.strip() for linha in acoes.splitlines() if linha.strip()]
+    if isinstance(acoes, dict):
+        acoes = list(acoes.values())
+    if isinstance(acoes, list):
+        return [
+            str(item.get("texto") or item.get("descricao") or item.get("description") or item.get("name") or "")
+            if isinstance(item, dict) else str(item)
+            for item in acoes
+        ]
+    return []
+
+
+def _extrair_ataques_monstro(monstro: dict) -> list[dict]:
+    """Extrai somente ataques com bônus, alcance e dano explicitamente no bloco."""
+    import re
+    resultado = []
+    for texto in _acoes_monstro_como_lista(monstro):
+        if not texto:
+            continue
+        nome_match = re.match(r"^([^.:\\n]{2,90})[.:]", texto.strip())
+        bonus_match = re.search(r"(?:Melee|Ranged|Melee or Ranged) Attack Roll:\\s*([+-]\\d+)", texto, re.I)
+        dano_match = re.search(r"Hit:\\s*\\d+\\s*\\((\\d+d\\d+(?:\\s*[+-]\\s*\\d+)?)\\)\\s*([A-Za-z]+)?\\s*damage", texto, re.I)
+        alcance_match = re.search(r"reach\\s+(\\d+)\\s*ft\\.|range\\s+(\\d+)/(\\d+)\\s*ft\\.|range\\s+(\\d+)\\s*ft\\.", texto, re.I)
+        if not (nome_match and bonus_match and dano_match and alcance_match):
+            continue
+        reach = int(alcance_match.group(1)) if alcance_match.group(1) else 0
+        range_ft = int(alcance_match.group(2) or alcance_match.group(4) or 0)
+        max_range_ft = int(alcance_match.group(3) or range_ft)
+        resultado.append({
+            "nome": nome_match.group(1).strip(),
+            "bonus_ataque": int(bonus_match.group(1)),
+            "dano": dano_match.group(1).replace(" ", ""),
+            "tipo_dano": dano_match.group(2) or "desconhecido",
+            "alcance_pes": max(reach, range_ft, max_range_ft),
+            "alcance_corpo_a_corpo": reach,
+            "alcance_minimo_distancia": range_ft,
+            "alcance_maximo_distancia": max_range_ft,
+            "texto": texto,
+        })
+    return resultado
+
+
+@app.post("/v1/campanhas/{campanha_id}/mapa-tatico/ataque-monstro")
+def atacar_com_monstro_tatico(
+    campanha_id: str,
+    pedido: AcaoMonstroTatico,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    estado = _estado_mapa_normalizado(repo, jogador, campanha_id)
+    tokens = estado["tokens"]
+    atacante = next((t for t in tokens if t["id"] == pedido.atacante_id), None)
+    alvo = next((t for t in tokens if t["id"] == pedido.alvo_id), None)
+    if not atacante or not alvo:
+        raise HTTPException(status_code=404, detail="Atacante ou alvo não encontrado")
+    if atacante["kind"] != "enemy":
+        raise HTTPException(status_code=422, detail="Esta rota é exclusiva para tokens de monstros")
+    if alvo["kind"] != "hero":
+        raise HTTPException(status_code=422, detail="Monstros só podem atacar tokens de personagens nesta rota")
+    if atacante["hp"] <= 0 or alvo["hp"] <= 0:
+        raise HTTPException(status_code=422, detail="Atacante e alvo precisam estar com PV acima de zero")
+    from rule_engine.bestiary import consultar_monstro
+    monstro = consultar_monstro(atacante.get("monster_name") or atacante["name"])
+    if not monstro:
+        raise HTTPException(status_code=404, detail="Bloco do monstro não encontrado no bestiário")
+    ataques = _extrair_ataques_monstro(monstro)
+    if not ataques:
+        raise HTTPException(status_code=422, detail={
+            "motivo": "ataques_do_bloco_nao_estruturados",
+            "monstro": monstro.get("nome"),
+            "detalhe": "O bloco não contém ataque com bônus, alcance e dano em formato reconhecido; nenhum valor foi inventado.",
+        })
+    if pedido.acao:
+        selecionado = next((a for a in ataques if a["nome"].casefold() == pedido.acao.casefold()), None)
+        if not selecionado:
+            raise HTTPException(status_code=422, detail={"motivo": "acao_de_ataque_inexistente", "acoes_disponiveis": [a["nome"] for a in ataques]})
+    else:
+        dx, dy = abs(int(atacante["x"]) - int(alvo["x"])), abs(int(atacante["y"]) - int(alvo["y"]))
+        distancia = max(dx, dy) * 5
+        candidatos = [a for a in ataques if (
+            (a["alcance_corpo_a_corpo"] >= distancia and a["alcance_corpo_a_corpo"] > 0)
+            or (a["alcance_maximo_distancia"] >= distancia and a["alcance_maximo_distancia"] > 0)
+        )]
+        if not candidatos:
+            raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "acoes_disponiveis": [a["nome"] for a in ataques]})
+        selecionado = candidatos[0]
+    dx, dy = abs(int(atacante["x"]) - int(alvo["x"])), abs(int(atacante["y"]) - int(alvo["y"]))
+    distancia = max(dx, dy) * 5
+    if selecionado["alcance_corpo_a_corpo"] > 0 and distancia > selecionado["alcance_corpo_a_corpo"]:
+        raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_pes": selecionado["alcance_corpo_a_corpo"]})
+    if selecionado["alcance_maximo_distancia"] > 0 and distancia > selecionado["alcance_maximo_distancia"]:
+        raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_pes": selecionado["alcance_maximo_distancia"]})
+    geometria = resolver_ataque_tatico({
+        "distancia": distancia,
+        "alcance": selecionado["alcance_corpo_a_corpo"] or selecionado["alcance_maximo_distancia"],
+        "alcance_maximo": selecionado["alcance_maximo_distancia"] or None,
+        "ataque_a_distancia": selecionado["alcance_maximo_distancia"] > 0,
+        "origem": (int(atacante["x"]), int(atacante["y"])),
+        "alvo": (int(alvo["x"]), int(alvo["y"])),
+        "atacante": (int(atacante["x"]), int(atacante["y"])),
+        "alvo_posicao": (int(alvo["x"]), int(alvo["y"])),
+        "aliados": [(int(t["x"]), int(t["y"])) for t in tokens if t["kind"] == "enemy" and t["id"] != atacante["id"]],
+        "cobertura": pedido.cobertura,
+    })
+    if geometria.get("resultado") != "permitido":
+        raise HTTPException(status_code=422, detail={"motivo": geometria.get("motivo", "ataque_bloqueado"), "geometria": geometria})
+    rolagem = secrets.randbelow(20) + 1
+    ataque = build_default_engine().evaluate({
+        "type": "attack", "roll": rolagem, "modifier": selecionado["bonus_ataque"],
+        "target_ac": int(alvo["ac"]) + int(geometria.get("bonus_ca_por_cobertura", 0)),
+    }).outcome
+    if rolagem == 1:
+        ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
+    dados_expr = selecionado["dano"]
+    import re
+    m = re.fullmatch(r"(\\d+)d(\\d+)(?:([+-])(\\d+))?", dados_expr)
+    if not m:
+        raise HTTPException(status_code=422, detail={"motivo": "expressao_de_dano_nao_suportada", "expressao": dados_expr})
+    quantidade, lados = int(m.group(1)), int(m.group(2))
+    modificador = int(m.group(4) or 0) * (-1 if m.group(3) == "-" else 1)
+    dados_dano = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+    if ataque.get("critical"):
+        dados_dano += [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+    dano = max(0, sum(dados_dano) + modificador) if ataque.get("result") == "hit" else 0
+    if dano:
+        repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
+    return {
+        "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
+        "monstro": monstro["nome"], "acao": selecionado["nome"], "ataque": ataque,
+        "rolagem": rolagem, "bonus_ataque": selecionado["bonus_ataque"],
+        "dados_dano": dados_dano if ataque.get("result") == "hit" else [],
+        "dano": dano, "tipo_dano": selecionado["tipo_dano"], "geometria": geometria,
+        "nota": "Ação extraída do bloco de estatísticas do bestiário; ações múltiplas e efeitos especiais ainda precisam de resolução própria.",
     }
 
 
