@@ -494,8 +494,30 @@ CATALOGO_MAGIAS = {
     'Âncora Planar': {'escola': 'Abjuração', 'concentracao': False, 'ritual': False, 'material': True},
 }
 
+
+# Variantes de Instrumento Musical e de Kit de Jogos (Livro do Jogador 2024, p. 227).
+INSTRUMENTOS_MUSICAIS = {
+    'Alaúde': {"preco": 35, "peso": 1.0, "atributo": "carisma"},
+    'Flauta': {"preco": 2, "peso": 0.5, "atributo": "carisma"},
+    'Flauta de Pan': {"preco": 12, "peso": 1.0, "atributo": "carisma"},
+    'Gaita de Foles': {"preco": 30, "peso": 3.0, "atributo": "carisma"},
+    'Lira': {"preco": 30, "peso": 1.0, "atributo": "carisma"},
+    'Oboé': {"preco": 2, "peso": 0.5, "atributo": "carisma"},
+    'Tambor': {"preco": 6, "peso": 1.5, "atributo": "carisma"},
+    'Trombeta': {"preco": 3, "peso": 1.0, "atributo": "carisma"},
+    'Violino': {"preco": 30, "peso": 0.5, "atributo": "carisma"},
+    'Xilofone': {"preco": 25, "peso": 5.0, "atributo": "carisma"},
+}
+
+KITS_DE_JOGOS = {
+    'Baralho': {"preco": 0.05, "peso": 0.0, "atributo": "sabedoria"},
+    'Conjunto do Jogo dos Três Dragões': {"preco": 1, "peso": 0.0, "atributo": "sabedoria"},
+    'Dados': {"preco": 0.05, "peso": 0.0, "atributo": "sabedoria"},
+    'Xadrez-do-Dragão': {"preco": 1, "peso": 0.0, "atributo": "sabedoria"},
+}
+
 def buscar_catalogo(categoria, nome):
-    catalogos = {"armas": CATALOGO_ARMAS, "armaduras": CATALOGO_ARMADURAS, "equipamentos": CATALOGO_EQUIPAMENTOS, "magias": CATALOGO_MAGIAS}
+    catalogos = {"armas": CATALOGO_ARMAS, "armaduras": CATALOGO_ARMADURAS, "equipamentos": CATALOGO_EQUIPAMENTOS, "magias": CATALOGO_MAGIAS, "instrumentos": INSTRUMENTOS_MUSICAIS, "jogos": KITS_DE_JOGOS}
     if categoria not in catalogos: raise ValueError("Categoria de catálogo inválida")
     return catalogos[categoria].get(nome)
 
