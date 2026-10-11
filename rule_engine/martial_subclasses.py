@@ -84,6 +84,17 @@ def resolver_subclasse_marcial(fatos: dict) -> dict:
         return {"resultado": "resolvido", "itens_magicos": 3}
     if caracteristica == "poder_psionico":
         return {"resultado": "resolvido", "dados_energia": max(1, (nivel + 2) // 3), "dado": "d6" if nivel < 5 else "d8" if nivel < 11 else "d10" if nivel < 17 else "d12"}
-    if caracteristica in {"vitalidade_da_arvore", "ramos_da_arvore", "raizes_devastadoras", "percorrer_a_arvore"}:
-        return {"resultado": "resolvido", "efeito": caracteristica, "alcance_m": 3 if caracteristica == "vitalidade_da_arvore" else 9}
-    return {"resultado": "resolvido", "subclasse": subclasse, "caracteristica": caracteristica or None, "caracteristicas_disponiveis": disponiveis}
+    # Nunca declare sucesso apenas porque a característica consta do catálogo.
+    # Apenas efeitos explicitamente implementados acima podem ser resolvidos.
+    if not caracteristica:
+        return {
+            "resultado": "requer_caracteristica",
+            "subclasse": subclasse,
+            "caracteristicas_disponiveis": disponiveis,
+        }
+    return {
+        "resultado": "nao_implementado",
+        "subclasse": subclasse,
+        "caracteristica": caracteristica,
+        "motivo": "caracteristica_catalogada_sem_resolver_especifico",
+    }
