@@ -42,6 +42,28 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertEqual(result["resultado"], "bloqueado")
         self.assertEqual(result["motivo"], "circulo_invalido")
 
+    def test_fireball_returns_structured_damage_and_upcasting(self):
+        result = resolver_magia({"magia": "bola de fogo", "espaco": 4})
+        self.assertEqual(result["mecanica"]["dados_dano"], "9d6")
+        self.assertEqual(result["mecanica"]["tipo_dano"], "igneo")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "destreza")
+        self.assertEqual(result["mecanica"]["area"]["raio_m"], 6)
+
+    def test_cure_wounds_returns_structured_healing(self):
+        result = resolver_magia({"magia": "curar ferimentos", "espaco": 2})
+        self.assertEqual(result["mecanica"]["dados_cura"], "4d8")
+        self.assertTrue(result["mecanica"]["soma_modificador_conjuracao"])
+
+    def test_magic_missile_scales_number_of_darts(self):
+        result = resolver_magia({"magia": "mísseis mágicos", "espaco": 3})
+        self.assertEqual(result["mecanica"]["dardos"], 5)
+        self.assertEqual(result["mecanica"]["dano_por_dardo"], "1d4+1")
+
+    def test_bless_scales_number_of_targets(self):
+        result = resolver_magia({"magia": "benção", "espaco": 2})
+        self.assertEqual(result["mecanica"]["alvos"], 4)
+        self.assertEqual(result["mecanica"]["bonus"], "1d4")
+
     def test_missing_components_still_blocks_spell(self):
         result = resolver_magia({"magia": "bola de fogo", "componentes_disponiveis": ["V"]})
         self.assertEqual(result["resultado"], "bloqueado")
