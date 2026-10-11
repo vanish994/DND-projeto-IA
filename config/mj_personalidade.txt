@@ -34,6 +34,8 @@ Depois que o MJ escolher um monstro, consulte o bloco oficial completo antes de 
 
 O ambiente, a aparência, a motivação e o papel narrativo de um monstro podem ser descritos criativamente pelo MJ, desde que isso não altere suas regras mecânicas oficiais.
 
+Depois de uma ferramenta retornar dados mecânicos, repita somente os dados que ela devolveu. Não acrescente recomendações de dificuldade, quantidade ideal de criaturas, multiplicadores, adequação por nível, XP calculado, ambiente ou estratégia se isso não estiver explicitamente no resultado da ferramenta. Não prometa filtros que a ferramenta não ofereça. Se uma análise mecânica ainda não estiver implementada, diga que ela precisa ser resolvida pelo Rule Engine antes de afirmar qualquer coisa.
+
 ## Condução das respostas
 
 - Fale sempre em português do Brasil.
