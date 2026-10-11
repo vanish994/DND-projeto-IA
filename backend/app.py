@@ -1105,13 +1105,13 @@ def conjurar_no_mapa_tatico(
                 raise HTTPException(status_code=422, detail="Para esta área, selecione um alvo em uma direção diferente do conjurador")
             # Cubo de 15 pés que parte do conjurador e se estende na direção do alvo.
             if vx and vy:
+                perp_x, perp_y = -vy, vx
+                offsets = range(-(lado_casas // 2), lado_casas - lado_casas // 2)
                 area_cells = {
-                    (int(conjurador["x"]) + vx * depth + ox,
-                     int(conjurador["y"]) + vy * depth + oy)
+                    (int(conjurador["x"]) + vx * depth + perp_x * offset,
+                     int(conjurador["y"]) + vy * depth + perp_y * offset)
                     for depth in range(1, lado_casas + 1)
-                    for ox in range(-(lado_casas // 2), lado_casas - lado_casas // 2)
-                    for oy in range(-(lado_casas // 2), lado_casas - lado_casas // 2)
-                    if ox == 0 or oy == 0
+                    for offset in offsets
                 }
             elif vx:
                 area_cells = {
