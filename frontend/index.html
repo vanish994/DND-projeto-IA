@@ -32,6 +32,7 @@
           <p class="eyebrow">Campanha</p>
           <h2 id="campaign-title">Nenhuma campanha aberta</h2>
         </div>
+        <button id="group-button" class="text-button" type="button" disabled>Grupo</button>
         <button id="options-button" class="text-button" type="button" disabled>Opções</button>
       </header>
 
@@ -74,6 +75,37 @@
     </form>
   </dialog>
 
+  <dialog id="group-dialog" class="sheet sheet-tall" aria-labelledby="group-title">
+    <div class="sheet-head">
+      <h2 id="group-title">Grupo</h2>
+      <button id="group-close" class="text-button" type="button">Fechar</button>
+    </div>
+    <div id="group-body" class="sheet-body" aria-live="polite"></div>
+    <div class="sheet-actions">
+      <button id="group-back" class="text-button" type="button" hidden>Voltar ao grupo</button>
+      <button id="new-character" class="primary-button" type="button">Novo personagem</button>
+    </div>
+  </dialog>
+
+  <dialog id="character-dialog" class="sheet sheet-tall" aria-labelledby="character-title">
+    <form id="character-form" novalidate>
+      <div class="sheet-head">
+        <div>
+          <p id="character-step" class="eyebrow">Passo 1 de 6</p>
+          <h2 id="character-title">Novo personagem</h2>
+        </div>
+        <button id="character-cancel" class="text-button" type="button">Cancelar</button>
+      </div>
+      <div id="character-body" class="sheet-body"></div>
+      <p id="character-error" class="form-error" role="alert"></p>
+      <div class="sheet-actions">
+        <button id="character-prev" class="text-button" type="button">Voltar</button>
+        <button id="character-next" class="primary-button" type="submit">Próximo</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="/app.js"></script>
+  <script src="/personagens.js"></script>
 </body>
 </html>

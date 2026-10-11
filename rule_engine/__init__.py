@@ -28,6 +28,8 @@ from .magic_equipment import (
     resolver_duas_armas,
 )
 from .catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS, CATALOGO_EQUIPAMENTOS, CATALOGO_MAGIAS, buscar_catalogo, listar_catalogo
+from .backgrounds import ANTECEDENTES, aplicar_aumentos_antecedente
+from .character import ficha_personagem, modificador
 from .character import CLASSES, ESPECIES, SUBCLASSES, SUBCLASSES_RAVENLOFT, TALENTOS, Personagem, criar_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao, resolver_multiclasse, resolver_progressao
 from .class_progression import FEATURES_BY_CLASS, SUBCLASSES_BY_CLASS, caracteristicas_no_nivel, subclasses_da_classe
 from .martial import resolver_ataque_extra, resolver_ataque_furtivo, resolver_defletir_ataques, resolver_esquiva_sobrenatural, resolver_evasao, resolver_foco_monge, resolver_furia, resolver_maestria_arma, resolver_recuperar_folego
@@ -49,6 +51,7 @@ from .survival import (
 )
 
 __all__ = [
+    "ANTECEDENTES", "aplicar_aumentos_antecedente", "ficha_personagem", "modificador",
     "Rule", "RuleEngine", "Resolution", "ResultadoD20", "bonus_proficiencia", "rolar_d20_auditavel",
     "modificador_atributo", "resolver_teste_d20", "build_default_engine",
     "PERICIAS", "CDS_PADRAO", "resolver_teste_habilidade", "resolver_teste_passivo", "resolver_teste_grupo", "resolver_inspiracao_heroica", "resolver_salvaguarda", "resolver_iniciativa", "resolver_acao_esconder", "resolver_acao_influenciar",
