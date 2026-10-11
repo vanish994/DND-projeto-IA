@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MJ — D&D Projeto IA</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark">D&D <span>PROJETO IA</span></div>
+      <div class="sidebar-copy">
+        <p class="eyebrow">MESTRE DE JOGO</p>
+        <h1>Uma mesa aberta para a sua história.</h1>
+        <p>O MJ narra livremente. O motor valida as regras quando a sessão precisa delas.</p>
+      </div>
+      <div class="rule-note">
+        <span class="dot"></span>
+        <div><strong>Motor online</strong><small>Regras mecânicas validadas</small></div>
+      </div>
+      <button id="new-session" class="ghost-button" type="button">+ Nova sessão</button>
+    </aside>
+
+    <section class="chat-panel">
+      <header class="chat-header">
+        <div>
+          <p class="eyebrow">SESSÃO ATUAL</p>
+          <h2 id="session-label">Campanha sem título</h2>
+        </div>
+        <span class="status-pill"><span class="dot"></span> MJ disponível</span>
+      </header>
+
+      <div id="messages" class="messages" aria-live="polite">
+        <article class="message message-mj welcome-message">
+          <div class="avatar">MJ</div>
+          <div class="bubble"><p>As cortinas se abrem. Conte-me onde começa a sua história — ou peça uma cena inicial e eu apresentarei a situação sem fechar o caminho dos aventureiros.</p></div>
+        </article>
+      </div>
+
+      <form id="chat-form" class="composer">
+        <textarea id="message-input" rows="2" maxlength="20000" placeholder="Escreva para o MJ..." aria-label="Mensagem para o MJ"></textarea>
+        <div class="composer-footer">
+          <span>O MJ decide a narrativa; o motor confere as regras.</span>
+          <button id="send-button" class="send-button" type="submit">Enviar <span>↗</span></button>
+        </div>
+      </form>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

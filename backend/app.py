@@ -6,9 +6,11 @@ o DeepSeek conduz a conversa e usa o Rule Engine por ferramentas.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from integrations.deepseek_mj import DeepSeekMJ
@@ -20,6 +22,8 @@ app = FastAPI(
     version="1.0.0",
     description="MJ DeepSeek com Rule Engine determinístico para mecânicas oficiais.",
 )
+
+_frontend = Path(__file__).resolve().parents[1] / "frontend"
 
 _mj: DeepSeekMJ | None = None
 _sessoes: dict[str, list[dict[str, Any]]] = {}
@@ -74,3 +78,6 @@ def mensagem_mj(pedido: MensagemMJ) -> RespostaMJ:
 @app.delete("/v1/mj/sessoes/{sessao_id}", status_code=204)
 def apagar_sessao(sessao_id: str) -> None:
     _sessoes.pop(sessao_id, None)
+
+
+app.mount("/", StaticFiles(directory=_frontend, html=True), name="interface")
