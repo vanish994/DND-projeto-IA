@@ -11,26 +11,24 @@ class TurnSavingThrowPayloadTests(unittest.TestCase):
             "token_id": "goblin-1",
             "salvaguardas": [{
                 "condicao": "paralisado",
-                "rolagem": 12,
                 "modificador": 2,
                 "cd": 14,
             }],
         })
         self.assertEqual(request.salvaguardas[0].condicao, "paralisado")
-        self.assertEqual(request.salvaguardas[0].rolagem, 12)
+        self.assertEqual(request.salvaguardas[0].modificador, 2)
 
-    def test_turn_saving_throw_rejects_invalid_d20(self):
+    def test_turn_saving_throw_rejects_invalid_dc(self):
         with self.assertRaises(ValidationError):
             AcaoAvancarTurno.model_validate({
                 "salvaguardas": [{
                     "condicao": "paralisado",
-                    "rolagem": 21,
                     "modificador": 0,
-                    "cd": 14,
+                    "cd": 0,
                 }],
             })
 
-    def test_turn_advance_defaults_to_no_saving_throws(self):
+    def test_turn_advance_defaults_to_no_manual_saving_throws(self):
         request = AcaoAvancarTurno.model_validate({})
         self.assertEqual(request.salvaguardas, [])
 
