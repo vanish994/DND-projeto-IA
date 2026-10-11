@@ -68,7 +68,9 @@ class BackendCampanhasTests(unittest.TestCase):
 
         self.client.post(f"/v1/campanhas/{cid}/mensagens", json={"mensagem": "Peço uma bebida."}, headers=self.jogador)
         _, historico = self.mj.chamadas[-1]
-        self.assertEqual(historico, [
+        self.assertEqual(historico[0]["role"], "system")
+        self.assertIn("nenhum personagem está cadastrado", historico[0]["content"])
+        self.assertEqual(historico[1:], [
             {"role": "user", "content": "Entro na taverna."},
             {"role": "assistant", "content": "MJ: Entro na taverna."},
         ])
@@ -87,7 +89,8 @@ class BackendCampanhasTests(unittest.TestCase):
         finally:
             backend_app.HISTORICO_MAX = limite_original
         _, historico = self.mj.chamadas[-1]
-        self.assertEqual([h["content"] for h in historico], ["m1", "MJ: m1"])
+        self.assertEqual(historico[0]["role"], "system")
+        self.assertEqual([h["content"] for h in historico[1:]], ["m1", "MJ: m1"])
 
     def test_campanhas_isoladas_por_jogador(self):
         cid = self.client.post("/v1/campanhas", json={}, headers=self.jogador).json()["id"]
