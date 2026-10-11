@@ -477,3 +477,17 @@ A revisão identificou talentos cujo resolvedor retornava `resolvido` após calc
 ## Cobertura de antecedentes e criação persistida de personagens
 
 Adicionado `rule_engine/backgrounds.py` com os 16 antecedentes do Livro do Jogador 2024 (Acólito, Andarilho, Artesão, Artista, Charlatão, Criminoso, Eremita, Escriba, Fazendeiro, Guarda, Guia, Marinheiro, Mercador, Nobre, Sábio e Soldado) e os 4 de Ravenloft: Horror Wilds (Assombrado, Investigador, Andarilho da Névoa e Médium Espiritual), extraídos dos livros da biblioteca do projeto: valores de atributo, talento, perícias, ferramenta e equipamento (pacote A ou 50 PO). `criar_personagem` aplica os aumentos +2/+1 ou +1/+1/+1 somente nos três atributos do antecedente, sem passar de 20, e concede o talento de origem. As Dádivas Sombrias de Ravenloft foram catalogadas em `DARK_GIFT_FEATS`; Olho Aguçado (Sharp Eye) tem os efeitos catalogados a partir da descrição fornecida pelo usuário (vantagem em um teste de atributo das ações Procurar ou Estudar; usos iguais ao Bônus de Proficiência por Descanso Longo; o uso só é gasto em sucesso). Sobrevivente (Survivor) também foi catalogado com a descrição fornecida pelo usuário: Hipervigilância (rerrola d20 de Iniciativa com 9 ou menos e usa o novo resultado) e Controlar-se (Reação, 1 vez por Descanso Longo: soma o Bônus de Proficiência a um teste de resistência falho contra Enfeitiçado ou Amedrontado). Personagens ficam persistidos por campanha (`/v1/campanhas/{id}/personagens`) e o MJ recebe o resumo das fichas a cada mensagem. Continuam pendentes: traços completos das espécies, proficiências e equipamento de classe, magias e escolha de ferramentas/instrumentos.
+
+
+## Auditoria recente — progressão e validação de magias (2026-10-11)
+
+- A progressão de espaços de conjurador completo foi corrigida no nível 17.
+- A preparação do Mago usa nível + modificador de Inteligência; o Bardo usa a tabela de progressão de magias da classe.
+- A quantidade de truques é calculada por classe e marcos de nível 4 e 10. Nomes de classe e magia aceitam variações de acentuação.
+- O Paladino agora tem resolução de progressão de conjuração integrada ao Rule Engine; a progressão do Feiticeiro também informa espaços de magia.
+- Níveis inválidos e ações ainda não implementadas de Bruxo, Feiticeiro, Guardião e Paladino são bloqueados, em vez de tratados como sucesso genérico.
+- Mãos Consagradas rejeita gastos negativos e gastos acima dos pontos restantes.
+- Magias cujo círculo não foi extraído/confirmado ficam com círculo desconhecido, não círculo 0. Truques não aceitam espaços de magia; níveis de espaço acima de 9 são bloqueados.
+- O workflow [38156565465](https://github.com/vanish994/DND-projeto-IA/actions/runs/38156565465) passou com 235 testes.
+
+**Status:** melhoria parcial de precisão; não equivale a 100% do PHB 2024. Os efeitos de grande parte das magias, das características/subclasses e dos traços de espécies ainda precisam ser implementados e testados individualmente.
