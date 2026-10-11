@@ -69,6 +69,7 @@ class Personagem:
     subclasse: str | None = None
     talentos: set[str] = field(default_factory=set)
     classes_multiclasse: dict[str, int] = field(default_factory=dict)
+    escolhas_talentos: dict[str, str] = field(default_factory=dict)
 
     @property
     def bonus_proficiencia(self) -> int:
@@ -130,8 +131,7 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         raise ValueError("Talento inválido")
     antecedente = str(fatos.get("background", "")).strip().lower()
     if antecedente in ANTECEDENTES:
-        if fatos.get("background_increases"):
-            atributos = aplicar_aumentos_antecedente(antecedente, atributos, fatos["background_increases"])
+        atributos = aplicar_aumentos_antecedente(antecedente, atributos, fatos.get("background_increases", {}))
         talento_origem = _talento_do_antecedente(antecedente, fatos.get("background_feat"))
         if talento_origem:
             talentos.add(talento_origem)
@@ -139,10 +139,12 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         raise ValueError("Antecedente inválido")
     if not str(fatos.get("name", "")).strip():
         raise ValueError("O personagem precisa de um nome")
+    escolha_origem = str(fatos.get("background_feat") or "")
+    escolhas = {"iniciado_em_magia": escolha_origem.split(":", 1)[1]} if escolha_origem.startswith("iniciado_em_magia:") else {}
     return Personagem(
         nome=str(fatos["name"]).strip(), especie=especie, classe=classe, nivel=nivel,
         atributos=atributos, antecedente=antecedente,
-        subclasse=subclasse, talentos=talentos,
+        subclasse=subclasse, talentos=talentos, escolhas_talentos=escolhas,
     )
 
 
@@ -189,6 +191,7 @@ def ficha_personagem(personagem: Personagem) -> dict[str, Any]:
         "tamanho": ESPECIES[personagem.especie]["tamanho"],
         "deslocamento": ESPECIES[personagem.especie]["deslocamento"],
         "talentos": sorted(personagem.talentos),
+        "escolhas_talentos": dict(personagem.escolhas_talentos),
         "pericias": list(antecedente["pericias"]) if antecedente else [],
         "ferramenta": antecedente["ferramenta"] if antecedente else None,
         "equipamento_antecedente": antecedente["equipamento"] if antecedente else None,
