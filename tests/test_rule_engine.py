@@ -8,12 +8,62 @@ from rule_engine import (
     RastreadorCombate,
     EstadoVital,
     resolver_teste_d20,
+    resolver_agarrar,
+    resolver_escape_agarramento,
+    resolver_empurrar,
 )
 
 
 class RuleEngineTests(unittest.TestCase):
     def setUp(self):
         self.engine = build_default_engine()
+
+    def test_grapple_applies_grappled_condition_when_save_fails(self):
+        result = resolver_agarrar({
+            "forca_modificador": 3, "bonus_proficiencia": 2,
+            "tamanho_atacante": 2, "tamanho_alvo": 2,
+            "rolagem": 8, "modificador_salvaguarda": 1,
+        })
+        self.assertEqual(result["cd"], 13)
+        self.assertEqual(result["resultado"], "aplicado")
+        self.assertEqual(result["condicao"], "agarrado")
+
+    def test_grapple_is_resisted_when_target_meets_dc(self):
+        result = resolver_agarrar({
+            "forca_modificador": 3, "bonus_proficiencia": 2,
+            "tamanho_atacante": 2, "tamanho_alvo": 2,
+            "rolagem": 11, "modificador_salvaguarda": 2,
+        })
+        self.assertEqual(result["resultado"], "resistido")
+
+    def test_grapple_blocks_target_too_large(self):
+        result = resolver_agarrar({
+            "forca_modificador": 3, "bonus_proficiencia": 2,
+            "tamanho_atacante": 2, "tamanho_alvo": 4,
+            "rolagem": 1, "modificador_salvaguarda": 0,
+        })
+        self.assertEqual(result["resultado"], "bloqueado")
+        self.assertEqual(result["motivo"], "tamanho_invalido")
+
+    def test_grapple_escape_reports_correct_condition(self):
+        failed = resolver_escape_agarramento({"rolagem": 8, "modificador": 2, "cd_agarramento": 12})
+        success = resolver_escape_agarramento({"rolagem": 10, "modificador": 2, "cd_agarramento": 12})
+        self.assertEqual(failed["resultado"], "continua_agarrado")
+        self.assertEqual(success["resultado"], "escapou")
+
+    def test_shove_applies_prone_or_push(self):
+        prone = resolver_empurrar({
+            "forca_modificador": 2, "bonus_proficiencia": 2,
+            "tamanho_atacante": 2, "tamanho_alvo": 2,
+            "rolagem": 5, "modificador_salvaguarda": 0, "efeito": "caido",
+        })
+        push = resolver_empurrar({
+            "forca_modificador": 2, "bonus_proficiencia": 2,
+            "tamanho_atacante": 2, "tamanho_alvo": 2,
+            "rolagem": 5, "modificador_salvaguarda": 0,
+        })
+        self.assertEqual(prone["efeito"], "caido")
+        self.assertEqual(push["efeito"], "empurrado_1_5_m")
 
     def test_success_when_total_meets_dc(self):
         result = self.engine.evaluate({"type": "ability_check", "roll": 12, "modifier": 3, "dc": 15})
