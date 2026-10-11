@@ -29,7 +29,9 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <button id="edit-token">Editar token</button>
   <select id="attack-source" aria-label="Atacante"><option value="">Atacante…</option></select>
   <select id="attack-target" aria-label="Alvo"><option value="">Alvo…</option></select>
-  <button id="attack" class="primary">Ataque desarmado</button>
+  <button id="attack" class="primary">Ataque com arma</button>
+  <select id="spell-choice" aria-label="Magia tática"><option value="">Magia disponível…</option><option value="Raio de Fogo">Raio de Fogo (truque)</option><option value="Curar Ferimentos">Curar Ferimentos (1º círculo)</option></select>
+  <button id="cast-spell">Conjurar</button>
   <button id="measure">Medir distância</button>
   <button id="save">Salvar mapa</button>
 </header>
@@ -100,6 +102,19 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   document.querySelector('#add-character').addEventListener('click',async()=>{const id=document.querySelector('#character-choice').value;if(!id){status.textContent='Selecione um personagem criado nesta campanha.';return}if(scene.tokens.some(t=>t.character_id===id)){status.textContent='Esse personagem já está no mapa.';return}const p=rosterCharacters.find(x=>x.id===id);if(!p)return;const pos=nextPosition();scene.tokens.push({id:newId(),kind:'hero',character_id:id,name:p.nome,hp:p.pv_atual,maxHp:p.pv_maximo,x:pos.x,y:pos.y});try{await syncMapToServer()}catch(e){status.textContent='Não foi possível adicionar o personagem: '+e.message;await loadEncounter()}});
   document.querySelector('#add-monster').addEventListener('click',async()=>{const name=document.querySelector('#monster-choice').value;if(!name){status.textContent='Selecione um monstro do bestiário.';return}const m=rosterMonsters.find(x=>x.nome===name);if(!m)return;const pos=nextPosition();scene.tokens.push({id:newId(),kind:'enemy',monster_name:name,name:m.nome,hp:m.pv,maxHp:m.pv,x:pos.x,y:pos.y});try{await syncMapToServer()}catch(e){status.textContent='Não foi possível adicionar o monstro: '+e.message;await loadEncounter()}});
   document.querySelector('#attack').addEventListener('click',async()=>{const atacante_id=document.querySelector('#attack-source').value,alvo_id=document.querySelector('#attack-target').value;if(!atacante_id||!alvo_id){status.textContent='Escolha um personagem atacante e um alvo.';return}try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/atacar',{method:'POST',body:JSON.stringify({atacante_id,alvo_id,cobertura:'nenhuma'})});applyServerMap(data.mapa);const a=data.ataque;status.textContent=(a.result==='hit'?'Acerto!':'Errou!')+' d20 '+data.rolagem+' + '+data.bonus_ataque+' = '+a.total+'. '+(data.dano?'Dano: '+data.dano+' PV.':'Sem dano.')+' '+data.nota}catch(e){status.textContent='Ação rejeitada pelo motor: '+e.message}});
+
+  document.querySelector('#cast-spell').addEventListener('click',async()=>{
+    const atacante_id=document.querySelector('#attack-source').value;
+    const alvo_id=document.querySelector('#attack-target').value;
+    const magia=document.querySelector('#spell-choice').value;
+    if(!atacante_id||!alvo_id||!magia){status.textContent='Escolha conjurador, alvo e magia.';return}
+    try{
+      const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/conjurar',{method:'POST',body:JSON.stringify({atacante_id,alvo_id,magia})});
+      applyServerMap(data.mapa);
+      if(data.ataque){const a=data.ataque;status.textContent=data.magia+': '+(a.result==='hit'?'acertou':'errou')+' · d20 '+data.rolagem+' + '+data.bonus_ataque+' · dano '+data.dano+' PV.'}
+      else status.textContent=data.magia+': cura de '+data.cura+' PV. '+(data.espacos_restantes?('Espaços restantes: '+JSON.stringify(data.espacos_restantes)): 'Truque, sem gasto de espaço.');
+    }catch(e){status.textContent='Conjuração rejeitada pelo motor: '+e.message}
+  });
 
   document.querySelector('#measure').addEventListener('click',()=>{measureMode=!measureMode;measureStart=null;document.querySelector('#measure').classList.toggle('primary',measureMode);status.textContent=measureMode?'Toque em dois pontos do mapa para medir.':'Medição desativada.'});
   document.querySelector('#save').addEventListener('click',async()=>{save(true);try{await syncMapToServer()}catch(e){status.textContent='Falha ao salvar no servidor: '+e.message}});
