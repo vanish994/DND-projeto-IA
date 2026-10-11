@@ -23,6 +23,7 @@ from .conditions import resolver_efeitos_condicao, resolver_estado_condicao
 from .magic_equipment import (
     calcular_ca, resolver_alvo_magia, resolver_area_magia, resolver_arma,
     resolver_conjuracao, resolver_carga, resolver_duas_armas,
+    resolver_salvaguarda_concentracao,
 )
 from .catalog import buscar_catalogo, listar_catalogo
 from .character import criar_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao, resolver_multiclasse, resolver_progressao
@@ -349,6 +350,14 @@ def build_default_engine() -> RuleEngine:
             "type": f["type"], "result": "not_active", "condition": f["condition"],
         },
         source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="concentration.damage-save",
+        description="Resolve a salvaguarda de Constituição para manter concentração após dano; incapacidade encerra concentração.",
+        priority=110,
+        when=lambda f: f["type"] == "concentration_check",
+        resolve=resolver_salvaguarda_concentracao,
+        source="D&D 2024 — concentração",
     ))
     engine.register(Rule(
         rule_id="condition.state",
