@@ -1097,22 +1097,47 @@ def conjurar_no_mapa_tatico(
         # os tokens atingidos têm salvaguardas deriváveis de fichas completas.
         area = mecanica.get("area") or {}
         forma = str(area.get("forma", "")).lower()
-        if forma == "cone":
-            raio_pes = round(float(area.get("comprimento_m", 0)) * 3.28084)
-        elif forma == "cubo":
-            raio_pes = round(float(area.get("lado_m", 0)) * 3.28084)
+        if forma == "cubo":
+            lado_casas = max(1, round(float(area.get("lado_m", 0)) * 3.28084 / 5))
+            vx = (int(alvo["x"]) > int(conjurador["x"])) - (int(alvo["x"]) < int(conjurador["x"]))
+            vy = (int(alvo["y"]) > int(conjurador["y"])) - (int(alvo["y"]) < int(conjurador["y"]))
+            if vx == 0 and vy == 0:
+                raise HTTPException(status_code=422, detail="Para esta área, selecione um alvo em uma direção diferente do conjurador")
+            # Cubo de 15 pés que parte do conjurador e se estende na direção do alvo.
+            if vx and vy:
+                area_cells = {
+                    (int(conjurador["x"]) + vx * depth + ox,
+                     int(conjurador["y"]) + vy * depth + oy)
+                    for depth in range(1, lado_casas + 1)
+                    for ox in range(-(lado_casas // 2), lado_casas - lado_casas // 2)
+                    for oy in range(-(lado_casas // 2), lado_casas - lado_casas // 2)
+                    if ox == 0 or oy == 0
+                }
+            elif vx:
+                area_cells = {
+                    (int(conjurador["x"]) + vx * depth, int(conjurador["y"]) + offset)
+                    for depth in range(1, lado_casas + 1)
+                    for offset in range(-(lado_casas // 2), lado_casas - lado_casas // 2)
+                }
+            else:
+                area_cells = {
+                    (int(conjurador["x"]) + offset, int(conjurador["y"]) + vy * depth)
+                    for depth in range(1, lado_casas + 1)
+                    for offset in range(-(lado_casas // 2), lado_casas - lado_casas // 2)
+                }
+            alvos_area = [t for t in tokens if t["hp"] > 0 and (int(t["x"]), int(t["y"])) in area_cells]
         elif forma == "esfera":
             raio_pes = round(float(area.get("raio_m", 0)) * 3.28084)
-        elif forma == "linha":
-            raio_pes = round(float(area.get("comprimento_m", 0)) * 3.28084)
+            if raio_pes <= 0:
+                raise HTTPException(status_code=422, detail="A magia não possui dimensão de área válida")
+            alvos_area = [
+                t for t in tokens
+                if t["hp"] > 0 and max(abs(int(t["x"]) - int(alvo["x"])), abs(int(t["y"]) - int(alvo["y"]))) * 5 <= raio_pes
+            ]
         else:
-            raise HTTPException(status_code=422, detail="Forma de área ainda não suportada pelo mapa tático")
-        if raio_pes <= 0:
-            raise HTTPException(status_code=422, detail="A magia não possui dimensão de área válida")
-        alvos_area = [
-            t for t in tokens
-            if t["hp"] > 0 and max(abs(int(t["x"]) - int(alvo["x"])), abs(int(t["y"]) - int(alvo["y"]))) * 5 <= raio_pes
-        ]
+            raise HTTPException(status_code=422, detail="Este formato de área exige direção/posicionamento explícito ainda não disponível no mapa")
+        if not alvos_area:
+            raise HTTPException(status_code=422, detail="Nenhum alvo dentro da área")
         if not alvos_area:
             raise HTTPException(status_code=422, detail="Nenhum alvo dentro da área")
         fichas_alvos = {}
