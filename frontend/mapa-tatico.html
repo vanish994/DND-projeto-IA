@@ -30,6 +30,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <select id="attack-source" aria-label="Atacante"><option value="">Atacante…</option></select>
   <select id="attack-target" aria-label="Alvo"><option value="">Alvo…</option></select>
   <button id="attack" class="primary">Ataque com arma</button>
+  <select id="monster-attack-source" aria-label="Monstro atacante"><option value="">Monstro atacante…</option></select>
+  <button id="monster-attack" class="primary">Ataque do monstro</button>
   <select id="spell-choice" aria-label="Magia tática"><option value="">Magia disponível…</option><option value="Raio de Fogo">Raio de Fogo (truque)</option><option value="Curar Ferimentos">Curar Ferimentos (1º círculo)</option><option value="Onda Trovejante">Onda Trovejante (área/salvaguarda)</option></select>
   <button id="cast-spell">Conjurar</button>
   <button id="measure">Medir distância</button>
@@ -60,7 +62,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   function payload(){return {title:scene.title||'Cena da aventura',terrain:scene.terrain||'forest',tokens:scene.tokens.map(t=>({id:t.id,kind:t.kind,character_id:t.character_id||null,monster_name:t.monster_name||null,x:gridCoord(t.x),y:Math.max(0,Math.min(12,Math.round((t.y-CELL/2)/CELL)))}))}}
   function fromServerToken(t){return {...t,x:t.x*CELL+CELL/2,y:t.y*CELL+CELL/2,gridX:t.x,gridY:t.y}}
   function applyServerMap(mapa){scene.title=mapa.title||scene.title;scene.terrain=mapa.terrain||scene.terrain;scene.tokens=(mapa.tokens||[]).map(fromServerToken);render();save(true);refreshCombatControls()}
-  function refreshCombatControls(){for(const [selector,filter,label] of [['#attack-source',t=>t.kind==='hero','Atacante…'],['#attack-target',t=>true,'Alvo…']]){const el=document.querySelector(selector),old=el.value;el.replaceChildren(new Option(label,''));scene.tokens.filter(filter).forEach(t=>el.add(new Option(t.name+' ('+t.hp+'/'+t.maxHp+' PV)',t.id)));if(scene.tokens.some(t=>t.id===old&&filter(t)))el.value=old}}
+  function refreshCombatControls(){for(const [selector,filter,label] of [['#attack-source',t=>t.kind==='hero','Atacante…'],['#attack-target',t=>true,'Alvo…'],['#monster-attack-source',t=>t.kind==='enemy','Monstro atacante…']]){const el=document.querySelector(selector),old=el.value;el.replaceChildren(new Option(label,''));scene.tokens.filter(filter).forEach(t=>el.add(new Option(t.name+' ('+t.hp+'/'+t.maxHp+' PV)',t.id)));if(scene.tokens.some(t=>t.id===old&&filter(t)))el.value=old}}
   async function syncMapToServer(){const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico',{method:'PUT',body:JSON.stringify(payload())});applyServerMap(data.mapa);status.textContent='Mapa e posições salvos no servidor. PV dos personagens vêm da ficha.';}
   async function loadEncounter(){try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico');rosterCharacters=data.personagens||[];rosterMonsters=data.monstros||[];const charSel=document.querySelector('#character-choice');charSel.replaceChildren(new Option('Personagens da campanha…',''));rosterCharacters.forEach(p=>charSel.add(new Option(p.nome+' · '+p.classe+' · '+p.pv_atual+'/'+p.pv_maximo+' PV',p.id)));const monsterSel=document.querySelector('#monster-choice');monsterSel.replaceChildren(new Option('Monstros do bestiário…',''));rosterMonsters.forEach(m=>monsterSel.add(new Option(m.nome+' · CA '+m.ca+' · '+m.pv+' PV · ND '+m.nd,m.nome)));applyServerMap(data.mapa);status.textContent=rosterCharacters.length?'Encontro sincronizado. Adicione personagens e monstros reais da campanha.':'Crie primeiro um personagem na campanha; depois ele aparecerá aqui para ser colocado no mapa.';}catch(e){status.textContent='Não foi possível sincronizar o encontro: '+e.message+'. O mapa local continua disponível.'}}
   try { const saved=JSON.parse(localStorage.getItem(KEY)||'null'); if(saved&&typeof saved==='object') scene={...scene,...saved,tokens:Array.isArray(saved.tokens)?saved.tokens:[]}; } catch(_){}
@@ -102,6 +104,18 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   document.querySelector('#add-character').addEventListener('click',async()=>{const id=document.querySelector('#character-choice').value;if(!id){status.textContent='Selecione um personagem criado nesta campanha.';return}if(scene.tokens.some(t=>t.character_id===id)){status.textContent='Esse personagem já está no mapa.';return}const p=rosterCharacters.find(x=>x.id===id);if(!p)return;const pos=nextPosition();scene.tokens.push({id:newId(),kind:'hero',character_id:id,name:p.nome,hp:p.pv_atual,maxHp:p.pv_maximo,x:pos.x,y:pos.y});try{await syncMapToServer()}catch(e){status.textContent='Não foi possível adicionar o personagem: '+e.message;await loadEncounter()}});
   document.querySelector('#add-monster').addEventListener('click',async()=>{const name=document.querySelector('#monster-choice').value;if(!name){status.textContent='Selecione um monstro do bestiário.';return}const m=rosterMonsters.find(x=>x.nome===name);if(!m)return;const pos=nextPosition();scene.tokens.push({id:newId(),kind:'enemy',monster_name:name,name:m.nome,hp:m.pv,maxHp:m.pv,x:pos.x,y:pos.y});try{await syncMapToServer()}catch(e){status.textContent='Não foi possível adicionar o monstro: '+e.message;await loadEncounter()}});
   document.querySelector('#attack').addEventListener('click',async()=>{const atacante_id=document.querySelector('#attack-source').value,alvo_id=document.querySelector('#attack-target').value;if(!atacante_id||!alvo_id){status.textContent='Escolha um personagem atacante e um alvo.';return}try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/atacar',{method:'POST',body:JSON.stringify({atacante_id,alvo_id,cobertura:'nenhuma'})});applyServerMap(data.mapa);const a=data.ataque;status.textContent=(a.result==='hit'?'Acerto!':'Errou!')+' d20 '+data.rolagem+' + '+data.bonus_ataque+' = '+a.total+'. '+(data.dano?'Dano: '+data.dano+' PV.':'Sem dano.')+' '+data.nota}catch(e){status.textContent='Ação rejeitada pelo motor: '+e.message}});
+
+
+  document.querySelector('#monster-attack').addEventListener('click',async()=>{
+    const atacante_id=document.querySelector('#monster-attack-source').value;
+    const alvo_id=document.querySelector('#attack-target').value;
+    if(!atacante_id||!alvo_id){status.textContent='Escolha o monstro atacante e o personagem-alvo.';return}
+    try{
+      const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/ataque-monstro',{method:'POST',body:JSON.stringify({atacante_id,alvo_id,cobertura:'nenhuma'})});
+      applyServerMap(data.mapa);
+      status.textContent=data.monstro+' — '+data.acao+': '+(data.ataque.result==='hit'?'acertou':'errou')+' · d20 '+data.rolagem+' + '+data.bonus_ataque+' · '+(data.dano?'dano '+data.dano+' '+data.tipo_dano+' PV.':'sem dano.')+' '+data.nota;
+    }catch(e){status.textContent='Ataque do monstro rejeitado pelo motor: '+e.message}
+  });
 
   document.querySelector('#cast-spell').addEventListener('click',async()=>{
     const atacante_id=document.querySelector('#attack-source').value;
