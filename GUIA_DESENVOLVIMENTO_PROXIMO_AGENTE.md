@@ -41,7 +41,7 @@ Não apagar, reextrair ou recriar o bestiário, os catálogos ou o prompt do MJ 
 - GitHub: `https://github.com/vanish994/DND-projeto-IA`
 - Branch principal: `main`
 - Deploy automático: GitHub `main` → Render
-- Último estado validado: 131 testes aprovados
+- Último estado validado: 188 testes aprovados após a integração da PR #1
 
 ### Serviço online
 
@@ -188,6 +188,7 @@ Módulos principais existentes:
 - `rule_engine/rules.py`: registro central e prioridades.
 - `rule_engine/core.py`: modificadores, proficiência e d20.
 - `rule_engine/dice.py`: d20 auditável gerado pelo motor.
+- `rule_engine/ability_checks.py`: contratos e resoluções estruturadas de testes de habilidade.
 - `rule_engine/survival.py`: PV, dano, cura, resistência, morte e exaustão.
 - `rule_engine/combat_geometry.py`: alcance, distância, cobertura, queda e linha de visão.
 - `rule_engine/combat_movement.py`: movimento, montaria e subaquático.
@@ -197,6 +198,7 @@ Módulos principais existentes:
 - `rule_engine/spells.py`: catálogo e resolução de magias representativas.
 - `rule_engine/economy.py`: inventário, economia, itens mágicos e sintonização.
 - `rule_engine/tactical.py`: grade, flanqueamento, terreno e combate tático.
+- `rule_engine/exploration_actions.py`: ações de exploração e interações fora do combate.
 - `rule_engine/character.py`: criação, progressão e multiclasse.
 - `rule_engine/class_progression.py`: matriz de características por classe e nível.
 - `rule_engine/class_features.py`: características transversais e lotes de classes.
@@ -350,7 +352,7 @@ git diff --check
 git status --short
 ```
 
-A suíte deve permanecer verde. O número de testes conhecido neste guia é 131; se diminuir, investigar antes de continuar.
+A suíte deve permanecer verde. O número de testes conhecido neste guia é 188; se diminuir, investigar antes de continuar.
 
 Para verificar o serviço online:
 
