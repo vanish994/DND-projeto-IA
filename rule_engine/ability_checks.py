@@ -219,12 +219,35 @@ def resolver_salvaguarda(fatos: Mapping[str, Any]) -> dict[str, Any]:
     return resultado
 
 def resolver_iniciativa(fatos: Mapping[str, Any]) -> dict[str, Any]:
-    """Resolve iniciativa como teste de Destreza, aceitando bônus explícitos de características."""
-    if not any(fatos.get(k) is not None for k in ("modificador_atributo", "valor_atributo", "ability_score", "modificador_destreza")):
+    """Resolve iniciativa como teste de Destreza ou por escore de iniciativa."""
+    if not any(fatos.get(k) is not None for k in ("modificador_atributo", "valor_atributo", "ability_score", "modificador_destreza", "valor_destreza")):
         return {"resultado": "bloqueado", "motivo": "modificador_de_destreza_ausente"}
+    dados = dict(fatos)
+    if "modificador_destreza" in dados:
+        mod_destreza = int(dados["modificador_destreza"])
+    elif "valor_destreza" in dados:
+        mod_destreza = modificador_atributo(int(dados["valor_destreza"]))
+    else:
+        _, mod_destreza = _atributo_e_modificador({**dados, "atributo": "destreza"})
+    condicoes = dados.get("condicoes", dados.get("conditions", [])) or []
+    if isinstance(condicoes, str):
+        condicoes = [condicoes]
+    condicoes_norm = {str(x).strip().lower().replace(" ", "_") for x in condicoes}
+    surpreendido = bool(dados.get("surpreendido", dados.get("surprised", False)))
+    incapacitado = bool(dados.get("incapacitado", dados.get("incapacitated", False))) or bool({"incapacitado", "incapacitated"} & condicoes_norm)
+    invisivel = bool(dados.get("invisivel", dados.get("invisible", False))) or bool({"invisivel", "invisible"} & condicoes_norm)
+    vantagem = bool(dados.get("vantagem", dados.get("advantage", False))) or invisivel
+    desvantagem = bool(dados.get("desvantagem", dados.get("disadvantage", False))) or surpreendido or incapacitado
+    if vantagem and desvantagem:
+        vantagem = False
+        desvantagem = False
+    extra_iniciativa = _int(dados.get("bonus_iniciativa", 0))
+    if bool(dados.get("usar_escore", dados.get("use_score", False))):
+        ajuste = 5 if vantagem else -5 if desvantagem else 0
+        total = 10 + mod_destreza + extra_iniciativa + ajuste
+        return {"resultado": "resolvido", "atributo": "destreza", "metodo": "escore", "iniciativa": total, "total": total, "bonus_iniciativa": extra_iniciativa, "ajuste_vantagem_desvantagem": ajuste, "vantagem": vantagem, "desvantagem": desvantagem}
     if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
         return {"resultado": "bloqueado", "motivo": "resultado_de_d20_ausente"}
-    dados = dict(fatos)
     condicoes = dados.get("condicoes", dados.get("conditions", [])) or []
     if isinstance(condicoes, str):
         condicoes = [condicoes]
