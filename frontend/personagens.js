@@ -160,7 +160,7 @@
         el('span', {className: 'chip', textContent: `${p.pv_atual}/${p.pv_maximo} PV`}),
         blocoDoCartao(p, 'ca', 'CA'),
         blocoDoCartao(p, 'ataque', 'Ataque', true),
-        p.proficiencias_pendentes ? badge('Escolhas pendentes', 'badge-alerta') : null),
+        (p.proficiencias_pendentes || p.escolhas_pendentes?.length) ? badge('Escolhas pendentes', 'badge-alerta') : null),
       el('span', {className: 'card-action', textContent: estado.texto + ' — ver ficha'}));
     cartao.addEventListener('click', () => mostrarFicha(p));
     return cartao;
