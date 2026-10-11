@@ -8,11 +8,11 @@ services:
     healthCheckPath: /v1/status
     autoDeploy: true
     envVars:
-      - key: TOKENHARBOR_API_KEY
+      - key: DEEPSEEK_API_KEY
         sync: false
-      - key: TOKENHARBOR_BASE_URL
-        value: https://tokenharbor.ai/v1
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
       - key: DEEPSEEK_MODEL
-        value: deepseek-v4.1-flash:free
+        value: deepseek-chat
       - key: DATABASE_URL
         sync: false
