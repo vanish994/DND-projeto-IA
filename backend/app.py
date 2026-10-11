@@ -991,11 +991,15 @@ def _acoes_monstro_como_lista(monstro: dict) -> list[str]:
     if isinstance(acoes, dict):
         acoes = list(acoes.values())
     if isinstance(acoes, list):
-        return [
-            str(item.get("texto") or item.get("descricao") or item.get("description") or item.get("name") or "")
-            if isinstance(item, dict) else str(item)
-            for item in acoes
-        ]
+        linhas = []
+        for item in acoes:
+            if isinstance(item, dict):
+                nome = str(item.get("nome") or item.get("name") or "").strip()
+                descricao = str(item.get("desc") or item.get("descricao") or item.get("description") or item.get("texto") or "").strip()
+                linhas.append((nome + ". " + descricao).strip() if nome and descricao else (descricao or nome))
+            else:
+                linhas.append(str(item))
+        return linhas
     return []
 
 
