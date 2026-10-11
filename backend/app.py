@@ -984,7 +984,7 @@ def atacar_token_tatico(
                     for t in tracos
                 )
                 if possui_fortitude and dano > 0 and not ataque.get("critical"):
-                    tipo_dano_arma = str((CATALOGO_ARMAS.get(nome_arma or "") or {}).get("tipo_dano", "")).casefold()
+                    tipo_dano_arma = _normalizar_tipo_dano(str((CATALOGO_ARMAS.get(nome_arma or "") or {}).get("tipo", "contundente")))
                     if tipo_dano_arma != "radiant":
                         salvaguardas = bloco_completo_alvo.get("salvaguardas") or {}
                         bonus_constituicao = int(salvaguardas.get("constituicao", (bloco_completo_alvo.get("modificadores") or {}).get("constituicao", 0)))
