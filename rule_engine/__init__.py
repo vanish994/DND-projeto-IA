@@ -24,6 +24,7 @@ from .magic_equipment import (
     resolver_area_magia, resolver_arma, resolver_carga, resolver_conjuracao,
     resolver_duas_armas,
 )
+from .catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS, CATALOGO_EQUIPAMENTOS, CATALOGO_MAGIAS, buscar_catalogo, listar_catalogo
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -47,6 +48,8 @@ __all__ = [
     "EstadoEquipamento", "EstadoMagia", "calcular_ca", "resolver_alvo_magia",
     "resolver_area_magia", "resolver_arma", "resolver_carga", "resolver_conjuracao",
     "resolver_duas_armas",
+    "CATALOGO_ARMAS", "CATALOGO_ARMADURAS", "CATALOGO_EQUIPAMENTOS", "CATALOGO_MAGIAS",
+    "buscar_catalogo", "listar_catalogo",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
     "resolver_descanso",

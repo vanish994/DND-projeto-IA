@@ -599,6 +599,23 @@ class RuleEngineTests(unittest.TestCase):
         })
         self.assertEqual(area.outcome["resultado"], "area_valida")
 
+    def test_catalog_contains_weapons_armor_equipment_and_spells(self):
+        from rule_engine import CATALOGO_ARMAS, CATALOGO_ARMADURAS, CATALOGO_EQUIPAMENTOS, CATALOGO_MAGIAS
+        self.assertGreaterEqual(len(CATALOGO_ARMAS), 34)
+        self.assertGreaterEqual(len(CATALOGO_ARMADURAS), 13)
+        self.assertGreaterEqual(len(CATALOGO_EQUIPAMENTOS), 45)
+        self.assertGreaterEqual(len(CATALOGO_MAGIAS), 300)
+        self.assertIn("Bola de Fogo", CATALOGO_MAGIAS)
+
+    def test_catalog_lookup_is_available_through_rule_engine(self):
+        result = self.engine.evaluate({
+            "type": "catalog_lookup", "category": "armas", "name": "Rapieira",
+        })
+        self.assertEqual(result.outcome["resultado"], "encontrado")
+        self.assertIn("acuidade", result.outcome["data"]["propriedades"])
+        listed = self.engine.evaluate({"type": "catalog_list", "category": "armaduras"})
+        self.assertIn("Placas", listed.outcome["names"])
+
 
 if __name__ == "__main__":
     unittest.main()

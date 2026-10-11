@@ -22,6 +22,7 @@ from .magic_equipment import (
     calcular_ca, resolver_alvo_magia, resolver_area_magia, resolver_arma,
     resolver_conjuracao, resolver_carga, resolver_duas_armas,
 )
+from .catalog import buscar_catalogo, listar_catalogo
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -608,5 +609,28 @@ def build_default_engine() -> RuleEngine:
         when=lambda f: f["type"] == "spell_area",
         resolve=resolver_area_magia,
         source="D&D 2024 — áreas de efeito",
+    ))
+    engine.register(Rule(
+        rule_id="catalog.lookup",
+        description="Consulta uma entrada estruturada de arma, armadura, equipamento ou magia.",
+        priority=50,
+        when=lambda f: f["type"] == "catalog_lookup",
+        resolve=lambda f: {
+            "resultado": "encontrado" if buscar_catalogo(f["category"], f["name"]) is not None else "não_encontrado",
+            "category": f["category"], "name": f["name"],
+            "data": buscar_catalogo(f["category"], f["name"]),
+        },
+        source="D&D 2024 — catálogos",
+    ))
+    engine.register(Rule(
+        rule_id="catalog.list",
+        description="Lista os nomes disponíveis em uma categoria de catálogo.",
+        priority=50,
+        when=lambda f: f["type"] == "catalog_list",
+        resolve=lambda f: {
+            "resultado": "listado", "category": f["category"],
+            "names": listar_catalogo(f["category"]),
+        },
+        source="D&D 2024 — catálogos",
     ))
     return engine

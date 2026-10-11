@@ -24,7 +24,9 @@ O Bloco 3 foi iniciado com as 16 condições do Livro do Jogador 2024: Cego, Enf
 
 ## Bloco 4 — magias, equipamentos e armas
 
-O núcleo do Bloco 4 foi iniciado com cálculo de CA, armaduras, escudos, proficiência, propriedades de armas, maestria, duas armas Leves, Capacidade de Carga, preparação de magias, componentes, rituais, concentração anterior, alcance de alvos e áreas de efeito. Ainda faltam os catálogos completos, valores de cada item, propriedades individuais, fabricação, classes conjuradoras, progressão de espaços e efeitos específicos de cada magia.
+O núcleo do Bloco 4 foi iniciado com cálculo de CA, armaduras, escudos, proficiência, propriedades de armas, maestria, duas armas Leves, Capacidade de Carga, preparação de magias, componentes, rituais, concentração anterior, alcance de alvos e áreas de efeito. O catálogo estruturado agora contém 34 armas, 13 armaduras, 45 equipamentos de aventura e 390 entradas de magias com escola, Concentração, Ritual e componente Material. A consulta dos catálogos está integrada ao motor.
+
+Ainda faltam descrições completas dos efeitos individuais das 390 magias, fabricação detalhada por ferramenta, veículos, listas de equipamentos iniciais por classe/origem, progressão de espaços por classe e todas as regras de maestria em resolução de ataque.
 
 ## O que já está implementado
 
