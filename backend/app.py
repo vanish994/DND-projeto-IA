@@ -2273,6 +2273,13 @@ def conjurar_no_mapa_tatico(
                 repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto_area)
             resultados_area.append({"alvo_id": token_area["id"], "nome": token_area["name"], "salvaguarda": salvaguarda, "dados_dano": dados_area, "dano": dano_alvo, "concentracao": concentracao_alvo if token_area["kind"] == "hero" and dano_alvo else None})
         dano = sum(x["dano"] for x in resultados_area)
+    elif mecanica.get("tipo") == "condicao" and isinstance(mecanica.get("salvaguarda_fim_turno"), dict):
+        # Efeitos de condição com salvaguarda repetida precisam declarar a regra
+        # no catálogo; não inferimos CDs ou salvaguardas ausentes.
+        if distancia_pes > int(round(float(mecanica.get("alcance_m", 1.5)) * 3.28084)):
+            raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_m": mecanica.get("alcance_m", 1.5)})
+        if not mecanica.get("condicao"):
+            raise HTTPException(status_code=422, detail="A magia não declara qual condição aplica")
     else:
         raise HTTPException(status_code=422, detail="Esta magia ainda não tem efeito implementado no combate tático")
     if resultado_ataque and resultado_ataque.get("result") == "hit" and dano:
