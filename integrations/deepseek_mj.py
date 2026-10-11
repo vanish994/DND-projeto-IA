@@ -14,7 +14,7 @@ from typing import Any
 from rule_engine import build_default_engine
 
 
-SYSTEM_PROMPT = """Você é o Mestre de Jogo (MJ) da campanha.
+PROMPT_NORMATIVO = """Você é o Mestre de Jogo (MJ) da campanha.
 
 A história, a ambientação, os personagens narrativos, os diálogos, os conflitos,
 as cenas e a criatividade são livres e pertencem ao MJ. Não gere uma aventura
@@ -30,6 +30,17 @@ As ferramentas devolvem dados normativos. Você decide como apresentar e narrar
 o resultado, sem alterar os valores oficiais. A escolha final de monstros e o
 rumo da história permanecem com o MJ.
 """
+
+
+def carregar_prompt_mj() -> str:
+    """Carrega a personalidade do GitHub/Render e preserva o contrato normativo."""
+    raiz = Path(__file__).resolve().parents[1]
+    caminho = raiz / os.getenv("MJ_PROMPT_FILE", "config/mj_personalidade.txt")
+    personalidade = caminho.read_text(encoding="utf-8").strip() if caminho.exists() else ""
+    personalidade = os.getenv("MJ_PERSONALIDADE", personalidade).strip()
+    if not personalidade:
+        personalidade = "Conduza a sessão com clareza, naturalidade e espírito colaborativo."
+    return f"{PROMPT_NORMATIVO}\n\nPERSONALIDADE E ESTILO DO MJ:\n{personalidade}"
 
 
 TOOLS = [
@@ -122,6 +133,7 @@ class DeepSeekMJ:
             )
         self.client = client
         self.model = model or os.getenv("DEEPSEEK_MODEL", default_model)
+        self.system_prompt = carregar_prompt_mj()
         self.engine = build_default_engine()
 
     def _tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -150,7 +162,7 @@ class DeepSeekMJ:
         }
 
     def responder(self, texto: str, historico: list[dict[str, Any]] | None = None) -> str:
-        mensagens: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        mensagens: list[dict[str, Any]] = [{"role": "system", "content": self.system_prompt}]
         mensagens.extend(historico or [])
         mensagens.append({"role": "user", "content": texto})
 

@@ -69,6 +69,12 @@ export DEEPSEEK_MODEL="deepseek-v4.1-flash:free"
 
 Quando `TOKENHARBOR_API_KEY` estiver definida, o adaptador seleciona automaticamente `https://tokenharbor.ai/v1` e `deepseek-v4.1-flash:free`. A chave deve ser criada na conta do TokenHarbor e nunca deve ser publicada no repositório.
 
+### Prompt e personalidade do MJ
+
+A personalidade editável fica em `config/mj_personalidade.txt`. Para alterá-la no deploy do Render, edite esse arquivo no GitHub, faça commit na branch `main` e o Render fará o redeploy automático. O adaptador sempre acrescenta o contrato normativo protegido: narrativa livre, mas toda mecânica de D&D passa pelo Rule Engine.
+
+Para uma configuração exclusiva do ambiente Render, use a variável `MJ_PERSONALIDADE` no painel do serviço. Ela substitui o conteúdo do arquivo sem alterar o GitHub. Para trocar o caminho do arquivo, use `MJ_PROMPT_FILE`.
+
 Uso:
 
 ```python
