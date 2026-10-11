@@ -62,6 +62,13 @@ class AntecedentesTests(unittest.TestCase):
         p = criar_personagem(fatos(background="medium_espiritual", background_feat="sussurros_reunidos"))
         self.assertIn("sussurros_reunidos", p.talentos)
 
+    def test_olho_agucado_tem_efeitos_catalogados(self):
+        from rule_engine.feats import FEATS
+        efeitos = FEATS["olho_agucado"]["efeitos"]
+        self.assertIn("vantagem_em_teste_de_atributo_da_acao_procurar_ou_estudar", efeitos)
+        self.assertIn("usos_iguais_bonus_proficiencia_por_descanso_longo", efeitos)
+        self.assertIn("uso_gasto_somente_em_sucesso", efeitos)
+
     def test_investigador_aceita_olho_agucado_ou_dadiva(self):
         self.assertIn("olho_agucado", criar_personagem(fatos(background="investigador")).talentos)
         p = criar_personagem(fatos(background="investigador", background_feat="observadores"))

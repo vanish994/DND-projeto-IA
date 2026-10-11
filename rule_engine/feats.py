@@ -66,7 +66,15 @@ EPIC_FEATS = {name: {"categoria": "dadiva_epica", "nivel": 19, "efeitos": effect
 # Ravenloft: Horror Wilds. O texto da biblioteca lista os nomes dos talentos de
 # origem, mas não traz a descrição deles; os efeitos ficam sem catalogar.
 RAVENLOFT_ORIGIN_FEATS = {
-    "olho_agucado": {"categoria": "origem", "fonte": "ravenloft", "efeitos": []},
+    "olho_agucado": {
+        "categoria": "origem",
+        "fonte": "ravenloft",
+        "efeitos": [
+            "vantagem_em_teste_de_atributo_da_acao_procurar_ou_estudar",
+            "usos_iguais_bonus_proficiencia_por_descanso_longo",
+            "uso_gasto_somente_em_sucesso",
+        ],
+    },
     "sobrevivente": {"categoria": "origem", "fonte": "ravenloft", "efeitos": []},
 }
 ORIGIN_FEATS.update(RAVENLOFT_ORIGIN_FEATS)
