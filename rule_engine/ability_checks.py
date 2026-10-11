@@ -77,6 +77,9 @@ def _modificadores(fatos: Mapping[str, Any], pericia: str | None = None) -> dict
     fontes_d = fatos.get("fontes_desvantagem", []) or []
     vantagem = vantagem or bool(fontes_v)
     desvantagem = desvantagem or bool(fontes_d)
+    if vantagem and desvantagem:
+        vantagem = False
+        desvantagem = False
     return {
         "atributo": atributo, "modificador_atributo": mod_atributo,
         "bonus_proficiencia_aplicado": mod_prof, "proficiente": proficiente, "expertise": expertise,
