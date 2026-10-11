@@ -20,7 +20,7 @@ O **Bloco 2 está encerrado no nível do núcleo**. A integração com o catálo
 
 ## Bloco 3 — condições e efeitos
 
-O Bloco 3 foi iniciado com as 15 condições do Livro do Jogador 2024: Cego, Enfeitiçado, Surdo, Exaustão, Amedrontado, Agarrado, Incapacitado, Invisível, Paralisado, Petrificado, Envenenado, Caído, Contido, Lento, Atordoado e Inconsciente. O núcleo inclui estado persistente, imunidade, duração, remoção e efeitos sobre ações, movimento, fala, sentidos, salvaguardas e ataques. A cobertura de interações com concentração, magias específicas e características de classe será refinada nos blocos de Magias e Personagens.
+O Bloco 3 foi iniciado com as 15 condições oficiais do Livro do Jogador 2024: Cego, Enfeitiçado, Surdo, Exaustão, Amedrontado, Agarrado, Incapacitado, Invisível, Paralisado, Petrificado, Envenenado, Caído, Contido, Atordoado e Inconsciente. O núcleo inclui estado persistente, imunidade, duração, remoção e efeitos sobre ações, movimento, fala, sentidos, salvaguardas e ataques. A cobertura de interações com concentração, magias específicas e características de classe será refinada nos blocos de Magias e Personagens.
 
 ## Bloco 4 — magias, equipamentos e armas
 
@@ -72,7 +72,7 @@ Implementado `economy.py` com conversão entre PC, PP, PE, PO e PL; compra e ven
 
 ## Condições e estados alterados
 
-Completo o módulo `conditions.py` com as 15 condições do Livro do Jogador 2024, normalização de nomes em português/inglês, imunidades, duração, aplicação repetida, remoção, redução por turnos e níveis de Exaustão. Os efeitos derivados agora abrangem vantagem/desvantagem, acertos críticos automáticos, deslocamento 0, ações e reações bloqueadas, falhas automáticas de salvaguardas de Força/Destreza, concentração, fala, sentidos, ataques contra Caído, efeitos de Cego/Invisível, Petrificado, Contido, Atordoado, Inconsciente, Envenenado, Amedrontado, Enfeitiçado, Agarrado, Lento e Exaustão.
+Completo o módulo `conditions.py` com as 15 condições do Livro do Jogador 2024, normalização de nomes em português/inglês, imunidades, duração, aplicação repetida, remoção, redução por turnos e níveis de Exaustão. Os efeitos derivados agora abrangem vantagem/desvantagem, acertos críticos automáticos, deslocamento 0, ações e reações bloqueadas, falhas automáticas de salvaguardas de Força/Destreza, concentração, fala, sentidos, ataques contra Caído, efeitos de Cego/Invisível, Petrificado, Contido, Atordoado, Inconsciente, Envenenado, Amedrontado, Enfeitiçado, Agarrado e Exaustão.
 
 ## Combate tático avançado
 
