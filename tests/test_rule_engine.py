@@ -987,7 +987,7 @@ class RuleEngineTests(unittest.TestCase):
     def test_influence_action_handles_willing_unwilling_and_hesitant(self):
         willing = self.engine.evaluate({"type": "influence_action", "disposicao": "disposto"})
         unwilling = self.engine.evaluate({"type": "influence_action", "disposicao": "indisposto"})
-        hesitant = self.engine.evaluate({"type": "influence_action", "disposicao": "hesitante", "interacao": "persuasao", "valor_atributo": 16, "roll": 10, "inteligencia_monstro": 12})
+        hesitant = self.engine.evaluate({"type": "influence_action", "disposicao": "hesitante", "interacao": "persuasao", "valor_atributo": 16, "roll": 12, "inteligencia_monstro": 12})
         self.assertFalse(willing.outcome["teste_realizado"])
         self.assertFalse(unwilling.outcome["monstro_atende"])
         self.assertEqual(hesitant.outcome["cd"], 15)
