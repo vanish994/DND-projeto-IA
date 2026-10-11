@@ -34,17 +34,23 @@ class EstadoCondicoes:
     def __post_init__(self) -> None:
         self.ativas = {normalizar_condicao(c) for c in self.ativas}
         self.imunidades = {normalizar_condicao(c) for c in self.imunidades}
-        self.exaustao = max(0, int(self.exaustao))
+        for condicao in self.ativas | self.imunidades:
+            validar_condicao(condicao)
+        self.exaustao = min(6, max(0, int(self.exaustao)))
+        if self.exaustao:
+            self.ativas.add("exaustao")
 
     def aplicar(self, condicao: str, duracao: int | str | None = None) -> dict[str, Any]:
         c = normalizar_condicao(condicao)
         validar_condicao(c)
+        if c in self.imunidades:
+            return {"resultado": "não_aplicada", "motivo": "imune", "condicao": c}
+        if isinstance(duracao, int) and duracao < 1:
+            raise ValueError("A duração deve ser positiva")
         if c == "exaustao":
             self.exaustao = min(6, self.exaustao + max(1, int(duracao or 1)))
             self.ativas.add(c)
-            return {"resultado": "aplicada", "condicao": c, "nivel": self.exaustao}
-        if c in self.imunidades:
-            return {"resultado": "não_aplicada", "motivo": "imune", "condicao": c}
+            return {"resultado": "aplicada", "condicao": c, "nivel": self.exaustao, "morto": self.exaustao >= 6}
         if c in self.ativas:
             if duracao is not None:
                 self.duracoes[c] = duracao
@@ -94,6 +100,7 @@ def resolver_estado_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if operacao == "tick":
         return {"resultado": "durações_reduzidas", "encerradas": estado.reduzir_duracoes(fatos.get("units", 1))}
     if operacao == "query":
+        validar_condicao(c)
         return {"resultado": "ativa" if c in estado.ativas else "não_ativa", "condicao": c, "nivel_exaustao": estado.exaustao}
     raise ValueError("Operação de condição inválida")
 
@@ -134,7 +141,7 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         "pode_ouvir": "surdo" not in alvo,
         "desvantagem_salvaguardas": False,
         "desvantagem_salvaguarda_destreza": "contido" in alvo,
-        "desvantagem_testes_habilidade": bool({"amedrontado", "envenenado"} & alvo and ("amedrontado" not in alvo or fatos.get("fonte_no_campo_de_visao", True))),
+        "desvantagem_testes_habilidade": ("envenenado" in alvo) or ("amedrontado" in alvo and fatos.get("fonte_no_campo_de_visao", True)),
         "falha_salvaguardas_forca_destreza": bool({"paralisado", "petrificado", "atordoado", "inconsciente"} & alvo),
     })
     if "petrificado" in alvo:
@@ -151,6 +158,8 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if "exaustao" in alvo:
         nivel = int(fatos.get("exaustao_niveis", fatos.get("exhaustion_niveis", fatos.get("exhaustion_levels", 1))))
         resultado["modificador_d20"] = -2 * nivel
+        resultado["deslocamento_reduzido_m"] = 1.5 * nivel
+        resultado["morre_no_nivel_6"] = nivel >= 6
     if "lento" in alvo:
         resultado["deslocamento_reduzido_m"] = int(fatos.get("reducao_lento_m", 3))
         resultado["deslocamento_reduzido"] = True
