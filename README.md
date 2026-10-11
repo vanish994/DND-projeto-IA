@@ -12,7 +12,11 @@ Biblioteca de referência do projeto de IA para Dungeons & Dragons.
 
 ## Bestiário SRD 5.2.1
 
-O projeto inclui um catálogo resumido de **232 monstros** identificados no `SRD_CC_v5.2.1.pdf`, com nome, tamanho, tipo, alinhamento, CA, PV, dados de vida, ND e XP. Isso não significa que todos os blocos de combate estejam completos: ações, atributos e salvaguardas estruturados estão sendo preenchidos por etapas.
+O catálogo original mantém **232 entradas** extraídas do `SRD_CC_v5.2.1.pdf`. Além dele, o motor agora importa **322 blocos estruturados** publicados para o SRD 5.2.1 em `rule_engine/srd_monsters_data.json`. Os registros incluem atributos, ações, descrições, traços, salvaguardas, deslocamentos, sentidos, perícias, resistências/imunidades e ações bônus, reações ou lendárias quando esses campos constam da fonte. Nomes legados do catálogo são preservados; aliases só compartilham dados quando existe uma correspondência explícita.
+
+A origem e os termos de atribuição CC BY 4.0 estão registrados no próprio JSON. O conjunto importado tem mais entradas que o catálogo original; isso não significa que todas as 322 sejam nomes distintos presentes na extração local do PDF. Dados não publicados pela fonte, como alinhamento de algumas entradas adicionais, não são inventados.
+
+O motor converte esses registros para o formato interno e os disponibiliza em `consultar_monstro`/`bloco_completo`. O ataque tático agora reconhece descrições de ataque no formato SRD 5.2.1 (`Melee Weapon Attack: +X to hit`) além do formato anterior.
 
 Também estão disponíveis a tabela de XP por ND, filtros por tipo/ND, consulta por nome e cálculo do XP bruto de um encontro. A regra do motor usa entradas como:
 
@@ -22,7 +26,7 @@ Também estão disponíveis a tabela de XP por ND, filtros por tipo/ND, consulta
 {"type": "bestiary", "operacao": "xp_encontro", "nomes": ["Bandit", "Wolf"]}
 ```
 
-Os blocos de combate estruturados atualmente disponíveis são Bandit, Bandit Captain, Skeleton, Wolf e Zombie. O mapa tático consegue resolver ataques individuais com bônus, alcance e dano explícitos nesses blocos, além de usar as salvaguardas estruturadas nas magias de área. O traço **Undead Fortitude** do Zombie também é resolvido quando um ataque de personagem o reduziria a 0 PV: o motor aplica a salvaguarda de Constituição, a CD baseada no dano e as exceções de acerto crítico. Multiataques, outras reações/traços especiais e os demais monstros ainda precisam de integração antes de serem considerados suportados.
+Os ataques individuais extraídos dos blocos importados podem ser apresentados ao resolvedor tático quando bônus, alcance e dano estão explícitos. As salvaguardas estruturadas também alimentam as magias de área, e o traço **Undead Fortitude** do Zombie já tem resolução específica. **Limite atual:** importar um bloco completo não significa que todos os efeitos especiais, multiataques, agarrões, engolir, conjuração de monstros, resistências e reações já estejam simulados no mapa; esses efeitos ainda precisam de resolutores mecânicos próprios e testes.
 
 ### Fluxo de seleção para o MJ
 
@@ -142,7 +146,7 @@ O endpoint legado `/v1/mj/mensagem` continua funcionando: a `sessao_id` passa a 
 
 O arquivo `render.yaml` deixa o repositório pronto para o Render Blueprint. No Render, use **New → Blueprint**, conecte o repositório `vanish994/DND-projeto-IA` e selecione a branch `main`. O Render lerá o `render.yaml`, instalará as dependências, iniciará o FastAPI na porta `$PORT` e usará `/v1/status` como health check. Quando o painel solicitar `TOKENHARBOR_API_KEY`, cole a chave diretamente no campo secreto do Render; ela não deve ser adicionada ao GitHub.
 
-A estimativa de “mais de 300 monstros” não corresponde ao PDF SRD 5.2.1 presente na biblioteca ativa: a extração verificável dessa fonte resulta em 232 blocos completos. O catálogo não inventa entradas para preencher essa diferença.
+A extração local do PDF continua identificada como um catálogo de 232 entradas. O conjunto de 322 registros estruturados é uma fonte de dados separada, com sua própria atribuição CC BY 4.0, usada para completar a camada de dados do motor sem alegar que todas as entradas adicionais constam do PDF local.
 
 ### Testes de habilidade com rolagem do motor
 
