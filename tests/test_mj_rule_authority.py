@@ -56,6 +56,23 @@ class MJRuleAuthorityTests(unittest.TestCase):
         self.assertEqual(resultado["motivo"], "atributo_incompativel_com_pericia")
         self.assertEqual(resultado["atributo_correto"], "forca")
 
+    def test_salvaguarda_usa_proficiência_da_ficha_e_ignora_bonus_inventado(self):
+        artifice = {
+            "id": "artifice-1", "classe": "artifice", "nivel": 1,
+            "atributos": {"inteligencia": 16, "constituicao": 10},
+            "modificadores": {"inteligencia": 3, "constituicao": 0},
+            "bonus_proficiencia": 2,
+            "proficiencias_salvaguarda": ["constituicao", "inteligencia"],
+        }
+        resultado = self.mj._tool("resolver_regra", {"fatos": {
+            "type": "saving_throw_check", "ability": "inteligencia",
+            "roll": 10, "dc": 15, "modifier": 999, "proficiente": False,
+        }}, [artifice])
+        self.assertEqual(resultado["resultado"], "sucesso")
+        self.assertEqual(resultado["total"], 15)
+        self.assertEqual(resultado["modifier_source"], "ficha_autoritativa")
+        self.assertEqual(resultado["proficiency_applied"], 2)
+
     def test_artifice_nao_conjura_magia_que_nao_esta_preparada(self):
         artifice = {
             "id": "artifice-1", "classe": "artifice", "nivel": 1,
