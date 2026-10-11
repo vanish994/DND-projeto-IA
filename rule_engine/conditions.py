@@ -80,6 +80,38 @@ class EstadoCondicoes:
         self.duracoes.pop(c, None)
         return {"resultado": "removida", "condicao": c}
 
+    def encerrar_por_salvaguarda(
+        self, condicao: str, rolagem: int, modificador: int, cd: int
+    ) -> dict[str, Any]:
+        """Resolve uma salvaguarda explícita para encerrar uma condição.
+
+        O chamador deve invocar este método somente quando o efeito permitir
+        uma nova salvaguarda (por exemplo, no fim do turno). A rolagem é
+        fornecida pelo motor para manter aleatoriedade e contexto fora do estado.
+        """
+        c = normalizar_condicao(condicao)
+        validar_condicao(c)
+        for nome, valor in (("rolagem", rolagem), ("modificador", modificador), ("cd", cd)):
+            if isinstance(valor, bool) or not isinstance(valor, int):
+                raise TypeError(f"{nome} deve ser inteiro")
+        if not 1 <= rolagem <= 20:
+            raise ValueError("A rolagem deve estar entre 1 e 20")
+        if c not in self.ativas:
+            return {"resultado": "não_ativa", "condicao": c, "encerrada": False}
+        total = rolagem + modificador
+        sucesso = total >= cd
+        if sucesso:
+            self.remover(c)
+        return {
+            "resultado": "encerrada" if sucesso else "continua",
+            "condicao": c,
+            "rolagem": rolagem,
+            "modificador": modificador,
+            "total": total,
+            "cd": cd,
+            "encerrada": sucesso,
+        }
+
     def reduzir_duracoes(self, unidades: int = 1) -> list[str]:
         if isinstance(unidades, bool) or not isinstance(unidades, int) or unidades < 1:
             raise ValueError("As unidades de duração devem ser um inteiro positivo")
