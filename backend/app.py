@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
@@ -16,6 +17,10 @@ from pydantic import BaseModel, Field
 
 from backend.persistencia import RepositorioCampanhas
 from rule_engine import (
+    BESTIARIO,
+    build_default_engine,
+    caminho_grade,
+    resolver_ataque_tatico,
     ANTECEDENTES,
     CLASSES,
     ESPECIES,
@@ -110,6 +115,33 @@ class NovoPersonagem(BaseModel):
 
 class AtualizarPersonagem(BaseModel):
     ajuste_pv: int = Field(ge=-100, le=100)
+
+
+class TokenMapaTatico(BaseModel):
+    id: str = Field(min_length=1, max_length=80)
+    kind: str = Field(pattern="^(hero|enemy|npc)$")
+    character_id: str | None = Field(default=None, max_length=80)
+    monster_name: str | None = Field(default=None, max_length=120)
+    x: int = Field(ge=0, le=19)
+    y: int = Field(ge=0, le=12)
+
+
+class AtualizarMapaTatico(BaseModel):
+    title: str = Field(default="Cena da aventura", max_length=120)
+    terrain: str = Field(default="forest", pattern="^(forest|dungeon|cave|ruins|town|road)$")
+    tokens: list[TokenMapaTatico] = Field(default_factory=list, max_length=60)
+
+
+class AcaoMovimentoTatico(BaseModel):
+    token_id: str = Field(min_length=1, max_length=80)
+    destino_x: int = Field(ge=0, le=19)
+    destino_y: int = Field(ge=0, le=12)
+
+
+class AcaoAtaqueTatico(BaseModel):
+    atacante_id: str = Field(min_length=1, max_length=80)
+    alvo_id: str = Field(min_length=1, max_length=80)
+    cobertura: str = Field(default="nenhuma", pattern="^(nenhuma|meia|tres_quartos|total)$")
 
 
 class AtualizarMagiasPersonagem(BaseModel):
@@ -438,6 +470,208 @@ def mensagem_mj(
         repo.criar(jogador, campanha_id=pedido.sessao_id)
     resposta = _responder(mj, repo, jogador, pedido.sessao_id, pedido.mensagem)
     return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta)
+
+
+def _estado_mapa_normalizado(repo: RepositorioCampanhas, jogador: str, campanha_id: str) -> dict:
+    estado = repo.obter_mapa_tatico(jogador, campanha_id)
+    if estado is None:
+        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+    personagens = repo.listar_personagens(jogador, campanha_id) or []
+    por_id = {p["id"]: p for p in personagens}
+    monstros = {m["nome"]: m for m in BESTIARIO}
+    tokens = []
+    vistos = set()
+    for bruto in estado.get("tokens", []):
+        token = dict(bruto)
+        if token.get("kind") == "hero":
+            p = por_id.get(token.get("character_id"))
+            if not p:
+                continue
+            token.update({
+                "name": p["nome"], "hp": p["pv_atual"], "maxHp": p["pv_maximo"],
+                "ac": 10 + int((p.get("modificadores") or {}).get("destreza", 0)),
+                "speed_ft": int(round(float(p.get("deslocamento", 9)) / 0.3)),
+                "str_mod": int((p.get("modificadores") or {}).get("forca", 0)),
+                "proficiency": int(p.get("bonus_proficiencia", 2)),
+                "source": "character",
+            })
+        elif token.get("kind") == "enemy":
+            m = monstros.get(token.get("monster_name"))
+            if not m:
+                continue
+            token.update({
+                "name": m["nome"], "hp": max(0, int(token.get("hp", m["pv"]))),
+                "maxHp": int(token.get("maxHp", m["pv"])), "ac": int(m["ca"]),
+                "speed_ft": 30, "str_mod": 2,
+                "proficiency": max(2, 2 + max(0, int(float(m["nd"])) - 1) // 4) if "/" not in str(m["nd"]) else 2,
+                "source": "bestiary",
+            })
+        else:
+            continue
+        if token["id"] in vistos:
+            continue
+        vistos.add(token["id"])
+        tokens.append(token)
+    return {"title": estado.get("title", "Cena da aventura"), "terrain": estado.get("terrain", "forest"), "tokens": tokens}
+
+
+@app.get("/v1/campanhas/{campanha_id}/mapa-tatico")
+def obter_mapa_tatico(
+    campanha_id: str,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    _campanha_ou_404(repo, jogador, campanha_id)
+    estado = _estado_mapa_normalizado(repo, jogador, campanha_id)
+    personagens = repo.listar_personagens(jogador, campanha_id) or []
+    return {
+        "mapa": estado,
+        "personagens": [{"id": p["id"], "nome": p["nome"], "pv_atual": p["pv_atual"], "pv_maximo": p["pv_maximo"], "classe": p["classe"], "nivel": p["nivel"]} for p in personagens],
+        "monstros": [{"nome": m["nome"], "ca": m["ca"], "pv": m["pv"], "nd": m["nd"], "tamanho": m["tamanho"]} for m in BESTIARIO],
+    }
+
+
+@app.put("/v1/campanhas/{campanha_id}/mapa-tatico")
+def salvar_mapa_tatico(
+    campanha_id: str,
+    pedido: AtualizarMapaTatico,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    _campanha_ou_404(repo, jogador, campanha_id)
+    personagens = repo.listar_personagens(jogador, campanha_id) or []
+    por_id = {p["id"]: p for p in personagens}
+    monstros = {m["nome"]: m for m in BESTIARIO}
+    tokens, ids = [], set()
+    for token in pedido.tokens:
+        if token.id in ids:
+            raise HTTPException(status_code=422, detail="IDs de tokens duplicados")
+        ids.add(token.id)
+        if token.kind == "hero":
+            p = por_id.get(token.character_id)
+            if not p:
+                raise HTTPException(status_code=422, detail="Vincule o token a um personagem desta campanha")
+            tokens.append({"id": token.id, "kind": "hero", "character_id": p["id"], "x": token.x, "y": token.y})
+        elif token.kind == "enemy":
+            m = monstros.get(token.monster_name or "")
+            if not m:
+                raise HTTPException(status_code=422, detail="Selecione um monstro do bestiário oficial disponível no projeto")
+            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": int(m["pv"]), "maxHp": int(m["pv"])})
+        else:
+            raise HTTPException(status_code=422, detail="Use um personagem ou monstro do catálogo")
+    estado = {"title": pedido.title, "terrain": pedido.terrain, "tokens": tokens, "bloqueados": [], "terreno_dificil": []}
+    repo.salvar_mapa_tatico(jogador, campanha_id, estado)
+    return {"mapa": _estado_mapa_normalizado(repo, jogador, campanha_id)}
+
+
+@app.post("/v1/campanhas/{campanha_id}/mapa-tatico/mover")
+def mover_token_tatico(
+    campanha_id: str,
+    pedido: AcaoMovimentoTatico,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    estado = _estado_mapa_normalizado(repo, jogador, campanha_id)
+    tokens = estado["tokens"]
+    token = next((t for t in tokens if t["id"] == pedido.token_id), None)
+    if token is None:
+        raise HTTPException(status_code=404, detail="Token não encontrado no encontro")
+    destino = (pedido.destino_x, pedido.destino_y)
+    if any(t["id"] != token["id"] and (t["x"], t["y"]) == destino for t in tokens):
+        raise HTTPException(status_code=409, detail="A casa de destino já está ocupada")
+    origem = (int(token["x"]), int(token["y"]))
+    dx, dy = destino[0] - origem[0], destino[1] - origem[1]
+    passos = max(abs(dx), abs(dy))
+    caminho = [origem]
+    if passos:
+        for i in range(1, passos + 1):
+            caminho.append((round(origem[0] + dx * i / passos), round(origem[1] + dy * i / passos)))
+    velocidade = max(0, int(token.get("speed_ft", 30)))
+    disponivel = max(0, velocidade // 5)
+    resolucao = caminho_grade({
+        "caminho": caminho, "movimento_disponivel": disponivel,
+        "bloqueados": [], "terreno_dificil": [],
+    })
+    if resolucao.get("resultado") != "permitido":
+        raise HTTPException(status_code=422, detail={
+            "motivo": resolucao.get("motivo", "movimento_bloqueado"),
+            "movimento_disponivel_quadrados": disponivel,
+            "custo": resolucao.get("custo", 0),
+        })
+    if token["kind"] == "hero":
+        atualizado = repo.obter_personagem(jogador, campanha_id, token["character_id"])
+        if not atualizado:
+            raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    token["x"], token["y"] = destino
+    repo.salvar_mapa_tatico(jogador, campanha_id, {
+        "title": estado["title"], "terrain": estado["terrain"],
+        "tokens": [{k: t[k] for k in ("id", "kind", "character_id", "monster_name", "x", "y", "hp", "maxHp") if k in t} for t in tokens],
+        "bloqueados": [], "terreno_dificil": [],
+    })
+    return {"mapa": _estado_mapa_normalizado(repo, jogador, campanha_id), "resolucao": resolucao}
+
+
+@app.post("/v1/campanhas/{campanha_id}/mapa-tatico/atacar")
+def atacar_token_tatico(
+    campanha_id: str,
+    pedido: AcaoAtaqueTatico,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    estado = _estado_mapa_normalizado(repo, jogador, campanha_id)
+    tokens = estado["tokens"]
+    atacante = next((t for t in tokens if t["id"] == pedido.atacante_id), None)
+    alvo = next((t for t in tokens if t["id"] == pedido.alvo_id), None)
+    if not atacante or not alvo:
+        raise HTTPException(status_code=404, detail="Atacante ou alvo não encontrado")
+    if atacante["id"] == alvo["id"]:
+        raise HTTPException(status_code=422, detail="Um token não pode atacar a si mesmo")
+    if atacante["kind"] != "hero":
+        raise HTTPException(status_code=422, detail="Nesta versão, o ataque automático usa o personagem como atacante; ações específicas dos monstros ainda não foram integradas")
+    if alvo["hp"] <= 0:
+        raise HTTPException(status_code=422, detail="O alvo já está com 0 PV")
+    dx, dy = abs(int(atacante["x"]) - int(alvo["x"])), abs(int(atacante["y"]) - int(alvo["y"]))
+    distancia_pes = max(dx, dy) * 5
+    geometria = resolver_ataque_tatico({
+        "distancia": distancia_pes, "alcance": 5, "alcance_maximo": 5,
+        "ataque_a_distancia": False,
+        "origem": (int(atacante["x"]), int(atacante["y"])),
+        "alvo": (int(alvo["x"]), int(alvo["y"])),
+        "atacante": (int(atacante["x"]), int(atacante["y"])),
+        "alvo_posicao": (int(alvo["x"]), int(alvo["y"])),
+        "aliados": [(int(t["x"]), int(t["y"])) for t in tokens if t["kind"] == "hero" and t["id"] != atacante["id"]],
+        "cobertura": pedido.cobertura,
+    })
+    if geometria.get("resultado") != "permitido":
+        raise HTTPException(status_code=422, detail={"motivo": geometria.get("motivo", "ataque_bloqueado"), "geometria": geometria})
+    rolagem = secrets.randbelow(20) + 1
+    modificadores = atacante.get("str_mod", 0)
+    bonus = int(atacante.get("proficiency", 2)) + int(modificadores)
+    engine = build_default_engine()
+    ataque = engine.evaluate({"type": "attack", "roll": rolagem, "modifier": bonus, "target_ac": int(alvo["ac"])}).outcome
+    if rolagem == 1:
+        ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
+    dano = 0
+    if ataque.get("result") == "hit":
+        dano_resolvido = engine.evaluate({
+            "type": "damage", "damage_dice": [], "damage_modifier": max(0, 1 + int(modificadores)),
+            "critical": bool(ataque.get("critical", False)),
+        }).outcome
+        dano = max(0, int(dano_resolvido.get("total", 0)))
+        if alvo["kind"] == "enemy":
+            estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+            for bruto in estado_bruto.get("tokens", []):
+                if bruto.get("id") == alvo["id"]:
+                    bruto["hp"] = max(0, int(bruto.get("hp", alvo["maxHp"])) - dano)
+            repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
+        else:
+            repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
+    return {
+        "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
+        "ataque": ataque, "dano": dano, "rolagem": rolagem, "bonus_ataque": bonus,
+        "geometria": geometria,
+        "nota": "Ataque desarmado básico; CA de personagem sem equipamento é uma referência provisória. Armas, magias, condições e ações próprias dos monstros ainda precisam ser conectadas.",
+    }
 
 
 @app.delete("/v1/mj/sessoes/{sessao_id}", status_code=204)
