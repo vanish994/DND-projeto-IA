@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 import unicodedata
 from typing import Any, Mapping
 
-CONDICOES = {"cego", "enfeiticado", "surdo", "exaustao", "amedrontado", "agarrado", "incapacitado", "invisivel", "paralisado", "petrificado", "envenenado", "caido", "contido", "lento", "atordoado", "inconsciente"}
-ALIASES = {"blinded": "cego", "charmed": "enfeiticado", "deafened": "surdo", "exhaustion": "exaustao", "frightened": "amedrontado", "grappled": "agarrado", "incapacitated": "incapacitado", "invisible": "invisivel", "paralyzed": "paralisado", "petrified": "petrificado", "poisoned": "envenenado", "prone": "caido", "restrained": "contido", "slowed": "lento", "stunned": "atordoado", "unconscious": "inconsciente"}
+CONDICOES = {"cego", "enfeiticado", "surdo", "exaustao", "amedrontado", "agarrado", "incapacitado", "invisivel", "paralisado", "petrificado", "envenenado", "caido", "contido", "atordoado", "inconsciente"}
+ALIASES = {"blinded": "cego", "charmed": "enfeiticado", "deafened": "surdo", "exhaustion": "exaustao", "frightened": "amedrontado", "grappled": "agarrado", "incapacitated": "incapacitado", "invisible": "invisivel", "paralyzed": "paralisado", "petrified": "petrificado", "poisoned": "envenenado", "prone": "caido", "restrained": "contido", "stunned": "atordoado", "unconscious": "inconsciente"}
 
 
 def _chave(valor: str) -> str:
@@ -160,7 +160,5 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         resultado["modificador_d20"] = -2 * nivel
         resultado["deslocamento_reduzido_m"] = 1.5 * nivel
         resultado["morre_no_nivel_6"] = nivel >= 6
-    if "lento" in alvo:
-        resultado["deslocamento_reduzido_m"] = int(fatos.get("reducao_lento_m", 3))
-        resultado["deslocamento_reduzido"] = True
+
     return resultado
