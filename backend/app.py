@@ -5,12 +5,15 @@ o DeepSeek conduz a conversa e usa o Rule Engine por ferramentas.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from integrations.deepseek_mj import DeepSeekMJ
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="D&D Projeto IA — MJ",
@@ -59,6 +62,7 @@ def mensagem_mj(pedido: MensagemMJ) -> RespostaMJ:
     try:
         resposta = mj.responder(pedido.mensagem, historico)
     except Exception as exc:
+        logger.exception("Falha na chamada do provedor do MJ: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Falha ao consultar o MJ configurado") from exc
     historico.extend([
         {"role": "user", "content": pedido.mensagem},
