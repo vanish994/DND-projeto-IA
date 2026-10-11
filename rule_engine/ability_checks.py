@@ -32,6 +32,9 @@ def _normalizar_pericia(valor: Any) -> str:
     aliases = {"adestramento": "adestrar_animais", "animal_handling": "adestrar_animais", "sleight_of_hand": "prestidigitacao", "performance": "atuacao", "deception": "enganacao", "stealth": "furtividade", "history": "historia", "insight": "intuicao", "intimidation": "intimidacao", "investigation": "investigacao", "medicine": "medicina", "nature": "natureza", "perception": "percepcao", "persuasion": "persuasao", "religion": "religiao", "survival": "sobrevivencia", "acrobatics": "acrobacia", "athletics": "atletismo", "arcana": "arcanismo"}
     return aliases.get(nome, nome)
 
+def _int(value: Any, default: int = 0) -> int:
+    return default if value is None else int(value)
+
 def _atributo_e_modificador(fatos: Mapping[str, Any], pericia: str | None = None) -> tuple[str | None, int]:
     atributo_bruto = fatos.get("atributo") or fatos.get("ability")
     atributo = _ATRIBUTOS.get(str(atributo_bruto).lower(), str(atributo_bruto).lower()) if atributo_bruto else PERICIAS.get(pericia or "")
