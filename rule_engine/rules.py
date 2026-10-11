@@ -37,6 +37,7 @@ from .spellcasters import (
 )
 from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guardiao
 from .warlock_invocations import resolver_invocacao, validar_invocacao
+from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_talento, validar_talento
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -803,5 +804,17 @@ def build_default_engine() -> RuleEngine:
         description="Resolve progressão de Guardião, Inimigo Favorito e recursos de exploração.",
         priority=60, when=lambda f: f["type"] == "advanced_caster_feature" and f.get("classe") == "guardiao",
         resolve=resolver_guardiao, source="D&D 2024 — Guardião",
+    ))
+    engine.register(Rule(
+        rule_id="feat.validate",
+        description="Valida categoria, nível, pré-requisitos e disponibilidade de talentos.",
+        priority=70, when=lambda f: f["type"] == "feat" and f.get("operation", "resolve") == "validate",
+        resolve=validar_talento, source="D&D 2024 — Talentos",
+    ))
+    engine.register(Rule(
+        rule_id="feat.resolve",
+        description="Resolve os efeitos determinísticos de talentos de Origem, Gerais e Épicos.",
+        priority=70, when=lambda f: f["type"] == "feat" and f.get("operation", "resolve") != "validate",
+        resolve=resolver_talento, source="D&D 2024 — Talentos",
     ))
     return engine

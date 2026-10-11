@@ -32,6 +32,7 @@ from .martial_subclasses import SUBCLASS_FEATURES, caracteristicas_subclasse, re
 from .spellcasters import resolver_canalizar_divindade, resolver_forma_selvagem, resolver_inspiracao_bardo, resolver_livro_de_magias, resolver_progressao_conjuracao
 from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guardiao
 from .warlock_invocations import INVOCATIONS, resolver_invocacao, validar_invocacao
+from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_talento, validar_talento
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -66,6 +67,7 @@ __all__ = [
     "resolver_canalizar_divindade", "resolver_forma_selvagem", "resolver_inspiracao_bardo", "resolver_livro_de_magias", "resolver_progressao_conjuracao",
     "resolver_bruxo", "resolver_feiticeiro", "resolver_guardiao",
     "INVOCATIONS", "resolver_invocacao", "validar_invocacao",
+    "EPIC_FEATS", "FEATS", "GENERAL_FEATS", "ORIGIN_FEATS", "resolver_talento", "validar_talento",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
     "resolver_descanso",

@@ -58,6 +58,10 @@ Implementados Bruxo, Feiticeiro e Guardião. O Bruxo agora possui progressão de
 
 O catálogo do PHB 2024 foi integrado em `warlock_invocations.py`, com 27 opções, níveis mínimos, requisitos de Pacto da Lâmina/Corrente/Tomo, requisitos de truques, invocações repetíveis e bloqueio de duplicatas. O motor resolve os efeitos detalhados de Explosão Agonizante/Repulsiva, Lança Mística, Lâmina Sedenta/Devoradora, Punição Mística, Sorvedouro de Vida, Investimento do Mestre da Corrente, Presentes, Pactos, visões, conjurações sem espaço, Mente Mística e demais opções catalogadas.
 
+## Bloco 6 — Talentos
+
+Implementado o catálogo do Livro do Jogador 2024 em `feats.py`, separado em Talentos de Origem, Talentos Gerais e Dádivas Épicas. O motor valida nível mínimo, necessidade de conjuração, atributos mínimos e categoria, além de resolver efeitos como proficiência em Iniciativa, Sorte, Vigoroso, Conjurador Bélico, Mestre em Escudos, Sentinela, Telecinético, Tocado pelas Fadas/Sombras e as Dádivas Épicas de Velocidade, Visão Verdadeira, Recuperação, Resistência à Energia, Destino e outras. A criação de personagens passou a aceitar o catálogo completo em vez da lista reduzida anterior.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

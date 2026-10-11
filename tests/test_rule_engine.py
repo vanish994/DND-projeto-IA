@@ -848,6 +848,40 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "punicao_mistica", "nivel": 5, "pactos": ["pacto_da_lamina"], "circulo_espaco": 3, "tamanho_alvo": "Grande"})
         self.assertEqual(result.outcome["dano_energetico"], 32)
 
+    def test_talent_catalog_has_origin_general_and_epic_categories(self):
+        from rule_engine import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS
+        self.assertGreaterEqual(len(ORIGIN_FEATS), 10)
+        self.assertGreaterEqual(len(GENERAL_FEATS), 40)
+        self.assertGreaterEqual(len(EPIC_FEATS), 8)
+        self.assertIn("alerta", ORIGIN_FEATS)
+        self.assertIn("conjurador_belico", GENERAL_FEATS)
+        self.assertIn("dadiva_do_destino", EPIC_FEATS)
+        self.assertEqual(FEATS["alerta"]["categoria"], "origem")
+
+    def test_origin_talents_resolve_core_effects(self):
+        result = self.engine.evaluate({"type": "feat", "talento": "alerta", "nivel": 1})
+        self.assertIn("proficiência_iniciativa", result.outcome["efeitos"])
+        result = self.engine.evaluate({"type": "feat", "talento": "vigoroso", "nivel": 5})
+        self.assertEqual(result.outcome["pv_adicionais"], 10)
+        result = self.engine.evaluate({"type": "feat", "talento": "sortudo", "nivel": 1, "bonus_proficiencia": 2})
+        self.assertEqual(result.outcome["pontos_de_sorte"], 2)
+
+    def test_general_talent_prerequisites_and_effects(self):
+        blocked = self.engine.evaluate({"type": "feat", "talento": "conjurador_belico", "nivel": 4, "caracteristica_conjuracao": False})
+        self.assertEqual(blocked.outcome["motivo"], "requer_conjuracao")
+        result = self.engine.evaluate({"type": "feat", "talento": "conjurador_belico", "nivel": 4, "caracteristica_conjuracao": True})
+        self.assertIn("vantagem_concentracao", result.outcome["efeitos"])
+        result = self.engine.evaluate({"type": "feat", "talento": "sentinela", "nivel": 4, "forca": 13})
+        self.assertIn("zera_deslocamento", result.outcome["efeitos"])
+
+    def test_epic_talents_require_level_19_and_resolve_effects(self):
+        blocked = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_velocidade", "nivel": 18})
+        self.assertEqual(blocked.outcome["motivo"], "nivel_insuficiente")
+        result = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_velocidade", "nivel": 19})
+        self.assertEqual(result.outcome["deslocamento_adicional_m"], 9)
+        result = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_visao_verdadeira", "nivel": 19})
+        self.assertEqual(result.outcome["visao_verdadeira_m"], 18)
+
 
 if __name__ == "__main__":
     unittest.main()

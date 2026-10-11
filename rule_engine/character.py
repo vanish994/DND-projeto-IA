@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
 from .class_progression import caracteristicas_no_nivel, subclasses_da_classe
+from .feats import FEATS
 
 
 ESPECIES = {
@@ -51,11 +52,7 @@ SUBCLASSES_RAVENLOFT = {
     "feiticaria_das_sombras": {"classe": "feiticeiro", "nivel": 3},
     "patrono_morto_vivo": {"classe": "bruxo", "nivel": 3},
 }
-TALENTOS = {
-    "alerta", "artista", "atacante_selvagem", "curandeiro", "defensivo",
-    "especialista_em_armaduras_leves", "especialista_em_armaduras_medias",
-    "especialista_em_armaduras_pesadas", "sortudo", "habilidoso",
-}
+TALENTOS = set(FEATS)
 ATRIBUTOS = {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"}
 
 
