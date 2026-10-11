@@ -51,6 +51,24 @@ class AbilityCheckTests(unittest.TestCase):
         result = resolver_teste_habilidade({"pericia": "atletismo", "roll": 12, "cd": 15})
         self.assertEqual(result["resultado"], "bloqueado")
         self.assertEqual(result["motivo"], "modificador_de_atributo_ausente")
+    def test_saving_throw_uses_attribute_proficiency_and_d20_rules(self):
+        result = resolver_salvaguarda({"atributo": "destreza", "valor_atributo": 14, "nivel": 5, "proficiencias_salvaguarda": ["destreza"], "roll": 10, "cd": 14})
+        self.assertEqual(result["bonus_proficiencia_aplicado"], 3)
+        self.assertEqual(result["total"], 15)
+        self.assertEqual(result["resultado"], "sucesso")
+
+    def test_initiative_uses_dexterity_modifier_and_explicit_bonus(self):
+        from rule_engine import resolver_iniciativa
+        result = resolver_iniciativa({"modificador_destreza": 2, "roll": 13, "bonus_iniciativa": 1})
+        self.assertEqual(result["total"], 16)
+        self.assertEqual(result["atributo"], "destreza")
+
+    def test_engine_registers_saving_throw_and_initiative(self):
+        engine = build_default_engine()
+        save = engine.evaluate({"type": "saving_throw_check", "atributo": "forca", "modificador_atributo": 2, "roll": 12, "cd": 14})
+        self.assertEqual(save.outcome["resultado"], "sucesso")
+        initiative = engine.evaluate({"type": "initiative_check", "modificador_destreza": 3, "roll": 10})
+        self.assertEqual(initiative.outcome["total"], 13)
     def test_engine_registers_new_rule_types(self):
         engine = build_default_engine()
         result = engine.evaluate({"type": "skill_check", "pericia": "atletismo", "modificador_atributo": 3, "roll": 12, "cd": 15})
