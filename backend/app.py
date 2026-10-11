@@ -189,6 +189,9 @@ class AtualizarCondicaoPersonagem(BaseModel):
     duracao: int | str | None = None
     unidades: int = Field(default=1, ge=1, le=100)
 
+class AcaoAvancarTurno(BaseModel):
+    token_id: str | None = Field(default=None, max_length=80)
+
 
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
     """Toda ficha passa pelo Rule Engine; nada é calculado no cliente."""
@@ -839,7 +842,14 @@ def _estado_mapa_normalizado(repo: RepositorioCampanhas, jogador: str, campanha_
             continue
         vistos.add(token["id"])
         tokens.append(token)
-    return {"title": estado.get("title", "Cena da aventura"), "terrain": estado.get("terrain", "forest"), "tokens": tokens}
+    resultado = {"title": estado.get("title", "Cena da aventura"), "terrain": estado.get("terrain", "forest"), "tokens": tokens}
+    for campo in ("iniciativa", "turno_indice", "rodada", "combate_ativo"):
+        if campo in estado:
+            resultado[campo] = estado[campo]
+    if resultado.get("combate_ativo") and resultado.get("iniciativa"):
+        indice = int(resultado.get("turno_indice", 0)) % len(resultado["iniciativa"])
+        resultado["token_ativo"] = resultado["iniciativa"][indice]["token_id"]
+    return resultado
 
 
 @app.get("/v1/campanhas/{campanha_id}/mapa-tatico")
@@ -896,6 +906,109 @@ def salvar_mapa_tatico(
     return {"mapa": _estado_mapa_normalizado(repo, jogador, campanha_id)}
 
 
+
+@app.post("/v1/campanhas/{campanha_id}/mapa-tatico/iniciativa/iniciar")
+def iniciar_iniciativa_tatica(
+    campanha_id: str,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    bruto = repo.obter_mapa_tatico(jogador, campanha_id)
+    if bruto is None:
+        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+    estado = _estado_mapa_normalizado(repo, jogador, campanha_id)
+    vivos = [t for t in estado["tokens"] if int(t.get("hp", 0)) > 0]
+    if not vivos:
+        raise HTTPException(status_code=422, detail="Adicione criaturas vivas ao encontro antes de iniciar a iniciativa")
+    iniciativa = []
+    for token in vivos:
+        rolagem = secrets.randbelow(20) + 1
+        iniciativa.append({
+            "token_id": token["id"], "nome": token["name"],
+            "rolagem": rolagem, "destreza": int(token.get("dex_mod", 0)),
+            "total": rolagem + int(token.get("dex_mod", 0)),
+        })
+    iniciativa.sort(key=lambda x: (-x["total"], -x["destreza"], x["token_id"]))
+    bruto["iniciativa"] = iniciativa
+    bruto["turno_indice"] = 0
+    bruto["rodada"] = 1
+    bruto["combate_ativo"] = True
+    repo.salvar_mapa_tatico(jogador, campanha_id, bruto)
+    return {"mapa": _estado_mapa_normalizado(repo, jogador, campanha_id), "iniciativa": iniciativa, "rodada": 1}
+
+
+@app.post("/v1/campanhas/{campanha_id}/mapa-tatico/turno/avancar")
+def avancar_turno_tatico(
+    campanha_id: str,
+    pedido: AcaoAvancarTurno | None = None,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    bruto = repo.obter_mapa_tatico(jogador, campanha_id)
+    if bruto is None:
+        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+    iniciativa = bruto.get("iniciativa") or []
+    if not bruto.get("combate_ativo") or not iniciativa:
+        raise HTTPException(status_code=409, detail="A iniciativa ainda não foi iniciada")
+    indice = int(bruto.get("turno_indice", 0)) % len(iniciativa)
+    atual = iniciativa[indice]
+    if pedido and pedido.token_id and pedido.token_id != atual["token_id"]:
+        raise HTTPException(status_code=409, detail={"motivo": "turno_de_outra_criatura", "token_ativo": atual["token_id"]})
+    estado = _estado_mapa_normalizado(repo, jogador, campanha_id)
+    token_atual = next((t for t in estado["tokens"] if t["id"] == atual["token_id"]), None)
+    duracoes_encerradas = []
+    if token_atual and token_atual["kind"] == "hero":
+        ficha = repo.obter_personagem(jogador, campanha_id, token_atual["character_id"])
+        if ficha:
+            condicoes = _condicoes_da_ficha(ficha)
+            if condicoes.duracoes:
+                try:
+                    resultado_tick = build_default_engine().evaluate({
+                        "type": "condition_state", "state": condicoes,
+                        "operation": "tick", "units": 1,
+                    }).outcome
+                    duracoes_encerradas = resultado_tick.get("encerradas", [])
+                    _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, condicoes)
+                except (TypeError, ValueError, KeyError) as exc:
+                    raise HTTPException(status_code=422, detail=str(exc)) from exc
+    proximo_indice = (indice + 1) % len(iniciativa)
+    rodada = int(bruto.get("rodada", 1)) + (1 if proximo_indice == 0 else 0)
+    bruto["turno_indice"] = proximo_indice
+    bruto["rodada"] = rodada
+    vivos = {t["id"] for t in estado["tokens"] if int(t.get("hp", 0)) > 0}
+    iniciativa_viva = [i for i in iniciativa if i["token_id"] in vivos]
+    bruto["iniciativa"] = iniciativa_viva
+    if not iniciativa_viva:
+        bruto["combate_ativo"] = False
+        bruto["turno_indice"] = 0
+    else:
+        bruto["turno_indice"] %= len(iniciativa_viva)
+        bruto["combate_ativo"] = True
+    repo.salvar_mapa_tatico(jogador, campanha_id, bruto)
+    return {
+        "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
+        "turno_encerrado": atual["token_id"], "duracoes_encerradas": duracoes_encerradas,
+        "rodada": bruto.get("rodada", rodada),
+    }
+
+
+@app.post("/v1/campanhas/{campanha_id}/mapa-tatico/combate/encerrar")
+def encerrar_combate_tatico(
+    campanha_id: str,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    bruto = repo.obter_mapa_tatico(jogador, campanha_id)
+    if bruto is None:
+        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+    bruto["combate_ativo"] = False
+    bruto["iniciativa"] = []
+    bruto["turno_indice"] = 0
+    bruto["rodada"] = 1
+    repo.salvar_mapa_tatico(jogador, campanha_id, bruto)
+    return {"mapa": _estado_mapa_normalizado(repo, jogador, campanha_id), "resultado": "combate_encerrado"}
+
+
 @app.post("/v1/campanhas/{campanha_id}/mapa-tatico/mover")
 def mover_token_tatico(
     campanha_id: str,
@@ -911,6 +1024,11 @@ def mover_token_tatico(
     destino = (pedido.destino_x, pedido.destino_y)
     if any(t["id"] != token["id"] and (t["x"], t["y"]) == destino for t in tokens):
         raise HTTPException(status_code=409, detail="A casa de destino já está ocupada")
+    if token["kind"] == "hero":
+        ficha_movimento = repo.obter_personagem(jogador, campanha_id, token["character_id"]) or {}
+        efeitos_movimento = resolver_efeitos_condicao({"action": "move", "target_conditions": sorted(_condicoes_da_ficha(ficha_movimento).ativas)})
+        if not efeitos_movimento.get("pode_mover", True):
+            raise HTTPException(status_code=422, detail={"motivo": "movimento_impedido_por_condicao", "efeitos_condicao": efeitos_movimento})
     origem = (int(token["x"]), int(token["y"]))
     dx, dy = destino[0] - origem[0], destino[1] - origem[1]
     passos = max(abs(dx), abs(dy))
@@ -1608,6 +1726,9 @@ def conjurar_no_mapa_tatico(
         raise HTTPException(status_code=404, detail="Ficha do conjurador não encontrada")
     if str(ficha.get("classe", "")).casefold() != "artifice":
         raise HTTPException(status_code=422, detail="A lista de magias táticas implementada nesta versão é a do Artífice; outras classes precisam de suas listas validadas")
+    efeitos_conjuracao = resolver_efeitos_condicao({"action": "spell", "target_conditions": sorted(_condicoes_da_ficha(ficha).ativas)})
+    if not efeitos_conjuracao.get("pode_realizar_acoes", True):
+        raise HTTPException(status_code=422, detail={"motivo": "conjuracao_impedida_por_condicao", "efeitos_condicao": efeitos_conjuracao})
     conjuracao = ficha.get("conjuracao") or {}
     magia = obter_magia(pedido.magia)
     if not magia:
