@@ -30,6 +30,7 @@ _DETALHADAS = {
     "curar ferimentos": (1, "necromancia", "V, S", False, "cura 2d8", {"cura": "+2d8 por círculo"}),
     "palavra curativa": (1, "abjuração", "V", False, "cura 1d4 + modificador de conjuração; alcance 18m; ação bônus", {"cura": "+1d4 por círculo"}),
     "onda trovejante": (1, "evocação", "V, S", False, "2d8 dano trovejante; cubo de 4,5m; salvaguarda de Constituição reduz à metade; falha empurra 3m", {"dano": "+1d8 por círculo"}),
+    "mãos flamejantes": (1, "evocação", "V, S", False, "3d6 dano ígneo em cone de 4,5m; salvaguarda de Destreza reduz à metade", {"dano": "+1d6 por círculo"}),
     "armadura arcana": (1, "abjuração", "V, S, M (um pedaço de couro curtido)", False, "CA base 13 + modificador de Destreza por 8 horas; alvo voluntário sem armadura", {}),
     "benção": (1, "encantamento", "V, S, M (uma gota de água benta)", True, "até três criaturas adicionam 1d4", {"alvos": "+1 por círculo"}),
     "escudo da fé": (1, "abjuração", "V, S, M (um pergaminho com texto sagrado)", True, "+2 CA para uma criatura; duração de até 10 minutos; ação bônus", {}),
@@ -80,6 +81,11 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
         "tipo_dano": "trovejante", "salvaguarda": "constituicao", "sucesso_metade": True,
         "area": {"forma": "cubo", "lado_m": 4.5, "origem": "conjurador"},
         "empurra_m": 3, "empurra_em_falha": True,
+    },
+    "mãos flamejantes": {
+        "tipo": "dano_em_area", "dados_dano_base": "3d6", "dados_dano_por_nivel": "1d6",
+        "tipo_dano": "igneo", "salvaguarda": "destreza", "sucesso_metade": True,
+        "area": {"forma": "cone", "comprimento_m": 4.5, "origem": "conjurador"},
     },
     "armadura arcana": {
         "tipo": "defesa", "ca_base": 13, "adiciona_modificador_destreza": True,
