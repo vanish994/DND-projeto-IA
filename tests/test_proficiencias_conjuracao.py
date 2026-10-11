@@ -27,6 +27,8 @@ class ProficienciasClasseTests(unittest.TestCase):
                 "inteligencia": 16, "sabedoria": 12, "carisma": 16,
             },
             "background": "investigador",
+            "heranca_draconica": "ouro",
+            "equipamento_antecedente": "A",
             "class_skill_proficiencies": ["arcanismo", "historia"],
             "artisan_tool_proficiency": "Ferramentas de Carpinteiro",
         }
@@ -151,6 +153,8 @@ class BackendProficienciesAndSpellsTests(unittest.TestCase):
             "aumentos_antecedente": {"inteligencia": 2, "sabedoria": 1},
             "pericias_classe": ["arcanismo", "historia"],
             "ferramenta_artesao": "Ferramentas de Carpinteiro",
+            "heranca_draconica": "ouro",
+            "equipamento_antecedente": "A",
         }
         resposta = self.client.post(
             f"/v1/campanhas/{self.campaign_id}/personagens",
