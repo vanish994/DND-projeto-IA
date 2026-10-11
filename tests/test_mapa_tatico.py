@@ -236,9 +236,11 @@ class BackendMapaTaticoTests(unittest.TestCase):
             ],
         })
         self.assertEqual(response.status_code, 200, response.text)
-        response = self.client.post(self.url + "/ataque-monstro", headers=self.headers, json={
-            "atacante_id": "inimigo-dretch", "alvo_id": "heroi-vex", "acao": "Multiattack",
-        })
+        # Ataques atingem; dados de dano mínimos para tornar o teste determinístico.
+        with patch.object(backend_app.secrets, "randbelow", side_effect=[9, 0, 9, 0, 0]):
+            response = self.client.post(self.url + "/ataque-monstro", headers=self.headers, json={
+                "atacante_id": "inimigo-dretch", "alvo_id": "heroi-vex", "acao": "Multiattack",
+            })
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
         self.assertTrue(body["multiataque"])
