@@ -7,7 +7,9 @@ from typing import Any, Iterable, Mapping
 
 from .class_progression import caracteristicas_no_nivel, subclasses_da_classe
 from .backgrounds import ANTECEDENTES, aplicar_aumentos_antecedente
+from .catalog import INSTRUMENTOS_MUSICAIS, KITS_DE_JOGOS
 from .feats import DARK_GIFT_FEATS, FEATS, ORIGIN_FEATS
+from .species import bloco_heranca_draconica, escolha_de_especie, normalizar_escolha
 
 
 ESPECIES = {
@@ -82,6 +84,56 @@ FERRAMENTAS_ARTESAO = {
     "Ferramentas de Oleiro", "Ferramentas de Ferreiro",
     "Ferramentas de Tecelão", "Ferramentas de Entalhador",
 }
+# Opções de ferramenta que alguns antecedentes deixam em aberto.
+CATEGORIAS_FERRAMENTA_ANTECEDENTE = {
+    "ferramentas de artesão": {"rotulo": "Ferramentas de Artesão", "opcoes": sorted(FERRAMENTAS_ARTESAO)},
+    "instrumento musical": {"rotulo": "Instrumento Musical", "opcoes": sorted(INSTRUMENTOS_MUSICAIS)},
+    "kit de jogos": {"rotulo": "Kit de Jogos", "opcoes": sorted(KITS_DE_JOGOS)},
+}
+MARCADORES_FERRAMENTA_EQUIPAMENTO = (
+    "Ferramentas de Artesão (a mesma que acima)",
+    "Instrumento Musical (o mesmo que acima)",
+    "Kit de Jogos (o mesmo que acima)",
+    "Kit de Jogos (qualquer um)",
+)
+
+
+def escolha_ferramenta_do_antecedente(antecedente: Any) -> dict[str, Any] | None:
+    dados = ANTECEDENTES.get(str(antecedente or "").strip().lower())
+    if not dados:
+        return None
+    texto = str(dados.get("ferramenta") or "").strip().lower()
+    if not texto.startswith("escolha "):
+        return None
+    for categoria, dados_categoria in CATEGORIAS_FERRAMENTA_ANTECEDENTE.items():
+        if categoria in texto:
+            return {"categoria": categoria, **dados_categoria}
+    return None
+
+
+def rotulo_ferramenta_antecedente(categoria: str, item: str) -> str:
+    if categoria in ("instrumento musical", "kit de jogos"):
+        return f"{CATEGORIAS_FERRAMENTA_ANTECEDENTE[categoria]['rotulo']} ({item})"
+    return item
+
+
+def equipamento_antecedente_resolvido(antecedente: Any, ferramenta: str | None = None) -> dict[str, Any]:
+    dados = ANTECEDENTES.get(str(antecedente or "").strip().lower())
+    if not dados:
+        return {"A": None, "B": None}
+    equipamento = dados.get("equipamento", {})
+    if isinstance(equipamento, dict):
+        pacote_a, pacote_b = str(equipamento.get("A", "")), str(equipamento.get("B", ""))
+    else:
+        return {"A": equipamento, "B": None}
+    if ferramenta:
+        for marcador in MARCADORES_FERRAMENTA_EQUIPAMENTO:
+            if marcador in pacote_a:
+                pacote_a = pacote_a.replace(marcador, ferramenta)
+                break
+    return {"A": pacote_a, "B": pacote_b}
+
+
 QUANTIDADE_PERICIAS_CLASSE = {
     "barbaro": 2, "bardo": 3, "clerigo": 2, "druida": 2, "guerreiro": 2,
     "monge": 2, "paladino": 2, "guardiao": 3, "ladino": 4,
@@ -127,6 +179,9 @@ class Personagem:
     escolhas_talentos: dict[str, str] = field(default_factory=dict)
     pericias_classe: set[str] = field(default_factory=set)
     ferramenta_artesao: str | None = None
+    heranca_draconica: str | None = None
+    ferramenta_antecedente: str | None = None
+    equipamento_antecedente: str | None = None
 
     @property
     def bonus_proficiencia(self) -> int:
@@ -214,6 +269,20 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
             talentos.add(talento_origem)
     elif fatos.get("background_increases") or fatos.get("background_feat"):
         raise ValueError("Antecedente inválido")
+    escolha_ferramenta = escolha_ferramenta_do_antecedente(antecedente)
+    ferramenta_antecedente = fatos.get("background_tool", fatos.get("ferramenta_antecedente"))
+    if ferramenta_antecedente:
+        ferramenta_antecedente = str(ferramenta_antecedente).strip()
+        if not escolha_ferramenta or ferramenta_antecedente not in escolha_ferramenta["opcoes"]:
+            raise ValueError(f"Ferramenta inválida para o antecedente {antecedente}")
+    equipamento_antecedente = fatos.get("background_equipment", fatos.get("equipamento_antecedente"))
+    if equipamento_antecedente is not None:
+        equipamento_antecedente = str(equipamento_antecedente).strip().upper()
+        if equipamento_antecedente not in ("A", "B"):
+            raise ValueError("Escolha o equipamento de antecedente A ou B")
+    heranca_draconica = fatos.get("species_choice", fatos.get("heranca_draconica"))
+    if heranca_draconica:
+        heranca_draconica = normalizar_escolha(especie, heranca_draconica)
     if not str(fatos.get("name", "")).strip():
         raise ValueError("O personagem precisa de um nome")
     escolha_origem = str(fatos.get("background_feat") or ANTECEDENTES.get(antecedente, {}).get("talento", ""))
@@ -223,6 +292,9 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         atributos=atributos, antecedente=antecedente,
         subclasse=subclasse, talentos=talentos, escolhas_talentos=escolhas,
         pericias_classe=pericias_classe, ferramenta_artesao=ferramenta_artesao,
+        heranca_draconica=heranca_draconica,
+        ferramenta_antecedente=ferramenta_antecedente,
+        equipamento_antecedente=equipamento_antecedente,
     )
 
 
@@ -257,6 +329,31 @@ def ficha_personagem(personagem: Personagem) -> dict[str, Any]:
     pericias_antecedente = list(antecedente["pericias"]) if antecedente else []
     pericias_classe = sorted(personagem.pericias_classe)
     pericias_totais = list(dict.fromkeys([*pericias_antecedente, *pericias_classe]))
+    escolha_ferramenta = escolha_ferramenta_do_antecedente(personagem.antecedente)
+    ferramenta_resolvida = None
+    if antecedente:
+        if escolha_ferramenta:
+            if personagem.ferramenta_antecedente:
+                ferramenta_resolvida = rotulo_ferramenta_antecedente(
+                    escolha_ferramenta["categoria"], personagem.ferramenta_antecedente
+                )
+        else:
+            ferramenta_resolvida = antecedente["ferramenta"]
+    ferramenta_pendente = bool(antecedente and escolha_ferramenta and not personagem.ferramenta_antecedente)
+    equipamento_pendente = bool(antecedente and not personagem.equipamento_antecedente)
+    pacotes = equipamento_antecedente_resolvido(personagem.antecedente, ferramenta_resolvida)
+    escolhas_pendentes: list[str] = []
+    if len(pericias_classe) != QUANTIDADE_PERICIAS_CLASSE[personagem.classe]:
+        escolhas_pendentes.append("Perícias de classe")
+    if personagem.classe == "artifice" and not personagem.ferramenta_artesao:
+        escolhas_pendentes.append("Ferramentas de Artesão (classe)")
+    escolha_especie = escolha_de_especie(personagem.especie)
+    if escolha_especie and not personagem.heranca_draconica:
+        escolhas_pendentes.append(escolha_especie["rotulo"])
+    if ferramenta_pendente:
+        escolhas_pendentes.append(f"{escolha_ferramenta['rotulo']} (antecedente)")
+    if equipamento_pendente:
+        escolhas_pendentes.append("Equipamento de antecedente (A ou B)")
     return {
         "nome": personagem.nome,
         "especie": personagem.especie,
@@ -283,12 +380,26 @@ def ficha_personagem(personagem: Personagem) -> dict[str, Any]:
             **({"ferramentas": ["Ferramentas de Ladrão", "Ferramentas de Funileiro", *([personagem.ferramenta_artesao] if personagem.ferramenta_artesao else [])]} if personagem.classe == "artifice" else {}),
         },
         "ferramenta_artesao": personagem.ferramenta_artesao,
+        "heranca_draconica": (
+            bloco_heranca_draconica(
+                personagem.heranca_draconica,
+                personagem.nivel,
+                modificador(personagem.atributos["constituicao"]),
+                personagem.bonus_proficiencia,
+            )
+            if escolha_de_especie(personagem.especie) and personagem.heranca_draconica
+            else None
+        ),
         "proficiencias_pendentes": (
             len(pericias_classe) != QUANTIDADE_PERICIAS_CLASSE[personagem.classe]
             or (personagem.classe == "artifice" and not personagem.ferramenta_artesao)
         ),
-        "ferramenta": antecedente["ferramenta"] if antecedente else None,
-        "equipamento_antecedente": antecedente["equipamento"] if antecedente else None,
+        "ferramenta": ferramenta_resolvida,
+        "ferramenta_antecedente": personagem.ferramenta_antecedente,
+        "ferramenta_pendente": ferramenta_pendente,
+        "equipamento_antecedente": {**pacotes, "escolha": personagem.equipamento_antecedente},
+        "equipamento_pendente": equipamento_pendente,
+        "escolhas_pendentes": escolhas_pendentes,
     }
 
 
