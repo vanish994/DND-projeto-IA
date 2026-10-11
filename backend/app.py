@@ -854,10 +854,15 @@ def atacar_token_tatico(
         raise HTTPException(status_code=422, detail="Nesta versão, o ataque automático usa o personagem como atacante; ações específicas dos monstros ainda não foram integradas")
     if alvo["hp"] <= 0:
         raise HTTPException(status_code=422, detail="O alvo já está com 0 PV")
+    equipamento_tatico = atacante.get("equipment") or {}
+    nome_arma_tatica = pedido.arma or equipamento_tatico.get("arma")
+    alcance_tatico = 5
+    if nome_arma_tatica in CATALOGO_ARMAS and "extensao" in CATALOGO_ARMAS[nome_arma_tatica].get("propriedades", []):
+        alcance_tatico = 10
     dx, dy = abs(int(atacante["x"]) - int(alvo["x"])), abs(int(atacante["y"]) - int(alvo["y"]))
     distancia_pes = max(dx, dy) * 5
     geometria = resolver_ataque_tatico({
-        "distancia": distancia_pes, "alcance": 5, "alcance_maximo": 5,
+        "distancia": distancia_pes, "alcance": alcance_tatico, "alcance_maximo": alcance_tatico,
         "ataque_a_distancia": False,
         "origem": (int(atacante["x"]), int(atacante["y"])),
         "alvo": (int(alvo["x"]), int(alvo["y"])),
@@ -904,7 +909,8 @@ def atacar_token_tatico(
     bonus = int(atacante.get("proficiency", 2)) + modificadores
     rolagem = secrets.randbelow(20) + 1
     engine = build_default_engine()
-    ataque = engine.evaluate({"type": "attack", "roll": rolagem, "modifier": bonus, "target_ac": int(alvo["ac"])}).outcome
+    ca_efetiva = int(alvo["ac"]) + int(geometria.get("bonus_ca_por_cobertura", 0))
+    ataque = engine.evaluate({"type": "attack", "roll": rolagem, "modifier": bonus, "target_ac": ca_efetiva}).outcome
     if rolagem == 1:
         ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
     dano = 0
