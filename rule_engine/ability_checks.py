@@ -186,4 +186,47 @@ def resolver_inspiracao_heroica(fatos: Mapping[str, Any]) -> dict[str, Any]:
         return {"resultado": "bloqueado", "motivo": "d20_fora_do_intervalo"}
     return {"resultado": "resolvido", "dado_anterior": original, "dado_usado": novo, "inspiracao_heroica_consumida": True}
 
-__all__ = ["PERICIAS", "CDS_PADRAO", "resolver_teste_habilidade", "resolver_teste_passivo", "resolver_teste_grupo", "resolver_inspiracao_heroica"]
+def resolver_salvaguarda(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Resolve uma salvaguarda com atributo e proficiência da classe/personagem."""
+    bruto = fatos.get("atributo", fatos.get("ability"))
+    atributo = _ATRIBUTOS.get(str(bruto).strip().lower(), str(bruto).strip().lower()) if bruto is not None else None
+    if atributo not in {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"}:
+        return {"resultado": "bloqueado", "motivo": "atributo_de_salvaguarda_ausente_ou_invalido"}
+    if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
+        return {"resultado": "bloqueado", "motivo": "resultado_de_d20_ausente"}
+    profs = fatos.get("proficiencias_salvaguarda", fatos.get("saving_throw_proficiencies", [])) or []
+    profs_norm = {_ATRIBUTOS.get(str(x).strip().lower(), str(x).strip().lower()) for x in profs}
+    dados = dict(fatos)
+    dados["atributo"] = atributo
+    dados["proficiente"] = bool(fatos.get("proficiente", fatos.get("proficient", atributo in profs_norm)))
+    dados["pericia"] = None
+    resultado = resolver_teste_habilidade(dados)
+    resultado["tipo_teste"] = "salvaguarda"
+    resultado["atributo"] = atributo
+    return resultado
+
+def resolver_iniciativa(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Resolve iniciativa como teste de Destreza, aceitando bônus explícitos de características."""
+    if not any(fatos.get(k) is not None for k in ("modificador_atributo", "valor_atributo", "ability_score", "modificador_destreza")):
+        return {"resultado": "bloqueado", "motivo": "modificador_de_destreza_ausente"}
+    if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
+        return {"resultado": "bloqueado", "motivo": "resultado_de_d20_ausente"}
+    dados = dict(fatos)
+    dados["atributo"] = "destreza"
+    if "modificador_atributo" not in dados and "valor_atributo" not in dados and "ability_score" not in dados:
+        dados["modificador_atributo"] = int(dados["modificador_destreza"])
+    erro_mod = _validar_modificadores(dados)
+    if erro_mod:
+        return {"resultado": "bloqueado", "motivo": erro_mod}
+    mod = _modificadores(dados)
+    extra_iniciativa = _int(dados.get("bonus_iniciativa", 0))
+    rolagens = dados.get("dados", dados.get("rolls"))
+    if rolagens is None:
+        rolagens = [int(dados.get("roll", dados.get("dado")))]
+    try:
+        resolucao = resolver_teste_d20(rolagens, modificador=mod["modificador_total"] + extra_iniciativa, vantagem=mod["vantagem"], desvantagem=mod["desvantagem"])
+    except (TypeError, ValueError) as exc:
+        return {"resultado": "bloqueado", "motivo": "rolagem_invalida", "detalhe": str(exc)}
+    return {"resultado": "resolvido", "atributo": "destreza", "dado": resolucao.dado_selecionado, "dados_rolados": list(resolucao.dados_rolados), "total": resolucao.total, "bonus_iniciativa": extra_iniciativa, **mod}
+
+__all__ = ["PERICIAS", "CDS_PADRAO", "resolver_teste_habilidade", "resolver_teste_passivo", "resolver_teste_grupo", "resolver_inspiracao_heroica", "resolver_salvaguarda", "resolver_iniciativa"]
