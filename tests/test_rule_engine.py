@@ -125,6 +125,44 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result.outcome["result"], "blocked")
         self.assertEqual(result.outcome["reason"], "no_slot")
 
+    def test_concentration_save_dc_is_10_or_half_damage_rounded_down(self):
+        success = self.engine.evaluate({
+            "type": "concentration_check", "concentrating": True,
+            "damage": 23, "roll": 12, "constitution_modifier": 0,
+        })
+        self.assertEqual(success.outcome["cd"], 11)
+        self.assertTrue(success.outcome["concentracao_mantida"])
+        failure = self.engine.evaluate({
+            "type": "concentration_check", "concentrating": True,
+            "damage": 24, "roll": 10, "constitution_modifier": 0,
+        })
+        self.assertEqual(failure.outcome["cd"], 12)
+        self.assertFalse(failure.outcome["concentracao_mantida"])
+
+    def test_concentration_ends_when_incapacitated_or_dead(self):
+        for field in ("incapacitated", "dead"):
+            result = self.engine.evaluate({
+                "type": "concentration_check", "concentrating": True, field: True,
+            })
+            self.assertEqual(result.outcome["resultado"], "concentracao_encerrada")
+            self.assertFalse(result.outcome["concentracao_mantida"])
+            self.assertFalse(result.outcome["requer_salvaguarda"])
+
+    def test_concentration_save_cancels_advantage_and_disadvantage(self):
+        result = self.engine.evaluate({
+            "type": "concentration_check", "concentrating": True,
+            "damage": 10, "rolls": [3, 19], "advantage": True,
+            "disadvantage": True, "constitution_modifier": 0,
+        })
+        self.assertEqual(result.outcome["rolagem"], 3)
+        self.assertFalse(result.outcome["concentracao_mantida"])
+
+    def test_concentration_not_required_without_damage_or_active_spell(self):
+        no_spell = self.engine.evaluate({"type": "concentration_check", "concentrating": False, "damage": 8})
+        no_damage = self.engine.evaluate({"type": "concentration_check", "concentrating": True, "damage": 0})
+        self.assertFalse(no_spell.outcome["requer_salvaguarda"])
+        self.assertTrue(no_damage.outcome["concentracao_mantida"])
+
     def test_spell_cast_replaces_previous_concentration(self):
         result = self.engine.evaluate({
             "type": "spell_cast", "spell_level": 2, "slot_level": 3, "has_slot": True,
