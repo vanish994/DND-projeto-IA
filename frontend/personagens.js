@@ -398,7 +398,7 @@
       ...(faltaEquipamento ? ['Equipamento de antecedente (A ou B)'] : []),
     ];
     const secao = painel('Escolhas pendentes',
-      el('div', {className: 'chips'}, ...itens.map((item) => el('span', {className: 'chip chip-aviso', textContent: item})),
+      el('div', {className: 'chips'}, ...itens.map((item) => el('span', {className: 'chip chip-aviso', textContent: item}))),
       meta('Enquanto existirem pendências, o mestre pergunta em vez de inventar.'));
     const campos = el('div');
     let heranca = null;
