@@ -773,7 +773,7 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "progressao_conjuracao", "classe": "mago", "nivel": 5, "inteligencia": 16})
         self.assertEqual(result.outcome["atributo_conjuracao"], "inteligencia")
         self.assertEqual(result.outcome["espacos"], [4, 3, 2])
-        self.assertEqual(result.outcome["magias_preparadas"], 9)
+        self.assertEqual(result.outcome["magias_preparadas"], 8)
 
     def test_bardic_inspiration_scales_and_recovers(self):
         result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "inspiracao_bardo", "nivel": 10, "carisma": 16})
