@@ -128,6 +128,13 @@ Até existir login, cada navegador gera um identificador próprio e o envia no c
 | `PATCH` | `/v1/campanhas/{id}` | Renomeia (`{"titulo": "..."}`) |
 | `DELETE` | `/v1/campanhas/{id}` | Apaga a campanha e as mensagens |
 | `POST` | `/v1/campanhas/{id}/mensagens` | Envia uma mensagem ao MJ e salva a troca |
+| `GET` | `/v1/catalogo/personagens` | Espécies, classes, antecedentes (PHB 2024 + Ravenloft), talentos de origem e Dádivas Sombrias |
+| `GET` | `/v1/campanhas/{id}/personagens` | Lista as fichas do grupo da campanha |
+| `POST` | `/v1/campanhas/{id}/personagens` | Cria uma ficha validada pelo Rule Engine (atributos, antecedente e aumentos) |
+| `GET` | `/v1/campanhas/{id}/personagens/{pid}` | Retorna a ficha |
+| `PUT` | `/v1/campanhas/{id}/personagens/{pid}` | Refaz a ficha, revalidando pelo motor |
+| `PATCH` | `/v1/campanhas/{id}/personagens/{pid}` | Atualiza os PV atuais (`{"pv_atual": n}`, limitado ao máximo) |
+| `DELETE` | `/v1/campanhas/{id}/personagens/{pid}` | Apaga a ficha |
 
 O endpoint legado `/v1/mj/mensagem` continua funcionando: a `sessao_id` passa a ser o id de uma campanha persistida. Autenticação própria ainda é necessária antes de abrir o serviço ao público; a chave do TokenHarbor nunca deve chegar ao navegador.
 
