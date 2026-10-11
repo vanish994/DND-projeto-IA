@@ -707,6 +707,43 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(rogue.outcome["nivel"], 10)
         self.assertIn("escolha", rogue.outcome)
 
+    def test_martial_extra_attack_and_fighter_progression(self):
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "ataque_extra", "classe": "guerreiro", "nivel": 20})
+        self.assertEqual(result.outcome["ataques"], 4)
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "ataque_extra", "classe": "barbaro", "nivel": 5})
+        self.assertEqual(result.outcome["ataques"], 2)
+
+    def test_barbarian_rage_has_damage_bonus_and_resistance(self):
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "furia", "nivel": 10, "acao": "ativar"})
+        self.assertEqual(result.outcome["resultado"], "ativada")
+        self.assertEqual(result.outcome["dano_adicional"], 3)
+        self.assertIn("contundente", result.outcome["resistencias"])
+        blocked = self.engine.evaluate({"type": "martial_feature", "feature": "furia", "nivel": 1, "acao": "ativar", "armadura_pesada": True})
+        self.assertEqual(blocked.outcome["resultado"], "bloqueado")
+
+    def test_fighter_second_wind_and_weapon_mastery(self):
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "recuperar_folego", "nivel": 5, "rolagem_d10": 7})
+        self.assertEqual(result.outcome["cura"], 12)
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "maestria_em_arma", "classe": "guerreiro", "nivel": 10, "armas": ["espada", "machado", "arco", "lança", "martelo"]})
+        self.assertEqual(result.outcome["resultado"], "resolvido")
+
+    def test_rogue_sneak_attack_scales_and_uncanny_dodge(self):
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "ataque_furtivo", "nivel": 11, "vantagem": True, "acuidade_ou_distancia": True})
+        self.assertEqual(result.outcome["dados"], 6)
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "esquiva_sobrenatural", "dano": 17})
+        self.assertEqual(result.outcome["dano_final"], 8)
+
+    def test_monk_focus_and_deflect_attacks(self):
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "foco_monge", "nivel": 10, "acao": "torrente_de_golpes", "foco_disponivel": 10})
+        self.assertIn("tres_ataques_desarmados", result.outcome["efeitos"])
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "defletir_ataques", "nivel": 3, "rolagem_d10": 6, "modificador_destreza": 3, "dano": 9, "foco_disponivel": 1})
+        self.assertEqual(result.outcome["dano_restante"], 0)
+        self.assertTrue(result.outcome["pode_redirecionar"])
+
+    def test_martial_evasion(self):
+        result = self.engine.evaluate({"type": "martial_feature", "feature": "evasao", "dano": 30, "sucesso": True})
+        self.assertEqual(result.outcome["dano_final"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,7 @@ from .magic_equipment import (
 from .catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS, CATALOGO_EQUIPAMENTOS, CATALOGO_MAGIAS, buscar_catalogo, listar_catalogo
 from .character import CLASSES, ESPECIES, SUBCLASSES, SUBCLASSES_RAVENLOFT, TALENTOS, Personagem, criar_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao, resolver_multiclasse, resolver_progressao
 from .class_progression import FEATURES_BY_CLASS, SUBCLASSES_BY_CLASS, caracteristicas_no_nivel, subclasses_da_classe
+from .martial import resolver_ataque_extra, resolver_ataque_furtivo, resolver_defletir_ataques, resolver_esquiva_sobrenatural, resolver_evasao, resolver_foco_monge, resolver_furia, resolver_maestria_arma, resolver_recuperar_folego
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -56,6 +57,7 @@ __all__ = [
     "gerar_atributos_compra_pontos", "gerar_atributos_matriz_padrao", "resolver_multiclasse",
     "resolver_progressao",
     "FEATURES_BY_CLASS", "SUBCLASSES_BY_CLASS", "caracteristicas_no_nivel", "subclasses_da_classe",
+    "resolver_ataque_extra", "resolver_ataque_furtivo", "resolver_defletir_ataques", "resolver_esquiva_sobrenatural", "resolver_evasao", "resolver_foco_monge", "resolver_furia", "resolver_maestria_arma", "resolver_recuperar_folego",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
     "resolver_descanso",

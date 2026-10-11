@@ -38,6 +38,10 @@ Correção de cobertura: Artífice foi adicionado como décima terceira classe, 
 
 Foi concluída uma auditoria modular das 13 classes contra os livros locais. A matriz `class_progression.py` agora registra as características por nível e todas as subclasses principais do Livro do Jogador 2024, além das opções de Ravenloft e Artífice. A progressão passou a expor as características do nível, e os níveis adicionais de Aumento de Atributo do Guerreiro e do Ladino foram corrigidos. Essa matriz é o inventário executável da próxima fase: cada característica ainda precisa receber sua resolução de efeitos, recursos, recargas, testes e integração com combate/conjuração.
 
+## Bloco marcial — lote 1
+
+Implementados no `martial.py` e registrados no motor: Ataque Extra (incluindo os quatro ataques do Guerreiro no nível 20), Maestria em Arma, Fúria do Bárbaro, Recuperar Fôlego, Ataque Furtivo, Foco do Monge, Defletir Ataques, Esquiva Sobrenatural e Evasão. O lote inclui validação de usos, resistências, bônus de dano, progressão de dados, redução de dano e recuperação básica. As características marciais restantes — subclasses, Golpe Astuto, Surto de Ação, Indomável, Golpe Atordoante, recursos avançados de Fúria e demais efeitos por nível — permanecem no próximo lote.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

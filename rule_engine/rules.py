@@ -24,6 +24,11 @@ from .magic_equipment import (
 )
 from .catalog import buscar_catalogo, listar_catalogo
 from .character import criar_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao, resolver_multiclasse, resolver_progressao
+from .martial import (
+    resolver_ataque_extra, resolver_ataque_furtivo, resolver_defletir_ataques,
+    resolver_esquiva_sobrenatural, resolver_evasao, resolver_foco_monge,
+    resolver_furia, resolver_maestria_arma, resolver_recuperar_folego,
+)
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -670,5 +675,59 @@ def build_default_engine() -> RuleEngine:
         when=lambda f: f["type"] == "multiclass",
         resolve=resolver_multiclasse,
         source="D&D 2024 — multiclasse",
+    ))
+    engine.register(Rule(
+        rule_id="martial.extra-attack",
+        description="Calcula a quantidade de ataques da ação Atacar por classe e nível.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "ataque_extra",
+        resolve=resolver_ataque_extra, source="D&D 2024 — características marciais",
+    ))
+    engine.register(Rule(
+        rule_id="martial.weapon-mastery",
+        description="Valida a quantidade de escolhas de Maestria em Arma.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "maestria_em_arma",
+        resolve=resolver_maestria_arma, source="D&D 2024 — Maestria em Arma",
+    ))
+    engine.register(Rule(
+        rule_id="martial.rage",
+        description="Resolve ativação, dano, resistências e encerramento da Fúria.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "furia",
+        resolve=resolver_furia, source="D&D 2024 — Bárbaro",
+    ))
+    engine.register(Rule(
+        rule_id="martial.second-wind",
+        description="Resolve Recuperar Fôlego do Guerreiro.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "recuperar_folego",
+        resolve=resolver_recuperar_folego, source="D&D 2024 — Guerreiro",
+    ))
+    engine.register(Rule(
+        rule_id="martial.sneak-attack",
+        description="Valida e calcula os dados de Ataque Furtivo do Ladino.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "ataque_furtivo",
+        resolve=resolver_ataque_furtivo, source="D&D 2024 — Ladino",
+    ))
+    engine.register(Rule(
+        rule_id="martial.monk-focus",
+        description="Resolve gastos e efeitos básicos do Foco do Monge.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "foco_monge",
+        resolve=resolver_foco_monge, source="D&D 2024 — Monge",
+    ))
+    engine.register(Rule(
+        rule_id="martial.deflect-attacks",
+        description="Resolve Defletir Ataques e seu redirecionamento.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "defletir_ataques",
+        resolve=resolver_defletir_ataques, source="D&D 2024 — Monge",
+    ))
+    engine.register(Rule(
+        rule_id="martial.uncanny-dodge",
+        description="Reduz pela metade o dano de um ataque que acertou o Ladino.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "esquiva_sobrenatural",
+        resolve=resolver_esquiva_sobrenatural, source="D&D 2024 — Ladino",
+    ))
+    engine.register(Rule(
+        rule_id="martial.evasion",
+        description="Resolve Evasão em salvaguardas de Destreza para metade do dano.",
+        priority=60, when=lambda f: f["type"] == "martial_feature" and f.get("feature") == "evasao",
+        resolve=resolver_evasao, source="D&D 2024 — Evasão",
     ))
     return engine
