@@ -230,10 +230,11 @@ def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) ->
         truques = conjuracao.get("truques") or []
         preparadas = conjuracao.get("magias_preparadas") or []
         espacos = conjuracao.get("espacos_totais") or {}
+        restantes = conjuracao.get("espacos_restantes") or espacos
         linhas.append(
             f"  Conjuração exatamente registrada: truques={', '.join(truques) or 'nenhum registrado'}; "
             f"magias preparadas/conhecidas={', '.join(preparadas) or 'nenhuma registrada'}; "
-            f"espaços totais={espacos or 'nenhum registrado'}. "
+            f"espaços totais={espacos or 'nenhum registrado'}; espaços restantes={restantes or 'nenhum registrado'}. "
             "Não invente escolhas, espaços, magias, proficiências, equipamento ou características ausentes. "
             "Valide classe, nível, disponibilidade e custo no Rule Engine antes de permitir conjurar."
         )
