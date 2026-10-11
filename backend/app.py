@@ -974,6 +974,150 @@ def atacar_token_tatico(
     }
 
 
+@app.post("/v1/campanhas/{campanha_id}/mapa-tatico/conjurar")
+def conjurar_no_mapa_tatico(
+    campanha_id: str,
+    pedido: AcaoConjurarTatico,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    estado = _estado_mapa_normalizado(repo, jogador, campanha_id)
+    tokens = estado["tokens"]
+    conjurador = next((t for t in tokens if t["id"] == pedido.atacante_id), None)
+    alvo = next((t for t in tokens if t["id"] == pedido.alvo_id), None)
+    if not conjurador or not alvo:
+        raise HTTPException(status_code=404, detail="Conjurador ou alvo não encontrado")
+    if conjurador["kind"] != "hero":
+        raise HTTPException(status_code=422, detail="Somente personagens com ficha podem conjurar nesta versão")
+    if alvo["hp"] <= 0:
+        raise HTTPException(status_code=422, detail="O alvo está com 0 PV")
+    ficha = repo.obter_personagem(jogador, campanha_id, conjurador["character_id"])
+    if not ficha:
+        raise HTTPException(status_code=404, detail="Ficha do conjurador não encontrada")
+    conjuracao = ficha.get("conjuracao") or {}
+    magia = obter_magia(pedido.magia)
+    if not magia:
+        raise HTTPException(status_code=422, detail="Magia ausente do catálogo do motor")
+    nome = magia["nome"]
+    circulo = int(magia.get("circulo") or 0)
+    truques = {str(n).casefold() for n in conjuracao.get("truques", [])}
+    preparadas = {str(n).casefold() for n in conjuracao.get("magias_preparadas", [])}
+    if circulo == 0 and nome.casefold() not in truques:
+        raise HTTPException(status_code=422, detail="O truque não está registrado na ficha")
+    if circulo > 0 and nome.casefold() not in preparadas:
+        raise HTTPException(status_code=422, detail="A magia não está preparada/registrada na ficha")
+    espaco_usado = int(pedido.espaco if pedido.espaco is not None else circulo)
+    if circulo == 0 and espaco_usado != 0:
+        raise HTTPException(status_code=422, detail="Truques não usam espaços de magia")
+    restantes = {str(k): int(v) for k, v in (conjuracao.get("espacos_restantes") or {}).items()}
+    totais = {str(k): int(v) for k, v in (conjuracao.get("espacos_totais") or {}).items()}
+    if circulo > 0:
+        if espaco_usado < circulo or restantes.get(str(espaco_usado), 0) < 1:
+            raise HTTPException(status_code=422, detail="Não há espaço disponível do círculo escolhido")
+    resolucao_magia = resolver_magia({
+        "magia": nome, "espaco": espaco_usado,
+        "componentes_disponiveis": ["V", "S", "M"],
+    })
+    if resolucao_magia.get("resultado") != "conjurada":
+        raise HTTPException(status_code=422, detail={
+            "motivo": resolucao_magia.get("motivo", "magia_sem_resolucao_tatica"),
+            "resultado_motor": resolucao_magia,
+        })
+    mecanica = resolucao_magia.get("mecanica") or {}
+    chave_magia = nome.casefold()
+    dx = abs(int(conjurador["x"]) - int(alvo["x"]))
+    dy = abs(int(conjurador["y"]) - int(alvo["y"]))
+    distancia_pes = max(dx, dy) * 5
+    engine = build_default_engine()
+    resultado_ataque = None
+    dano = 0
+    cura = 0
+    rolagem = None
+    bonus_ataque = None
+    if mecanica.get("tipo") == "ataque_magico":
+        alcance_pes = 120 if chave_magia == "raio de fogo" else round(float(mecanica.get("alcance_m", 0)) * 3.28084)
+        geometria = resolver_ataque_tatico({
+            "distancia": distancia_pes, "alcance": 5, "alcance_maximo": alcance_pes,
+            "ataque_a_distancia": True,
+            "origem": (int(conjurador["x"]), int(conjurador["y"])),
+            "alvo": (int(alvo["x"]), int(alvo["y"])),
+            "atacante": (int(conjurador["x"]), int(conjurador["y"])),
+            "alvo_posicao": (int(alvo["x"]), int(alvo["y"])),
+            "aliados": [(int(t["x"]), int(t["y"])) for t in tokens if t["kind"] == "hero" and t["id"] != conjurador["id"]],
+            "cobertura": pedido.cobertura,
+        })
+        if geometria.get("resultado") != "permitido":
+            raise HTTPException(status_code=422, detail={"motivo": geometria.get("motivo", "magia_bloqueada"), "geometria": geometria})
+        mods = ficha.get("modificadores") or {}
+        bonus_ataque = int(ficha.get("bonus_proficiencia", 2)) + int(mods.get("inteligencia", 0))
+        rolagem = secrets.randbelow(20) + 1
+        rolagens_extra = []
+        if geometria.get("estado_jogada") == "vantagem":
+            rolagens_extra = [secrets.randbelow(20) + 1]
+            rolagem = max(rolagem, *rolagens_extra)
+        elif geometria.get("estado_jogada") == "desvantagem":
+            rolagens_extra = [secrets.randbelow(20) + 1]
+            rolagem = min(rolagem, *rolagens_extra)
+        ca_alvo = int(alvo["ac"]) + int(geometria.get("bonus_ca_por_cobertura", 0))
+        resultado_ataque = engine.evaluate({"type": "attack", "roll": rolagem, "modifier": bonus_ataque, "target_ac": ca_alvo}).outcome
+        if rolagem == 1:
+            resultado_ataque = {**resultado_ataque, "result": "miss", "critical": False, "reason": "natural_1"}
+        if resultado_ataque.get("result") == "hit":
+            nivel = int(ficha.get("nivel", 1))
+            quantidade, lados = map(int, str(mecanica.get("dados_dano_base", "1d10")).lower().split("d"))
+            if nivel >= 17:
+                quantidade = 4
+            elif nivel >= 11:
+                quantidade = 3
+            elif nivel >= 5:
+                quantidade = 2
+            dados = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+            if resultado_ataque.get("critical"):
+                dados += [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+            dano_resolvido = engine.evaluate({"type": "damage", "damage_dice": dados, "damage_modifier": 0, "critical": False}).outcome
+            dano = max(0, int(dano_resolvido.get("total", 0)))
+    elif mecanica.get("tipo") == "cura" and chave_magia == "curar ferimentos":
+        if distancia_pes > 5:
+            raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_pes": 5})
+        dados_cura = str(mecanica.get("dados_cura") or "2d8")
+        quantidade, lados = map(int, dados_cura.lower().split("d"))
+        dados = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+        mod = int((ficha.get("modificadores") or {}).get("inteligencia", 0))
+        cura = max(0, sum(dados) + mod)
+    else:
+        raise HTTPException(status_code=422, detail="Esta magia ainda não tem efeito implementado no combate tático")
+    if resultado_ataque and resultado_ataque.get("result") == "hit" and dano:
+        if alvo["kind"] == "enemy":
+            estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+            for bruto in estado_bruto.get("tokens", []):
+                if bruto.get("id") == alvo["id"]:
+                    bruto["hp"] = max(0, int(bruto.get("hp", alvo["maxHp"])) - dano)
+            repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
+        else:
+            repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
+    if cura:
+        if alvo["kind"] == "enemy":
+            estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+            for bruto in estado_bruto.get("tokens", []):
+                if bruto.get("id") == alvo["id"]:
+                    bruto["hp"] = min(int(bruto.get("maxHp", alvo["maxHp"])), int(bruto.get("hp", 0)) + cura)
+            repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
+        else:
+            repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], cura)
+    if circulo > 0:
+        restantes[str(espaco_usado)] = restantes.get(str(espaco_usado), 0) - 1
+        dados_ficha = {k: v for k, v in ficha.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+        dados_ficha["conjuracao"] = {**conjuracao, "espacos_restantes": restantes, "espacos_totais": totais}
+        repo.atualizar_dados_ficha(jogador, campanha_id, conjurador["character_id"], dados_ficha)
+    return {
+        "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
+        "magia": nome, "resolucao_motor": resolucao_magia,
+        "ataque": resultado_ataque, "rolagem": rolagem, "bonus_ataque": bonus_ataque,
+        "dano": dano, "cura": cura, "espaco_usado": espaco_usado if circulo > 0 else None,
+        "espacos_restantes": restantes, "nota": "Magias sem efeito tático implementado são rejeitadas sem gastar espaço. Área, salvaguardas e condições exigem integração própria.",
+    }
+
+
 @app.delete("/v1/mj/sessoes/{sessao_id}", status_code=204)
 def apagar_sessao(
     sessao_id: str,
