@@ -175,6 +175,10 @@ Adicionada a ação Study com associação das áreas de conhecimento às períc
 
 Ampliado o resolvedor de condições para contemplar falha automática em testes que exigem visão/audição, efeitos completos de Enfeitiçado sobre o enfeiticador, condições derivadas de Inconsciente, resistência e efeitos físicos de Petrificado, encerramento de Agarrado quando o agarrador fica Incapacitado e distância explícita para crítico/ataque contra Caído.
 
+## Ação Esquivar
+
+Adicionada a ação Esquivar: bloqueia quando Incapacitado ou com Deslocamento 0; concede vantagem em salvaguardas de Destreza e desvantagem em ataques contra a criatura por atacantes que ela possa ver, até o início do próximo turno.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
