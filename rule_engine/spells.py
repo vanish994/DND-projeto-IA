@@ -28,6 +28,9 @@ _DETALHADAS = {
     "mísseis mágicos": (1, "evocação", "V, S", False, "3 dardos de 1d4+1 dano energético", {"dardos": "+1 por círculo"}),
     "escudo": (1, "abjuração", "V, S", False, "+5 CA até o início do próximo turno", {}),
     "curar ferimentos": (1, "necromancia", "V, S", False, "cura 2d8", {"cura": "+2d8 por círculo"}),
+    "palavra curativa": (1, "abjuração", "V", False, "cura 1d4 + modificador de conjuração; alcance 18m; ação bônus", {"cura": "+1d4 por círculo"}),
+    "onda trovejante": (1, "evocação", "V, S", False, "2d8 dano trovejante; cubo de 4,5m; salvaguarda de Constituição reduz à metade; falha empurra 3m", {"dano": "+1d8 por círculo"}),
+    "armadura arcana": (1, "abjuração", "V, S, M (um pedaço de couro curtido)", False, "CA base 13 + modificador de Destreza por 8 horas; alvo voluntário sem armadura", {}),
     "benção": (1, "encantamento", "V, S, M (uma gota de água benta)", True, "até três criaturas adicionam 1d4", {"alvos": "+1 por círculo"}),
     "raio místico": (0, "evocação", "V, S", False, "1d10 dano energético", {"raios": "+1 nos níveis 5, 11 e 17"}),
     "bola de fogo": (3, "evocação", "V, S, M (uma bola de guano de morcego e enxofre)", False, "8d6 dano ígneo em esfera de 6m", {"dano": "+1d6 por círculo"}),
@@ -66,6 +69,20 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
     "curar ferimentos": {
         "tipo": "cura", "dados_cura_base": "2d8", "dados_cura_por_nivel": "2d8",
         "soma_modificador_conjuracao": True, "alcance": "toque",
+    },
+    "palavra curativa": {
+        "tipo": "cura", "dados_cura_base": "1d4", "dados_cura_por_nivel": "1d4",
+        "soma_modificador_conjuracao": True, "alcance_m": 18, "acao": "bonus",
+    },
+    "onda trovejante": {
+        "tipo": "dano_em_area", "dados_dano_base": "2d8", "dados_dano_por_nivel": "1d8",
+        "tipo_dano": "trovejante", "salvaguarda": "constituicao", "sucesso_metade": True,
+        "area": {"forma": "cubo", "lado_m": 4.5, "origem": "conjurador"},
+        "empurra_m": 3, "empurra_em_falha": True,
+    },
+    "armadura arcana": {
+        "tipo": "defesa", "ca_base": 13, "adiciona_modificador_destreza": True,
+        "duracao": "ate_8_horas", "exige_alvo_sem_armadura": True,
     },
     "benção": {
         "tipo": "beneficio", "alvos_base": 3, "alvos_por_nivel": 1,
@@ -188,6 +205,8 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
             "magia": magia["nome"],
             "escola": magia["escola"],
         }
+    if _normalizar_nome_magia(magia["nome"]) == _normalizar_nome_magia("armadura arcana") and fatos.get("alvo_veste_armadura") is True:
+        return {"resultado": "bloqueado", "motivo": "alvo_ja_veste_armadura"}
     try:
         usado = int(fatos.get("espaco", fatos.get("spell_level", magia["circulo"])))
         aumento = _circulo_efetivo(magia["circulo"], usado)
