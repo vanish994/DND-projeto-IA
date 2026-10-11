@@ -6,3 +6,6 @@ venv/
 .env
 .env.*
 !.env.example
+
+# Banco SQLite local de desenvolvimento
+data/

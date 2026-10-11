@@ -114,7 +114,22 @@ curl -X POST http://localhost:8000/v1/mj/mensagem \
   -d '{"sessao_id":"campanha-1","mensagem":"Os aventureiros entram nas ruínas."}'
 ```
 
-O backend atual mantém sessões em memória para desenvolvimento. Para produção, a sessão deve ser transferida para Redis ou banco de dados e o endpoint deve receber autenticação própria; a chave do TokenHarbor nunca deve chegar ao navegador.
+### Campanhas persistidas
+
+Campanhas e mensagens ficam salvas em banco. Sem configuração, o backend usa SQLite em `data/mj.sqlite3` (ignorado pelo Git). Em produção, defina `DATABASE_URL` com um Postgres (o formato `postgres://` do Render é aceito). O disco do plano gratuito do Render é efêmero: sem `DATABASE_URL`, o SQLite é apagado a cada deploy ou reinício.
+
+Até existir login, cada navegador gera um identificador próprio e o envia no cabeçalho `X-Jogador-Id`; cada jogador só enxerga as próprias campanhas. Somente as últimas `MJ_HISTORICO_MAX` mensagens (padrão 40) são enviadas ao MJ como contexto; o histórico completo continua salvo.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/v1/campanhas` | Lista as campanhas do jogador, da mais recente para a mais antiga |
+| `POST` | `/v1/campanhas` | Cria uma campanha (`{"titulo": "..."}` opcional) |
+| `GET` | `/v1/campanhas/{id}` | Retorna a campanha com o histórico de mensagens |
+| `PATCH` | `/v1/campanhas/{id}` | Renomeia (`{"titulo": "..."}`) |
+| `DELETE` | `/v1/campanhas/{id}` | Apaga a campanha e as mensagens |
+| `POST` | `/v1/campanhas/{id}/mensagens` | Envia uma mensagem ao MJ e salva a troca |
+
+O endpoint legado `/v1/mj/mensagem` continua funcionando: a `sessao_id` passa a ser o id de uma campanha persistida. Autenticação própria ainda é necessária antes de abrir o serviço ao público; a chave do TokenHarbor nunca deve chegar ao navegador.
 
 ### Deploy no Render
 

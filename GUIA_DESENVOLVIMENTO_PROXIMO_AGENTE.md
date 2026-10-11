@@ -89,12 +89,14 @@ O backend já possui:
 - FastAPI.
 - Endpoint de status.
 - Endpoint de conversa do MJ.
-- Sessões em memória.
+- Campanhas e mensagens persistidas (`backend/persistencia.py`, SQLAlchemy Core): SQLite local ou Postgres via `DATABASE_URL`.
+- Endpoints REST de campanhas em `/v1/campanhas`, isoladas por `X-Jogador-Id` até existir login.
+- Histórico enviado ao MJ limitado por `MJ_HISTORICO_MAX` (padrão 40).
 - Tratamento básico de erro.
 - Serviço Render configurado para Python.
 - Deploy automático pela branch `main`.
 
-Limitação conhecida: sessões em memória são perdidas quando o serviço reinicia ou quando o Render suspende o processo. A próxima grande etapa de produto é persistência.
+Limitação conhecida: no Render gratuito o disco é efêmero; sem `DATABASE_URL` apontando para um Postgres, o SQLite é perdido a cada deploy ou reinício. Ainda não há login: `X-Jogador-Id` separa campanhas por navegador, mas não é autenticação.
 
 ### MJ DeepSeek
 
@@ -239,12 +241,9 @@ O motor retorna candidatos; o MJ escolhe. Não inventar monstros para atingir um
 
 ### Prioridade 1 — Persistência de campanha
 
-Implementar banco ou Redis no Render para armazenar:
+Campanhas e mensagens já são persistidas. Falta armazenar:
 
-- Campanhas.
 - Usuários e permissões.
-- Sessões.
-- Mensagens importantes.
 - Estado de personagens.
 - Grupo.
 - PV, condições e recursos.
