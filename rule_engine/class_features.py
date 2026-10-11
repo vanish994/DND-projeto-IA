@@ -209,8 +209,14 @@ def resolver_caracteristica(f: dict) -> dict:
 
     if classe == "paladino":
         if recurso == "maos_consagradas":
-            pool = 5 * nivel
-            return {"resultado": "cura", "pool_maximo": pool, "cura": min(int(f.get("custo", pool)), pool), "acao": "bonus"}
+            pool_maximo = 5 * nivel
+            pool_restante = int(f.get("pool_restante", pool_maximo))
+            custo = int(f.get("custo", pool_restante))
+            if pool_restante < 0 or pool_restante > pool_maximo:
+                return {"resultado": "bloqueado", "motivo": "pool_de_cura_invalido", "pool_maximo": pool_maximo}
+            if custo < 0 or custo > pool_restante:
+                return {"resultado": "bloqueado", "motivo": "cura_excede_pool_disponivel", "pool_restante": pool_restante}
+            return {"resultado": "cura", "pool_maximo": pool_maximo, "cura": custo, "pool_restante": pool_restante - custo, "acao": "bonus"}
         if recurso == "aura_de_protecao":
             return {"resultado": "resolvido", "bonus_salvaguardas": _mod(f.get("carisma", 10)), "alcance_m": int(f.get("alcance_m", 3))}
         if recurso == "aura_de_coragem":
