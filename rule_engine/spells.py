@@ -47,6 +47,97 @@ for nome, (circulo, escola, componentes, conc, efeito, upcast) in _DETALHADAS.it
     MAGIAS[nome] = {"nome": nome.title(), "circulo": circulo, "escola": escola, "componentes": componentes, "concentracao": conc, "ritual": False, "duracao": "concentração" if conc else "instantânea", "efeito": efeito, "upcasting": upcast}
 
 
+# Mecânicas estruturadas para integrar o resultado da magia ao combate.
+# Fórmulas são devolvidas como dados; o motor de combate continua responsável
+# por rolagens, salvaguardas, aplicação de dano e atualização de estado.
+MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
+    "armadura de agathys": {
+        "tipo": "pv_temporarios_e_dano_retorno", "pv_temporarios_por_nivel": 5,
+        "dano_retorno_por_nivel": 5, "tipo_dano": "gelido",
+        "gatilho": "acertado_por_ataque_corpo_a_corpo_enquanto_tem_pv_temporarios",
+    },
+    "mísseis mágicos": {
+        "tipo": "dano_multialvo", "dardos_base": 3, "dardos_por_nivel": 1,
+        "dano_por_dardo": "1d4+1", "tipo_dano": "energetico", "jogada_ataque": False,
+    },
+    "escudo": {
+        "tipo": "defesa", "bonus_ca": 5, "duracao": "ate_inicio_do_proximo_turno",
+        "gatilhos": ["atingido_por_ataque", "alvo_de_misseis_magicos"],
+        "anula_dano_misseis_magicos": True, "acao": "reacao",
+    },
+    "curar ferimentos": {
+        "tipo": "cura", "dados_cura_base": "2d8", "dados_cura_por_nivel": "2d8",
+        "soma_modificador_conjuracao": True, "alcance": "toque",
+    },
+    "benção": {
+        "tipo": "beneficio", "alvos_base": 3, "alvos_por_nivel": 1,
+        "bonus": "1d4", "aplica_a": ["jogadas_de_ataque", "salvaguardas"],
+        "concentracao": True,
+    },
+    "bola de fogo": {
+        "tipo": "dano_em_area", "dados_dano_base": "8d6", "dados_dano_por_nivel": "1d6",
+        "tipo_dano": "igneo", "salvaguarda": "destreza", "sucesso_metade": True,
+        "area": {"forma": "esfera", "raio_m": 6}, "alcance_m": 45,
+    },
+    "relâmpago": {
+        "tipo": "dano_em_area", "dados_dano_base": "8d6", "dados_dano_por_nivel": "1d6",
+        "tipo_dano": "eletrico", "salvaguarda": "destreza", "sucesso_metade": True,
+        "area": {"forma": "linha", "comprimento_m": 30, "largura_m": 1.5}, "alcance_m": 30,
+    },
+    "voo": {
+        "tipo": "movimento", "deslocamento_voo_m": 18, "duracao": "ate_10_minutos",
+        "concentracao": True, "alvos_base": 1, "alvos_por_nivel": 1,
+    },
+    "invisibilidade": {
+        "tipo": "condicao", "condicao": "invisivel", "duracao": "ate_1_hora",
+        "concentracao": True, "alvos_base": 1, "alvos_por_nivel": 1,
+    },
+    "passo nebuloso": {
+        "tipo": "teleporte", "distancia_m": 9, "acao": "bonus",
+    },
+    "cura completa": {
+        "tipo": "cura", "pv_base": 70, "pv_por_nivel": 10,
+        "remove_condicoes": ["cego", "surdo", "envenenado"],
+    },
+    "banimento": {
+        "tipo": "controle", "salvaguarda": "carisma", "falha": "banido",
+        "concentracao": True, "duracao": "ate_1_minuto",
+        "alvos_base": 1, "alvos_por_nivel": 1,
+    },
+}
+
+
+def _aplicar_escalonamento_mecanico(nome: str, magia: dict[str, Any], aumento: int) -> dict[str, Any] | None:
+    base = MECANICAS_MAGIA.get(_normalizar_nome_magia(nome))
+    if base is None:
+        return None
+    mecanica = dict(base)
+    if "area" in base:
+        mecanica["area"] = dict(base["area"])
+    if "pv_temporarios_por_nivel" in base:
+        mecanica["pv_temporarios"] = base["pv_temporarios_por_nivel"] * int(magia["circulo"] + aumento)
+        mecanica["dano_retorno"] = base["dano_retorno_por_nivel"] * int(magia["circulo"] + aumento)
+    if "dardos_base" in base:
+        mecanica["dardos"] = base["dardos_base"] + base["dardos_por_nivel"] * aumento
+    if "dados_dano_base" in base:
+        dados_base = re.fullmatch(r"(\\d+)d(\\d+)", base["dados_dano_base"])
+        dados_extra = re.fullmatch(r"(\\d+)d(\\d+)", base["dados_dano_por_nivel"])
+        if dados_base and dados_extra:
+            quantidade = int(dados_base.group(1)) + int(dados_extra.group(1)) * aumento
+            mecanica["dados_dano"] = f"{quantidade}d{dados_base.group(2)}"
+    if "dados_cura_base" in base:
+        dados_base = re.fullmatch(r"(\\d+)d(\\d+)", base["dados_cura_base"])
+        dados_extra = re.fullmatch(r"(\\d+)d(\\d+)", base["dados_cura_por_nivel"])
+        if dados_base and dados_extra:
+            quantidade = int(dados_base.group(1)) + int(dados_extra.group(1)) * aumento
+            mecanica["dados_cura"] = f"{quantidade}d{dados_base.group(2)}"
+    if "alvos_base" in base:
+        mecanica["alvos"] = base["alvos_base"] + base.get("alvos_por_nivel", 0) * aumento
+    if "pv_base" in base:
+        mecanica["pv_curados"] = base["pv_base"] + base["pv_por_nivel"] * aumento
+    return mecanica
+
+
 def listar_magias(escola: str | None = None, circulo: int | None = None) -> list[dict[str, Any]]:
     resultado = list(MAGIAS.values())
     if escola:
@@ -128,6 +219,9 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
         })
         return resultado
     resultado.update({"resultado": "conjurada", "efeito": magia["efeito"]})
+    mecanica = _aplicar_escalonamento_mecanico(magia["nome"], magia, aumento)
+    if mecanica is not None:
+        resultado["mecanica"] = mecanica
     if aumento and magia.get("upcasting"):
         resultado["escalonamento"] = magia["upcasting"]
     return resultado
