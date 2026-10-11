@@ -270,10 +270,10 @@ def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanh
     historico = [{"role": "system", "content": contexto_personagem}, *historico]
     try:
         personagens = repo.listar_personagens(jogador, campanha_id) or []
-    if isinstance(mj, DeepSeekMJ):
-        resposta = mj.responder(texto, historico, personagens=personagens)
-    else:
-        resposta = mj.responder(texto, historico)
+        if isinstance(mj, DeepSeekMJ):
+            resposta = mj.responder(texto, historico, personagens=personagens)
+        else:
+            resposta = mj.responder(texto, historico)
     except Exception as exc:
         logger.exception("Falha na chamada do provedor do MJ: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="Falha ao consultar o MJ configurado") from exc
