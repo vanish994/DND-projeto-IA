@@ -1,5 +1,5 @@
 # Bestiário SRD 5.2.1
-Catálogo extraído do `SRD_CC_v5.2.1.pdf` compartilhado no projeto. A fonte ativa contém **232 blocos estatísticos completos** identificáveis.
+Catálogo resumido de 232 monstros extraídos do `SRD_CC_v5.2.1.pdf` compartilhado no projeto. A tabela abaixo contém os campos gerais de cada monstro; nem todos os blocos de combate (ações, atributos e salvaguardas) estão estruturados no motor ainda. Atualmente, os blocos táticos estruturados são Bandit, Bandit Captain, Skeleton, Wolf e Zombie.
 
 ## Tabela de XP por Nível de Desafio
 | ND | XP |
