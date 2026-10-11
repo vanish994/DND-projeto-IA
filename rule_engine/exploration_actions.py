@@ -40,14 +40,19 @@ def resolver_acao_esconder(fatos: Mapping[str, Any]) -> dict[str, Any]:
 
 def resolver_acao_influenciar(fatos: Mapping[str, Any]) -> dict[str, Any]:
     """Resolve Influenciar: disposto/indisposto sem teste; hesitante exige o teste social apropriado."""
-    atitude = str(fatos.get("disposicao", fatos.get("attitude", "hesitante"))).strip().lower()
-    aliases = {"willing": "disposto", "unwilling": "indisposto", "hesitant": "hesitante", "friendly": "amigavel", "hostile": "hostil", "indifferent": "indiferente"}
-    atitude = aliases.get(atitude, atitude)
-    if atitude in {"disposto", "amigavel_disposto"}:
+    disposicao_raw = str(fatos.get("disposicao", fatos.get("willingness", "hesitante"))).strip().lower()
+    aliases = {"willing": "disposto", "unwilling": "indisposto", "hesitant": "hesitante"}
+    disposicao = aliases.get(disposicao_raw, disposicao_raw)
+    atitude_raw = str(fatos.get("atitude_monstro", fatos.get("monster_attitude", fatos.get("attitude", "indiferente")))).strip().lower()
+    atitude_aliases = {"friendly": "amigavel", "friendly_attitude": "amigavel", "hostile": "hostil", "hostile_attitude": "hostil", "indifferent": "indiferente"}
+    atitude_monstro = atitude_aliases.get(atitude_raw, atitude_raw)
+    if disposicao_raw in {"friendly", "hostile", "indifferent"} and "disposicao" not in fatos and "willingness" not in fatos:
+        disposicao = "hesitante"
+    if disposicao == "disposto":
         return {"resultado": "sucesso", "teste_realizado": False, "monstro_atende": True, "motivo": "pedido_alinhado_aos_desejos"}
-    if atitude in {"indisposto", "hostil_indisposto"}:
+    if disposicao == "indisposto":
         return {"resultado": "falha", "teste_realizado": False, "monstro_atende": False, "motivo": "pedido_repugnante_ou_contrario_aos_desejos"}
-    if atitude not in {"hesitante", "amigavel", "hostil", "indiferente"}:
+    if disposicao != "hesitante":
         return {"resultado": "bloqueado", "motivo": "disposicao_desconhecida"}
     interacao_raw = str(fatos.get("interacao", fatos.get("interaction", ""))).strip().lower().replace(" ", "_")
     pericia = _INTERACOES.get(interacao_raw)
@@ -63,6 +68,10 @@ def resolver_acao_influenciar(fatos: Mapping[str, Any]) -> dict[str, Any]:
     dados = dict(fatos)
     dados["pericia"] = pericia
     dados["cd"] = cd
+    if atitude_monstro == "amigavel":
+        dados["vantagem"] = True
+    elif atitude_monstro == "hostil":
+        dados["desvantagem"] = True
     teste = resolver_teste_habilidade(dados)
     if teste.get("resultado") == "bloqueado":
         return teste
@@ -73,4 +82,13 @@ def resolver_acao_influenciar(fatos: Mapping[str, Any]) -> dict[str, Any]:
         "pode_tentar_novamente_em_horas": None if sucesso else int(fatos.get("intervalo_tentativa_horas", 24)),
     }
 
-__all__ = ["resolver_acao_esconder", "resolver_acao_influenciar"]
+def resolver_fim_esconderijo(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Aplica os eventos que encerram imediatamente o estado de escondido no PHB 2024."""
+    escondido = bool(fatos.get("escondido", True))
+    evento = str(fatos.get("evento", facts.get("event", ""))).strip().lower().replace(" ", "_")
+    aliases = {"loud_sound": "som_alto", "enemy_finds": "inimigo_encontra", "attack_roll": "rolagem_de_ataque", "verbal_spell": "magia_com_componente_verbal"}
+    evento = aliases.get(evento, evento)
+    encerra = evento in {"som_alto", "inimigo_encontra", "rolagem_de_ataque", "ataque", "magia_com_componente_verbal", "magia_verbal"}
+    return {"resultado": "esconderijo_encerrado" if escondido and encerra else "continua_escondido" if escondido else "nao_escondido", "escondido": escondido and not encerra, "evento": evento}
+
+__all__ = ["resolver_acao_esconder", "resolver_acao_influenciar", "resolver_fim_esconderijo"]
