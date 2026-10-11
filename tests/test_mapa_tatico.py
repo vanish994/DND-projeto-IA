@@ -26,7 +26,6 @@ class BackendMapaTaticoTests(unittest.TestCase):
             "atributos": {"forca": 15, "destreza": 14, "constituicao": 13, "inteligencia": 12, "sabedoria": 10, "carisma": 8},
             "antecedente": "soldado", "aumentos_antecedente": {"forca": 2, "constituicao": 1},
             "ferramenta_antecedente": "Dados", "equipamento_antecedente": "A",
-            "ferramenta_antecedente": "Dados", "equipamento_antecedente": "A",
         }
         response = self.client.post(f"/v1/campanhas/{self.cid}/personagens", json=payload, headers=self.headers)
         self.assertEqual(response.status_code, 201, response.text)
@@ -137,6 +136,7 @@ class BackendMapaTaticoTests(unittest.TestCase):
             "metodo_atributos": "matriz_padrao",
             "atributos": {"forca": 8, "destreza": 14, "constituicao": 13, "inteligencia": 15, "sabedoria": 12, "carisma": 10},
             "antecedente": "soldado", "aumentos_antecedente": {"forca": 2, "constituicao": 1},
+            "ferramenta_antecedente": "Dados", "equipamento_antecedente": "A",
         }
         response = self.client.post(f"/v1/campanhas/{self.cid}/personagens", json=payload, headers=self.headers)
         self.assertEqual(response.status_code, 201, response.text)
