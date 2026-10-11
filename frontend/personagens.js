@@ -93,7 +93,7 @@
     const pv = el('span', {className: 'hp-value', textContent: `${p.pv_atual} / ${p.pv_maximo}`});
     const ajustar = async (delta) => {
       try {
-        const novo = await api(url(`/${encodeURIComponent(p.id)}`), {method: 'PATCH', body: JSON.stringify({pv_atual: Math.max(0, p.pv_atual + delta)})});
+        const novo = await api(url(`/${encodeURIComponent(p.id)}`), {method: 'PATCH', body: JSON.stringify({ajuste_pv: delta})});
         Object.assign(p, novo);
         pv.textContent = `${p.pv_atual} / ${p.pv_maximo}`;
       } catch (erro) { pv.textContent = `Erro: ${erro.message}`; }
