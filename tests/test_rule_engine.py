@@ -608,6 +608,27 @@ class RuleEngineTests(unittest.TestCase):
         })
         self.assertEqual(tick.outcome["encerradas"], ["cego"])
 
+    def test_condition_duration_rejects_invalid_values(self):
+        from rule_engine import EstadoCondicoes
+        estado = EstadoCondicoes()
+        with self.assertRaises(ValueError):
+            estado.aplicar("cego", 0)
+        with self.assertRaises(ValueError):
+            estado.aplicar("cego", "   ")
+        with self.assertRaises(TypeError):
+            estado.aplicar("cego", 1.5)
+        with self.assertRaises(ValueError):
+            estado.reduzir_duracoes(0)
+        with self.assertRaises(ValueError):
+            estado.reduzir_duracoes(-1)
+
+    def test_text_condition_duration_is_not_silently_ticked(self):
+        from rule_engine import EstadoCondicoes
+        estado = EstadoCondicoes()
+        estado.aplicar("amedrontado", "até o fim do próximo turno")
+        self.assertEqual(estado.reduzir_duracoes(1), [])
+        self.assertIn("amedrontado", estado.ativas)
+
     def test_condition_effects_block_actions_movement_and_speech(self):
         result = self.engine.evaluate({
             "type": "condition_effect", "action": "move",
