@@ -956,6 +956,19 @@ class RuleEngineTests(unittest.TestCase):
         result = resolver_efeitos_condicao({"action": "save", "target_conditions": ["frightened", "poisoned"]})
         self.assertFalse(result["desvantagem_salvaguardas"])
         self.assertTrue(result["desvantagem_testes_habilidade"])
+    def test_invisibility_advantage_respects_special_senses(self):
+        from rule_engine import resolver_efeitos_condicao
+        unseen = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["invisible"], "target_conditions": []})
+        seen = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["invisible"], "target_conditions": [], "alvo_pode_ver_atacante": True})
+        invisible_target_seen = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": [], "target_conditions": ["invisible"], "atacante_pode_ver_alvo": True})
+        self.assertEqual(unseen["resultado"], "vantagem")
+        self.assertEqual(seen["resultado"], "normal")
+        self.assertEqual(invisible_target_seen["resultado"], "normal")
+
+    def test_charmed_attacker_cannot_harm_the_charmer(self):
+        from rule_engine import resolver_efeitos_condicao
+        result = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["charmed"], "target_conditions": [], "alvo_e_enfeiticador": True})
+        self.assertEqual(result["resultado"], "bloqueado")
     def test_condition_sensory_failures_and_charmed_effects(self):
         from rule_engine import resolver_efeitos_condicao
         blinded = resolver_efeitos_condicao({"action": "study", "target_conditions": ["blinded"]})
