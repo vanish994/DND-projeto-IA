@@ -90,6 +90,14 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertTrue(result["mecanica"]["adiciona_modificador_destreza"])
         self.assertTrue(result["mecanica"]["exige_alvo_sem_armadura"])
 
+    def test_shield_of_faith_has_bonus_action_concentration_and_ac_bonus(self):
+        result = resolver_magia({"magia": "escudo da fé"})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["bonus_ca"], 2)
+        self.assertEqual(result["mecanica"]["acao"], "bonus")
+        self.assertTrue(result["mecanica"]["concentracao"])
+        self.assertEqual(result["mecanica"]["duracao"], "ate_10_minutos")
+
     def test_missing_components_still_blocks_spell(self):
         result = resolver_magia({"magia": "bola de fogo", "componentes_disponiveis": ["V"]})
         self.assertEqual(result["resultado"], "bloqueado")
