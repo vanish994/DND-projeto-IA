@@ -505,5 +505,34 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(mapa_salvo["rodada"], mapa_inicial["rodada"])
 
 
+    def test_duracao_numerica_de_condicao_de_monstro_reduz_no_fim_do_turno(self):
+        self.save_encounter()
+        bruto = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
+        for token in bruto["tokens"]:
+            if token["id"] == "inimigo-bandido":
+                token["conditions"] = ["prone"]
+                token["condition_durations"] = {"prone": 1}
+        self.repo.salvar_mapa_tatico("jogador-mapa", self.cid, bruto)
+
+        with patch.object(backend_app.secrets, "randbelow", side_effect=[10, 10]):
+            inicio = self.client.post(self.url + "/iniciativa/iniciar", headers=self.headers)
+        self.assertEqual(inicio.status_code, 200, inicio.text)
+
+        bruto = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
+        bruto["iniciativa"].sort(key=lambda item: item["token_id"] != "inimigo-bandido")
+        bruto["turno_indice"] = 0
+        self.repo.salvar_mapa_tatico("jogador-mapa", self.cid, bruto)
+        avancar = self.client.post(
+            self.url + "/turno/avancar", headers=self.headers, json={"token_id": "inimigo-bandido"}
+        )
+        self.assertEqual(avancar.status_code, 200, avancar.text)
+        self.assertIn("caido", avancar.json()["duracoes_encerradas"])
+        bandido = next(
+            token for token in avancar.json()["mapa"]["tokens"] if token["id"] == "inimigo-bandido"
+        )
+        self.assertNotIn("prone", bandido["conditions"])
+        self.assertNotIn("prone", bandido.get("condition_durations", {}))
+
+
 if __name__ == "__main__":
     unittest.main()
