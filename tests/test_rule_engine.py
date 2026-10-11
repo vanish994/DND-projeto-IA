@@ -499,7 +499,7 @@ class RuleEngineTests(unittest.TestCase):
     def test_condition_effects_block_actions_movement_and_speech(self):
         result = self.engine.evaluate({
             "type": "condition_effect", "action": "move",
-            "target_conditions": ["incapacitated", "grappled", "deafened"],
+            "target_conditions": ["unconscious", "grappled", "deafened"],
         })
         self.assertFalse(result.outcome["pode_mover"])
         self.assertFalse(result.outcome["pode_realizar_acoes"])
@@ -509,7 +509,7 @@ class RuleEngineTests(unittest.TestCase):
     def test_paralyzed_target_fails_strength_and_dexterity_saves_and_is_critically_hit(self):
         result = self.engine.evaluate({
             "type": "condition_effect", "action": "attack",
-            "target_conditions": ["paralyzed"], "distance": "corpo_a_corpo",
+            "target_conditions": ["paralyzed"], "distance": "corpo_a_corpo", "distancia_m": 1.5,
         })
         self.assertTrue(result.outcome["acerto_critico_automatico"])
         saves = self.engine.evaluate({
@@ -942,6 +942,18 @@ class RuleEngineTests(unittest.TestCase):
         self.assertFalse(result.outcome["pode_realizar_reacoes"])
         self.assertTrue(result.outcome["falha_salvaguardas_forca_destreza"])
 
+    def test_incapacitated_creature_can_speak_but_cannot_attack(self):
+        from rule_engine import resolver_efeitos_condicao
+        move = resolver_efeitos_condicao({"action": "move", "target_conditions": ["incapacitated"]})
+        attack = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["incapacitated"], "target_conditions": []})
+        self.assertTrue(move["pode_falar"])
+        self.assertEqual(attack["resultado"], "bloqueado")
+
+    def test_frightened_and_poisoned_do_not_impose_saving_throw_disadvantage(self):
+        from rule_engine import resolver_efeitos_condicao
+        result = resolver_efeitos_condicao({"action": "save", "target_conditions": ["frightened", "poisoned"]})
+        self.assertFalse(result["desvantagem_salvaguardas"])
+        self.assertTrue(result["desvantagem_testes_habilidade"])
     def test_condition_aliases_and_exhaustion_levels_are_normalized(self):
         estado = __import__("rule_engine", fromlist=["EstadoCondicoes"]).EstadoCondicoes()
         result = self.engine.evaluate({"type": "condition_state", "estado": estado, "operation": "apply", "condition": "Poisoned", "duration": 2})
