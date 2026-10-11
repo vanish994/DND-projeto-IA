@@ -260,6 +260,20 @@ def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
     return dados.model_dump(), ficha_personagem(personagem)
 
 
+def _texto_equipamento_antecedente(personagem: dict) -> str:
+    """Mostra o pacote escolhido; sem escolha, deixa claro que está pendente."""
+    equipamento = personagem.get("equipamento_antecedente") or {}
+    if not isinstance(equipamento, dict) or not equipamento.get("A"):
+        return "não registrado"
+    escolha = str(equipamento.get("escolha") or "").strip().upper()
+    pacote_a = equipamento.get("A")
+    pacote_b = equipamento.get("B") or "50 PO"
+    if escolha in ("A", "B"):
+        itens = equipamento.get(escolha) or pacote_b
+        return f"pacote {escolha} ({itens})"
+    return f"pendente - escolher entre pacote A ({pacote_a}) ou pacote B ({pacote_b})"
+
+
 def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) -> str:
     """Fornece a ficha real ao MJ e bloqueia invenções quando não há personagem."""
     grupo = repo.listar_personagens(jogador, campanha_id) or []
@@ -296,8 +310,28 @@ def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) ->
             f"ferramenta de antecedente={p.get('ferramenta') or 'nenhuma registrada'}; "
             f"talentos={', '.join(p.get('talentos') or []) or 'nenhum registrado'}; "
             f"deslocamento={p.get('deslocamento', 'não registrado')} m; "
-            f"equipamento de antecedente={p.get('equipamento_antecedente') or 'não registrado'}."
+            f"equipamento de antecedente={_texto_equipamento_antecedente(p)}."
         )
+        heranca = p.get("heranca_draconica")
+        if heranca:
+            sopro = heranca.get("sopro") or {}
+            linhas.append(
+                f"  Herança Dracônica: linhagem={heranca.get('linhagem')}; "
+                f"tipo de dano={heranca.get('tipo_dano')}; resistência={heranca.get('resistencia')}; "
+                f"Arma de Sopro={sopro.get('dado')} de dano {sopro.get('tipo_dano')} "
+                f"(formas: {', '.join(sopro.get('formas') or [])}; salvaguarda de "
+                f"{sopro.get('salvaguarda')} CD {sopro.get('cd')}; {sopro.get('usos')} usos, "
+                f"recarga em {sopro.get('recarga')})."
+            )
+        pendencias = [str(item) for item in (p.get("escolhas_pendentes") or [])]
+        if p.get("proficiencias_pendentes"):
+            pendencias = ["Perícias ou ferramenta de classe", *pendencias]
+        if pendencias:
+            linhas.append(
+                "  PENDÊNCIAS DE CRIAÇÃO (pergunte ao jogador, nunca invente): "
+                + "; ".join(dict.fromkeys(pendencias))
+                + "."
+            )
         conjuracao = p.get("conjuracao") or {}
         truques = conjuracao.get("truques") or []
         preparadas = conjuracao.get("magias_preparadas") or []
