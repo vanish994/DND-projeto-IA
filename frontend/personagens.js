@@ -192,6 +192,14 @@
           el('span', {className: 'choice-text'},
             el('span', {className: 'choice-title', textContent: nome(pericia)})))));
       }
+      let ferramentaSelect = null;
+      if (p.classe === 'artifice') {
+        const id = `artisan-tool-${p.id}`;
+        ferramentaSelect = el('select', {id}, el('option', {value: '', textContent: 'Escolha uma ferramenta de artesão…'}),
+          ...(cat.ferramentas_artesao || []).map(ferramenta => el('option', {value: ferramenta, textContent: ferramenta})));
+        ferramentaSelect.value = p.ferramenta_artesao || '';
+        secao.append(el('label', {htmlFor: id, textContent: 'Ferramenta de artesão do Artífice'}), ferramentaSelect);
+      }
       const salvar = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar proficiências'});
       salvar.addEventListener('click', async () => {
         if (selecionadas.size !== limite) {
@@ -202,7 +210,10 @@
         status.textContent = 'Validando no motor…';
         try {
           const atualizado = await api(url(`/${encodeURIComponent(p.id)}/proficiencias`), {
-            method: 'PATCH', body: JSON.stringify({pericias_classe: [...selecionadas]}),
+            method: 'PATCH', body: JSON.stringify({
+              pericias_classe: [...selecionadas],
+              ferramenta_artesao: ferramentaSelect ? (ferramentaSelect.value || null) : null,
+            }),
           });
           Object.assign(p, atualizado);
           mostrarFicha(p);
@@ -292,7 +303,7 @@
   function novoRascunho() {
     return {nome: '', especie: '', classe: '', antecedente: '', talento_antecedente: '', metodo_atributos: 'matriz_padrao',
       atributos: Object.fromEntries(ATRIBUTOS.map((a) => [a, ''])), compra: Object.fromEntries(ATRIBUTOS.map((a) => [a, 8])),
-      modo_aumento: '2-1', aumento2: '', aumento1: '', pericias_classe: []};
+      modo_aumento: '2-1', aumento2: '', aumento1: '', pericias_classe: [], ferramenta_artesao: ''};
   }
 
   async function abrirCriacao() {
@@ -355,7 +366,7 @@
 
   function passoClasse() {
     const opcoes = Object.entries(catalogo.classes).map(([k, v]) => [k, nome(k), `Dado de Vida d${v.dado_vida} · Atributo principal: ${nome(v.atributo_primario)}`]);
-    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a classe'}), radios('classe', opcoes, dados.classe, (v) => { dados.classe = v; dados.pericias_classe = []; }))];
+    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a classe'}), radios('classe', opcoes, dados.classe, (v) => { dados.classe = v; dados.pericias_classe = []; dados.ferramenta_artesao = ''; }))];
   }
 
   function passoPericiasClasse() {
@@ -382,9 +393,19 @@
       lista.append(el('li', {}, el('label', {className: 'choice'}, caixa,
         el('span', {className: 'choice-text'}, el('span', {className: 'choice-title', textContent: nome(pericia)})))));
     }
+    const extras = [];
+    if (dados.classe === 'artifice') {
+      const id = 'artisan-tool-proficiency';
+      const select = el('select', {id}, el('option', {value: '', textContent: 'Escolha uma ferramenta de artesão…'}),
+        ...(catalogo.ferramentas_artesao || []).map(ferramenta => el('option', {value: ferramenta, textContent: ferramenta})));
+      select.value = dados.ferramenta_artesao || '';
+      select.addEventListener('change', () => { dados.ferramenta_artesao = select.value; });
+      extras.push(el('label', {htmlFor: id, textContent: 'Proficiência de ferramenta adicional do Artífice'}),
+        select);
+    }
     return [el('fieldset', {}, el('legend', {textContent: `Perícias de ${nome(dados.classe)}`}),
       el('p', {className: 'choice-meta', textContent: 'Essas escolhas são validadas pelo motor e somadas às perícias do antecedente, sem duplicar bônus.'}),
-      lista, status)];
+      lista, status, ...extras)];
   }
 
   function passoAntecedente() {
@@ -500,7 +521,7 @@
   function payload() {
     return {nome: dados.nome.trim(), especie: dados.especie, classe: dados.classe, nivel: 1, metodo_atributos: dados.metodo_atributos,
       atributos: base(), antecedente: dados.antecedente, aumentos_antecedente: aumentos(), talento_antecedente: dados.talento_antecedente || null,
-      pericias_classe: dados.pericias_classe};
+      pericias_classe: dados.pericias_classe, ferramenta_artesao: dados.ferramenta_artesao || null};
   }
 
   function passoRevisao() {
@@ -520,7 +541,8 @@
       el('dl', {className: 'facts'}, el('dt', {textContent: 'Talento'}), el('dd', {textContent: talentoNome(talento)}),
         el('dt', {textContent: 'Perícias do antecedente'}), el('dd', {textContent: bg.pericias.map(nome).join(', ')}),
         el('dt', {textContent: 'Perícias de classe'}), el('dd', {textContent: (dados.pericias_classe || []).map(nome).join(', ')}),
-        el('dt', {textContent: 'Ferramenta'}), el('dd', {textContent: bg.ferramenta})),
+        ...(dados.classe === 'artifice' ? [el('dt', {textContent: 'Ferramenta de artesão do Artífice'}), el('dd', {textContent: dados.ferramenta_artesao || 'pendente'})] : []),
+        el('dt', {textContent: 'Ferramenta do antecedente'}), el('dd', {textContent: bg.ferramenta})),
       el('p', {className: 'choice-meta', textContent: 'PV, Bônus de Proficiência e demais valores são calculados pelo motor de regras ao criar.'})];
   }
 
@@ -531,6 +553,7 @@
     if (passo === 3) {
       const quantidade = Number(catalogo.quantidade_pericias_classe?.[dados.classe] || 0);
       if ((dados.pericias_classe || []).length !== quantidade) return `Escolha exatamente ${quantidade} perícias de classe.`;
+      if (dados.classe === 'artifice' && !dados.ferramenta_artesao) return 'Escolha uma ferramenta de artesão para o Artífice.';
     }
     if (passo === 4) {
       if (!dados.antecedente) return 'Escolha um antecedente.';
