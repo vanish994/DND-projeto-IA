@@ -143,6 +143,13 @@ class BackendProficienciesAndSpellsTests(unittest.TestCase):
         self.assertEqual(p["ferramenta_artesao"], "Ferramentas de Carpinteiro")
         self.assertEqual(p["proficiencias_salvaguarda"], ["constituicao", "inteligencia"])
         self.assertFalse(p["proficiencias_pendentes"])
+        atualizado = self.client.patch(
+            f"/v1/campanhas/{self.campaign_id}/personagens/{p['id']}/proficiencias",
+            json={"pericias_classe": ["investigacao", "arcanismo"], "ferramenta_artesao": "Ferramentas de Carpinteiro"},
+            headers=self.headers,
+        )
+        self.assertEqual(atualizado.status_code, 200, atualizado.text)
+        self.assertEqual(atualizado.json()["pericias_classe"], ["arcanismo", "investigacao"])
 
     def test_api_valida_magias_e_slots_do_artifice(self):
         p = self.criar_artifice()
