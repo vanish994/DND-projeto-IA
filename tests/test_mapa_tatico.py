@@ -213,6 +213,19 @@ class BackendMapaTaticoTests(unittest.TestCase):
         finally:
             self.hero = original
 
+    def test_ataque_de_monstro_usa_bloco_estruturado(self):
+        self.save_encounter()
+        response = self.client.post(self.url + "/ataque-monstro", headers=self.headers, json={
+            "atacante_id": "inimigo-bandido", "alvo_id": "heroi-vex",
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["monstro"], "Bandit")
+        self.assertEqual(body["acao"], "Scimitar")
+        self.assertIn(body["ataque"]["result"], {"hit", "miss"})
+        self.assertGreaterEqual(body["dano"], 0)
+        self.assertEqual(body["bonus_ataque"], 3)
+
     def test_ataque_fora_de_alcance_e_rejeitado(self):
         self.save_encounter(hero_x=1, hero_y=1, enemy_x=5, enemy_y=1)
         response = self.client.post(self.url + "/atacar", headers=self.headers, json={
