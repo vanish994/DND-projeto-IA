@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mapa tático — D&D Projeto IA</title>
+<style>
+:root{color-scheme:dark;--bg:#141713;--panel:#20251f;--line:#3b4438;--ink:#f0eee4;--muted:#b4b9a9;--gold:#d9b875}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}body{display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:#191d18;flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.04em;margin-right:auto}.brand span{color:var(--gold)}button,.upload-label{border:1px solid #50594a;background:#292f27;color:var(--ink);border-radius:9px;padding:9px 12px;min-height:40px;font:inherit;cursor:pointer;white-space:nowrap}button:active,.upload-label:active{transform:translateY(1px)}button.primary{background:#6e855e;border-color:#91a77d;color:#10150e;font-weight:800}button:disabled{opacity:.45;cursor:not-allowed}.upload-label input{display:none}
+#status{padding:7px 14px;color:var(--muted);font-size:13px;border-bottom:1px solid #30372d}
+main{flex:1;min-height:0;display:flex;flex-direction:column;padding:10px;gap:8px}.map-wrap{position:relative;flex:1;min-height:220px;border:1px solid #515849;border-radius:12px;overflow:hidden;background:#262c22;box-shadow:0 10px 35px #0005}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hint{font-size:12px;color:var(--muted);padding:0 3px}.footer{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+@media(max-width:620px){header{gap:6px;padding:8px}.brand{width:100%;margin-bottom:2px}button,.upload-label{padding:8px 10px;min-height:38px;font-size:13px}main{padding:7px}.map-wrap{min-height:180px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">D&amp;D <span>PROJETO IA</span> · MAPA TÁTICO</div>
+  <button id="back">← Campanha</button>
+  <button id="generate" class="primary">Gerar mapa da cena</button>
+  <label class="upload-label">Carregar imagem<input id="image-file" type="file" accept="image/*"></label>
+  <button id="hero">+ Herói</button>
+  <button id="enemy">+ Inimigo</button>
+  <button id="measure">Medir distância</button>
+  <button id="save">Salvar mapa</button>
+</header>
+<div id="status" role="status">Grade ativa · 1 quadrado = 5 pés · toque duas vezes em um token para editar nome e PV.</div>
+<main>
+  <div class="map-wrap"><canvas id="map" width="1200" height="760" aria-label="Mapa tático com grade e tokens"></canvas></div>
+  <div class="footer"><span id="scene-label">Cena: mapa inicial</span><span>Movimentação visual — validação de regras será conectada ao motor.</span></div>
+  <div class="hint">No celular: arraste os tokens para movê-los. A grade permanece sempre visível. O mapa é salvo neste navegador, separado por campanha.</div>
+</main>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const campaignId = params.get('campanha') || 'sem-campanha';
+  const KEY = 'dnd-mj-mapa-v1:' + campaignId;
+  const W = 1200, H = 760, CELL = 60;
+  const canvas = document.querySelector('#map'), ctx = canvas.getContext('2d');
+  const status = document.querySelector('#status'), sceneLabel = document.querySelector('#scene-label');
+  let measureMode = false, measureStart = null, dragging = null;
+  let scene = {terrain:'forest', title:'Mapa inicial', background:null, tokens:[]};
+  const terrainNames = {forest:'Floresta',dungeon:'Masmorra',cave:'Caverna',ruins:'Ruínas',town:'Vila',road:'Estrada'};
+  const colors = {hero:'#6fa9d8',enemy:'#cf7167',npc:'#d6b76c'};
+  try { const saved=JSON.parse(localStorage.getItem(KEY)||'null'); if(saved&&typeof saved==='object') scene={...scene,...saved,tokens:Array.isArray(saved.tokens)?saved.tokens:[]}; } catch(_){}
+  function seededRandom(seed){let n=seed>>>0;return()=>{n=(n*1664525+1013904223)>>>0;return n/4294967296}}
+  function terrainFromText(text){const t=(text||'').toLocaleLowerCase('pt-BR');if(/caverna|gruta|subterr|estalact|rocha|mina/.test(t))return'cave';if(/masmorra|calabouço|corredor|cripta|catacumba|cela/.test(t))return'dungeon';if(/ruína|ruinas|templo|fortaleza|castelo|muralha/.test(t))return'ruins';if(/vila|cidade|taverna|mercado|rua|aldeia/.test(t))return'town';if(/estrada|ponte|trilha|caminho/.test(t))return'road';return'forest'}
+  function generate(terrain,title){
+    scene.terrain=terrain;scene.title=title||('Cena: '+terrainNames[terrain]);scene.background=null;
+    const seed=(campaignId+scene.title+Date.now()).split('').reduce((a,c)=>Math.imul(a^c.charCodeAt(0),16777619),2166136261),rnd=seededRandom(seed);
+    const palettes={forest:['#344b32','#405a38','#293f2d'],dungeon:['#45483f','#55574d','#363a34'],cave:['#3b4444','#48504e','#303938'],ruins:['#69634c','#7a7157','#5a5747'],town:['#77735b','#8b8265','#625f4b'],road:['#5d5a43','#6f674b','#4e513d']};
+    const p=palettes[terrain]||palettes.forest;ctx.fillStyle=p[0];ctx.fillRect(0,0,W,H);
+    for(let i=0;i<1800;i++){const x=rnd()*W,y=rnd()*H,r=2+rnd()*18;ctx.globalAlpha=.12+rnd()*.22;ctx.fillStyle=p[Math.floor(rnd()*p.length)];ctx.beginPath();ctx.ellipse(x,y,r,r*(.35+rnd()),rnd()*3.14,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+    if(terrain==='forest'){
+      for(let i=0;i<105;i++){const x=20+rnd()*(W-40),y=20+rnd()*(H-40),r=12+rnd()*23;ctx.fillStyle='#263a29';ctx.beginPath();ctx.arc(x+3,y+5,r,0,7);ctx.fill();ctx.fillStyle=['#4f7044','#5d7b4b','#3e603b'][Math.floor(rnd()*3)];ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.strokeStyle='#8a9a67';ctx.globalAlpha=.3;ctx.stroke();ctx.globalAlpha=1}
+      ctx.strokeStyle='#a79a6a';ctx.lineWidth=35;ctx.beginPath();ctx.moveTo(-10,610);ctx.bezierCurveTo(250,500,280,360,530,390);ctx.bezierCurveTo(760,420,850,230,1210,170);ctx.stroke();ctx.strokeStyle='#c4b27a';ctx.lineWidth=2;ctx.stroke()
+    }else if(terrain==='dungeon'||terrain==='cave'){
+      ctx.strokeStyle=terrain==='dungeon'?'#888a7a':'#66716b';ctx.lineWidth=8;for(let x=30;x<W;x+=CELL){ctx.beginPath();ctx.moveTo(x,20);ctx.lineTo(x,H-20);ctx.stroke()}for(let y=30;y<H;y+=CELL){ctx.beginPath();ctx.moveTo(20,y);ctx.lineTo(W-20,y);ctx.stroke()}
+      const rooms=[[110,100,230,170],[430,90,260,210],[790,300,260,250],[220,470,250,180]];ctx.fillStyle=terrain==='dungeon'?'#65685b':'#4c5753';rooms.forEach(([x,y,w,h])=>{ctx.fillRect(x,y,w,h);ctx.strokeStyle='#a1a18a';ctx.lineWidth=10;ctx.strokeRect(x,y,w,h)});if(terrain==='cave')for(let i=0;i<70;i++){ctx.fillStyle='#232d2d';ctx.beginPath();ctx.arc(rnd()*W,rnd()*H,5+rnd()*24,0,7);ctx.fill()}
+    }else if(terrain==='ruins'){
+      for(let i=0;i<24;i++){const x=35+rnd()*1090,y=30+rnd()*680,w=40+rnd()*90,h=25+rnd()*65;ctx.fillStyle='#46483d';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#b0a17a';ctx.lineWidth=4;ctx.strokeRect(x,y,w,h)}ctx.strokeStyle='#b7a77c';ctx.lineWidth=14;ctx.strokeRect(130,95,930,560)
+    }else if(terrain==='town'){
+      ctx.strokeStyle='#b0a37c';ctx.lineWidth=55;ctx.beginPath();ctx.moveTo(-10,390);ctx.lineTo(1210,390);ctx.moveTo(600,-10);ctx.lineTo(600,770);ctx.stroke();for(let i=0;i<32;i++){const x=25+rnd()*1100,y=25+rnd()*680;if(Math.abs(x-600)<60||Math.abs(y-390)<60)continue;const w=45+rnd()*50,h=35+rnd()*45;ctx.fillStyle=['#554b3c','#6a5942','#4d4d40'][i%3];ctx.fillRect(x,y,w,h);ctx.strokeStyle='#a89a70';ctx.lineWidth=3;ctx.strokeRect(x,y,w,h)}
+    }else{ctx.strokeStyle='#a99b6c';ctx.lineWidth=70;ctx.beginPath();ctx.moveTo(-20,610);ctx.bezierCurveTo(230,500,450,620,650,400);ctx.bezierCurveTo(820,220,970,360,1220,120);ctx.stroke()}
+    drawGrid();drawTokens();sceneLabel.textContent='Cena: '+(scene.title||terrainNames[terrain])+' · '+terrainNames[terrain]
+  }
+  function drawGrid(){ctx.save();ctx.strokeStyle='rgba(241,231,196,.42)';ctx.lineWidth=1;for(let x=0;x<=W;x+=CELL){ctx.beginPath();ctx.moveTo(x+.5,0);ctx.lineTo(x+.5,H);ctx.stroke()}for(let y=0;y<=H;y+=CELL){ctx.beginPath();ctx.moveTo(0,y+.5);ctx.lineTo(W,y+.5);ctx.stroke()}ctx.restore()}
+  function drawTokens(){for(const t of scene.tokens){ctx.save();ctx.shadowColor='#000';ctx.shadowBlur=12;ctx.shadowOffsetY=4;ctx.fillStyle=colors[t.kind]||colors.npc;ctx.strokeStyle=t.kind==='hero'?'#d8efff':t.kind==='enemy'?'#ffe0d8':'#fff0bd';ctx.lineWidth=4;ctx.beginPath();ctx.arc(t.x,t.y,24,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.shadowOffsetY=0;ctx.fillStyle='#141713';ctx.font='bold 17px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText((t.name||'?').trim().slice(0,2).toUpperCase(),t.x,t.y);ctx.fillStyle='#fff';ctx.font='bold 13px system-ui';ctx.strokeStyle='#111';ctx.lineWidth=3;const hp=t.hp+'/'+t.maxHp+' PV';ctx.strokeText(hp,t.x,t.y+36);ctx.fillText(hp,t.x,t.y+36);ctx.fillStyle='#f2e9cf';ctx.font='12px system-ui';ctx.strokeText(t.name||'Token',t.x,t.y-34);ctx.fillText(t.name||'Token',t.x,t.y-34);ctx.restore()}}
+  function render(){if(scene.background){const img=new Image();img.onload=()=>{ctx.clearRect(0,0,W,H);ctx.drawImage(img,0,0,W,H);drawGrid();drawTokens()};img.src=scene.background}else generate(scene.terrain||'forest',scene.title)}
+  function save(silent=false){try{localStorage.setItem(KEY,JSON.stringify(scene));if(!silent)status.textContent='Mapa salvo neste navegador para esta campanha.'}catch(_){status.textContent='Não foi possível salvar. A imagem pode ser grande demais; tente uma imagem menor.'}}
+  function pos(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+  function tokenAt(p){return[...scene.tokens].reverse().find(t=>Math.hypot(t.x-p.x,t.y-p.y)<29)}
+  canvas.addEventListener('pointerdown',e=>{const p=pos(e);if(measureMode){if(!measureStart){measureStart=p;status.textContent='Toque no segundo ponto para medir.'}else{const cells=Math.hypot(p.x-measureStart.x,p.y-measureStart.y)/CELL;status.textContent='Distância aproximada: '+Math.round(cells*5)+' pés ('+cells.toFixed(1)+' quadrados).';measureStart=null;measureMode=false;document.querySelector('#measure').classList.remove('primary')}return}const t=tokenAt(p);if(t){dragging=t;canvas.setPointerCapture(e.pointerId);dragging._ox=p.x-t.x;dragging._oy=p.y-t.y}});
+  canvas.addEventListener('pointermove',e=>{if(!dragging)return;const p=pos(e);dragging.x=Math.max(25,Math.min(W-25,p.x-dragging._ox));dragging.y=Math.max(25,Math.min(H-25,p.y-dragging._oy));render()});
+  canvas.addEventListener('pointerup',()=>{if(dragging){dragging.x=Math.round(dragging.x/CELL)*CELL+CELL/2;dragging.y=Math.round(dragging.y/CELL)*CELL+CELL/2;dragging.x=Math.max(CELL/2,Math.min(W-CELL/2,dragging.x));dragging.y=Math.max(CELL/2,Math.min(H-CELL/2,dragging.y));dragging=null;render();save(true)}});
+  canvas.addEventListener('dblclick',e=>{const t=tokenAt(pos(e));if(!t)return;const name=prompt('Nome do token:',t.name);if(name===null)return;const hp=prompt('PV atuais e máximos (ex.: 12/15):',t.hp+'/'+t.maxHp);t.name=name.trim()||t.name;if(hp){const m=hp.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);if(m){t.hp=+m[1];t.maxHp=Math.max(1,+m[2]);t.hp=Math.min(t.hp,t.maxHp)}}render();save(true)});
+  function addToken(kind){const name=prompt(kind==='hero'?'Nome do herói:':'Nome do inimigo:',kind==='hero'?'Herói':'Inimigo');if(!name)return;const hpRaw=prompt('Pontos de vida atuais/máximos (ex.: 12/12):','10/10')||'10/10';const m=hpRaw.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);scene.tokens.push({id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())),kind,name:name.trim(),hp:m?+m[1]:10,maxHp:m?Math.max(1,+m[2]):10,x:180+scene.tokens.length*CELL,y:180+scene.tokens.length*CELL});render();save(true)}
+  document.querySelector('#hero').addEventListener('click',()=>addToken('hero'));document.querySelector('#enemy').addEventListener('click',()=>addToken('enemy'));
+  document.querySelector('#measure').addEventListener('click',()=>{measureMode=!measureMode;measureStart=null;document.querySelector('#measure').classList.toggle('primary',measureMode);status.textContent=measureMode?'Toque em dois pontos do mapa para medir.':'Medição desativada.'});
+  document.querySelector('#save').addEventListener('click',()=>save());
+  document.querySelector('#back').addEventListener('click',()=>location.href='/');
+  document.querySelector('#image-file').addEventListener('change',e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(!file.type.startsWith('image/')){status.textContent='Escolha um arquivo de imagem.';return}const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{const scale=Math.min(1,1400/img.width,900/img.height);const tmp=document.createElement('canvas');tmp.width=Math.round(img.width*scale);tmp.height=Math.round(img.height*scale);tmp.getContext('2d').drawImage(img,0,0,tmp.width,tmp.height);scene.background=tmp.toDataURL('image/jpeg',.78);scene.title=file.name.replace(/\.[^.]+$/,'');scene.terrain='forest';render();save(true);status.textContent='Imagem carregada. A grade continua ativa.'};img.src=reader.result};reader.readAsDataURL(file)});
+  document.querySelector('#generate').addEventListener('click',async()=>{status.textContent='Lendo a última cena da campanha…';let textScene='';try{const playerId=localStorage.getItem('dnd-mj-jogador');const r=await fetch('/v1/campanhas/'+encodeURIComponent(campaignId),{headers:{'X-Jogador-Id':playerId||'anonimo'}});if(r.ok){const data=await r.json();const last=[...(data.mensagens||[])].reverse().find(m=>m.papel!=='user')||data.mensagens?.[data.mensagens.length-1];textScene=last?.conteudo||''}}catch(_){}const terrain=terrainFromText(textScene);const title=(textScene.replace(/\s+/g,' ').trim().slice(0,72))||'Cena inicial da aventura';generate(terrain,title);save(true);status.textContent='Mapa-base criado a partir de palavras da última cena. Revise o cenário e ajuste os tokens.'});
+  if(scene.background)render();else generate(scene.terrain||'forest',scene.title||'Mapa inicial');
+  save(true);
+})();
+</script>
+</body>
+</html>
