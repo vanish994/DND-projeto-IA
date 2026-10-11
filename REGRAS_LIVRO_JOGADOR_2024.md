@@ -449,3 +449,7 @@ Corrigido o resolvedor `class_features.py`: uma característica desconhecida ou 
 ## Cobertura de espécie — Tiefling
 
 Adicionado Tiefling ao catálogo base de criação de personagem com tamanho Pequeno ou Médio e deslocamento de 9 m, além de teste de criação. Isso fecha a ausência do décimo nome de espécie do PHB 2024 no catálogo básico, mas não substitui a implementação dos traços completos das espécies e das linhagens de Tiefling.
+
+## Auditoria de falsos positivos — talentos
+
+O resolvedor de talentos agora retorna `nao_implementado` para talentos que só têm metadados de categoria e efeitos catalogados, mas ainda não possuem resolução mecânica específica. Apenas os talentos com um ramo explícito no resolvedor continuam retornando `resolvido`. Foram adicionados testes para um talento sem resolução, um ramo existente e um talento desconhecido. O catálogo de efeitos não deve ser interpretado como implementação completa dos talentos.
