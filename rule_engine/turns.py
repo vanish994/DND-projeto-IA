@@ -60,13 +60,14 @@ class RastreadorCombate:
         participante = self.ordem[self.indice]
         movimento = int(self.deslocamentos.get(participante.identificador, 0))
         surpreendido = participante.surpreendido and self.rodada == 1
+        # PHB 2024: Surpresa impõe desvantagem na iniciativa; não remove ações do turno.
         self.turno_atual = EstadoTurno(
             identificador=participante.identificador,
             rodada=self.rodada,
-            acao_disponivel=not surpreendido,
-            acao_bonus_disponivel=not surpreendido,
-            reacao_disponivel=not surpreendido,
-            movimento_restante=0 if surpreendido else movimento,
+            acao_disponivel=True,
+            acao_bonus_disponivel=True,
+            reacao_disponivel=True,
+            movimento_restante=movimento,
             movimento_maximo=movimento,
             surpreendido=surpreendido,
         )
