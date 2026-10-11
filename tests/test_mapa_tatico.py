@@ -82,6 +82,36 @@ class BackendMapaTaticoTests(unittest.TestCase):
         bandido = next(t for t in body["mapa"]["tokens"] if t["id"] == "inimigo-bandido")
         self.assertEqual(bandido["hp"], 11 - body["dano"])
 
+    def test_equipamento_calcula_ca_com_armadura_e_escudo(self):
+        response = self.client.patch(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/equipamento",
+            headers=self.headers,
+            json={"armadura": "Couro", "escudo": True},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.save_encounter()
+        mapa = self.client.get(self.url, headers=self.headers).json()["mapa"]
+        heroi = next(t for t in mapa["tokens"] if t["id"] == "heroi-vex")
+        self.assertEqual(heroi["ac"], 15)  # couro 11 + DES 2 + escudo 2
+
+    def test_ataque_usa_dano_da_arma_equipada(self):
+        equip = self.client.patch(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/equipamento",
+            headers=self.headers,
+            json={"arma": "Espada Longa"},
+        )
+        self.assertEqual(equip.status_code, 200, equip.text)
+        self.save_encounter()
+        response = self.client.post(self.url + "/atacar", headers=self.headers, json={
+            "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandit", "arma": "Espada Longa",
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["arma"], "Espada Longa")
+        self.assertIn(body["ataque"]["result"], {"hit", "miss"})
+        if body["ataque"]["result"] == "hit":
+            self.assertGreaterEqual(body["dano"], 1)
+
     def test_ataque_fora_de_alcance_e_rejeitado(self):
         self.save_encounter(hero_x=1, hero_y=1, enemy_x=5, enemy_y=1)
         response = self.client.post(self.url + "/atacar", headers=self.headers, json={
