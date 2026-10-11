@@ -1,0 +1,156 @@
+"""Validação de conjuração do Artífice (lista de Tasha's usada pelo projeto).
+
+A progressão de espaços segue o Artífice de meio conjurador com progressão
+arredondada para cima, incluindo dois espaços de 1º círculo no nível 1.
+"""
+from __future__ import annotations
+
+import unicodedata
+from typing import Any
+
+# Subconjunto explícito de magias do Artífice disponível no catálogo executável.
+# Os nomes são os localizados em português usados pela interface.
+ARTIFICER_SPELL_LEVELS: dict[str, int] = {
+    # Truques
+    "Acudir os Moribundos": 0,
+    "Bolha Ácida": 0,
+    "Chicote de Espinhos": 0,
+    "Consertar": 0,
+    "Criar Fogueira": 0,
+    "Luz": 0,
+    "Luzes Dançantes": 0,
+    "Mão Mágica": 0,
+    "Mensagem": 0,
+    "Orientação": 0,
+    "Pedra Mágica": 0,
+    "Prestidigitação Arcana": 0,
+    "Raio de Fogo": 0,
+    "Raio de Gelo": 0,
+    "Rajada de Veneno": 0,
+    "Resistência": 0,
+    "Toque Chocante": 0,
+    "Trovão": 0,
+    # 1º círculo
+    "Absorver Elementos": 1,
+    "Alarme": 1,
+    "Catapulta": 1,
+    "Curar Ferimentos": 1,
+    "Detectar Magia": 1,
+    "Disfarçar-se": 1,
+    "Fogo das Fadas": 1,
+    "Identificar": 1,
+    "Onda Trovejante": 1,
+    "Purificar Alimentos e Bebidas": 1,
+    "Queda Suave": 1,
+    "Retirada Acelerada": 1,
+    "Salto": 1,
+    "Santuário": 1,
+    # 2º círculo
+    "Aumentar/Reduzir": 2,
+    "Auxílio": 2,
+    "Arma Mágica": 2,
+    "Escalada de Aranha": 2,
+    "Invisibilidade": 2,
+    "Levitação": 2,
+    "Proteção Contra Veneno": 2,
+    "Restauração Menor": 2,
+    "Teia": 2,
+    # 3º círculo
+    "Arma Elemental": 3,
+    "Dissipar Magia": 3,
+    "Respiração Aquática": 3,
+    "Voo": 3,
+    # 4º círculo
+    "Liberdade de Movimento": 4,
+    "Moldar Pedra": 4,
+    "Olho Arcano": 4,
+    # 5º círculo
+    "Criação": 5,
+    "Mão de Bigby": 5,
+    "Muralha de Pedra": 5,
+    "Restauração Maior": 5,
+}
+
+# Slots por nível de Artífice. Índice 0 corresponde ao 1º círculo.
+ARTIFICER_SLOTS: dict[int, tuple[int, ...]] = {
+    1: (2,), 2: (2,), 3: (3,), 4: (3,), 5: (4, 2), 6: (4, 2),
+    7: (4, 3), 8: (4, 3), 9: (4, 3, 2), 10: (4, 3, 2),
+    11: (4, 3, 3), 12: (4, 3, 3), 13: (4, 3, 3, 1),
+    14: (4, 3, 3, 1), 15: (4, 3, 3, 2), 16: (4, 3, 3, 2),
+    17: (4, 3, 3, 3, 1), 18: (4, 3, 3, 3, 1),
+    19: (4, 3, 3, 3, 2), 20: (4, 3, 3, 3, 2),
+}
+
+
+def normalizar_nome_magia(nome: object) -> str:
+    texto = unicodedata.normalize("NFKD", str(nome).strip().lower())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return " ".join(texto.replace("-", " ").split())
+
+
+def progresso_artifice(nivel: int, inteligencia: int) -> dict[str, Any]:
+    if not 1 <= int(nivel) <= 20:
+        raise ValueError("O nível do Artífice deve estar entre 1 e 20")
+    modificador = (int(inteligencia) - 10) // 2
+    slots = {str(i + 1): quantidade for i, quantidade in enumerate(ARTIFICER_SLOTS[int(nivel)])}
+    circulo_maximo = max(slots)
+    truques = 2 if nivel < 10 else 3 if nivel < 18 else 4
+    preparadas = max(1, modificador + int(nivel) // 2)
+    return {
+        "resultado": "resolvido",
+        "classe": "artifice",
+        "nivel": int(nivel),
+        "atributo_conjuracao": "inteligencia",
+        "truques": truques,
+        "magias_preparadas": preparadas,
+        "circulo_maximo": circulo_maximo,
+        "espacos_totais": slots,
+    }
+
+
+def listar_magias_artifice(nivel: int) -> list[dict[str, Any]]:
+    from .spells import obter_magia
+
+    progresso = progresso_artifice(nivel, 10)
+    resultado = []
+    for nome, circulo in ARTIFICER_SPELL_LEVELS.items():
+        if circulo > progresso["circulo_maximo"]:
+            continue
+        magia = obter_magia(nome)
+        if magia:
+            resultado.append(dict(magia))
+    return sorted(resultado, key=lambda m: (int(m.get("circulo", 99)), m["nome"].lower()))
+
+
+def validar_escolhas_artifice(
+    nivel: int,
+    inteligencia: int,
+    truques: list[str],
+    magias_preparadas: list[str],
+    espacos_totais: dict[str, int],
+) -> dict[str, Any]:
+    from .spells import obter_magia
+
+    progresso = progresso_artifice(nivel, inteligencia)
+    permitidas = {normalizar_nome_magia(nome): circulo for nome, circulo in ARTIFICER_SPELL_LEVELS.items()}
+    if len(truques) != progresso["truques"]:
+        raise ValueError(f"Artífice de nível {nivel} deve registrar exatamente {progresso['truques']} truques")
+    if len(magias_preparadas) != progresso["magias_preparadas"]:
+        raise ValueError(f"Com INT {inteligencia}, este Artífice deve registrar exatamente {progresso['magias_preparadas']} magias preparadas")
+    for nome in truques:
+        circulo = permitidas.get(normalizar_nome_magia(nome))
+        if circulo != 0 or not obter_magia(nome):
+            raise ValueError(f"Truque não disponível para Artífice: {nome}")
+    for nome in magias_preparadas:
+        circulo = permitidas.get(normalizar_nome_magia(nome))
+        if circulo is None or circulo == 0:
+            raise ValueError(f"Magia não disponível para Artífice: {nome}")
+        if circulo > progresso["circulo_maximo"]:
+            raise ValueError(f"Magia de {circulo}º círculo indisponível no nível {nivel}: {nome}")
+        if not obter_magia(nome):
+            raise ValueError(f"Magia ausente do catálogo: {nome}")
+    esperados = progresso["espacos_totais"]
+    recebidos = {str(k): int(v) for k, v in espacos_totais.items() if int(v) != 0}
+    if recebidos != esperados:
+        raise ValueError(f"Espaços de magia incorretos para Artífice nível {nivel}; esperado {esperados}")
+    return progresso
