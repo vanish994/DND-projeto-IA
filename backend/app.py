@@ -147,9 +147,9 @@ def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) ->
     linhas = []
     for p in grupo:
         atributos = ", ".join(f"{nome[:3].upper()} {valor}" for nome, valor in p["atributos"].items())
+        nome_seguro = ''.join(c for c in str(p['nome']) if c.isalnum() or c in " _-' ")[:80].strip() or 'Personagem'
         linhas.append(
-            nome_seguro = ''.join(c for c in str(p['nome']) if c.isalnum() or c in " _-' ")[:80].strip() or 'Personagem'
-        f"- {nome_seguro}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
+            f"- {nome_seguro}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
             f"PV {p['pv_atual']}/{p['pv_maximo']}, BP +{p['bonus_proficiencia']}, {atributos}"
         )
     return (
