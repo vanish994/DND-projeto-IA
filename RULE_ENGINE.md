@@ -32,8 +32,13 @@ print(result.to_ai_instruction())
 - `attack`: `roll`, `modifier`, `target_ac`;
 - `damage`: `damage_dice` (resultados individuais), `damage_modifier` e `critical`;
 - `saving_throw`: `roll`, `modifier`, `dc`.
+- `spell_cast`: `spell_level`, `slot_level`, `has_slot`, `concentration_required` e `concentrating`;
+- `condition`: `operation` (`apply` ou `remove`), `condition`, `active_conditions` e `immunities`;
+- `condition_effect`: `action`, `attacker_conditions` e `target_conditions`.
 
 Acertos críticos duplicam os dados de dano e adicionam o modificador uma única vez. Cada resolução informa a regra e a fonte usada, permitindo que a camada de IA explique a decisão.
+
+Magias sem espaço disponível ou com espaço de nível insuficiente são bloqueadas. Uma nova magia de concentração encerra a concentração anterior. Condições respeitam imunidades, aplicação, remoção e o cancelamento entre vantagem e desvantagem.
 
 ## Próximas extensões
 

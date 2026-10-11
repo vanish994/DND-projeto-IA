@@ -177,4 +177,162 @@ def build_default_engine() -> RuleEngine:
         },
         source="D&D 2024 — salvaguardas",
     ))
+    engine.register(Rule(
+        rule_id="spell.cast.no-slot",
+        description="A magia não pode ser conjurada sem um espaço de magia disponível.",
+        priority=100,
+        when=lambda f: f["type"] == "spell_cast" and not bool(f.get("has_slot", False)),
+        resolve=lambda f: {
+            "type": f["type"], "result": "blocked", "reason": "no_slot",
+            "spell_level": int(f["spell_level"]),
+        },
+        source="D&D 2024 — conjuração",
+    ))
+    engine.register(Rule(
+        rule_id="spell.cast.slot-too-low",
+        description="O espaço de magia precisa ser do nível da magia ou superior.",
+        priority=90,
+        when=lambda f: (
+            f["type"] == "spell_cast" and bool(f.get("has_slot", False))
+            and int(f["slot_level"]) < int(f["spell_level"])
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "blocked", "reason": "slot_level_too_low",
+            "spell_level": int(f["spell_level"]), "slot_level": int(f["slot_level"]),
+        },
+        source="D&D 2024 — conjuração",
+    ))
+    engine.register(Rule(
+        rule_id="spell.cast.concentration-replaced",
+        description="Conjurar outra magia de concentração encerra a concentração anterior.",
+        priority=80,
+        when=lambda f: (
+            f["type"] == "spell_cast" and bool(f.get("has_slot", False))
+            and int(f["slot_level"]) >= int(f["spell_level"])
+            and bool(f.get("concentration_required", False))
+            and bool(f.get("concentrating", False))
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "cast", "reason": "concentration_replaced",
+            "ends_previous_concentration": True,
+        },
+        source="D&D 2024 — concentração",
+    ))
+    engine.register(Rule(
+        rule_id="spell.cast.valid",
+        description="A magia pode ser conjurada com o espaço disponível.",
+        priority=40,
+        when=lambda f: (
+            f["type"] == "spell_cast" and bool(f.get("has_slot", False))
+            and int(f["slot_level"]) >= int(f["spell_level"])
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "cast", "reason": "valid_spell_slot",
+            "ends_previous_concentration": False,
+        },
+        source="D&D 2024 — conjuração",
+    ))
+    engine.register(Rule(
+        rule_id="condition.apply.immune",
+        description="Uma criatura imune não recebe a condição.",
+        priority=100,
+        when=lambda f: (
+            f["type"] == "condition" and f.get("operation") == "apply"
+            and f.get("condition") in f.get("immunities", [])
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "not_applied", "reason": "immune",
+            "condition": f["condition"],
+        },
+        source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.apply.already-active",
+        description="Uma condição já ativa não é aplicada novamente por esta resolução.",
+        priority=90,
+        when=lambda f: (
+            f["type"] == "condition" and f.get("operation") == "apply"
+            and f.get("condition") in f.get("active_conditions", [])
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "already_active", "condition": f["condition"],
+        },
+        source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.apply",
+        description="A condição é aplicada ao alvo.",
+        priority=50,
+        when=lambda f: f["type"] == "condition" and f.get("operation") == "apply",
+        resolve=lambda f: {
+            "type": f["type"], "result": "applied", "condition": f["condition"],
+        },
+        source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.remove.active",
+        description="A condição ativa é removida do alvo.",
+        priority=60,
+        when=lambda f: (
+            f["type"] == "condition" and f.get("operation") == "remove"
+            and f.get("condition") in f.get("active_conditions", [])
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "removed", "condition": f["condition"],
+        },
+        source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.remove.absent",
+        description="Não há condição ativa para remover.",
+        priority=40,
+        when=lambda f: (
+            f["type"] == "condition" and f.get("operation") == "remove"
+            and f.get("condition") not in f.get("active_conditions", [])
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "not_active", "condition": f["condition"],
+        },
+        source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.attack.cancelled",
+        description="Vantagem e desvantagem na mesma jogada se cancelam.",
+        priority=100,
+        when=lambda f: (
+            f["type"] == "condition_effect" and f.get("action") == "attack"
+            and bool(set(f.get("attacker_conditions", [])) & {"blinded", "poisoned", "restrained"})
+            and bool(set(f.get("target_conditions", [])) & {"blinded", "restrained"})
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "normal", "reason": "advantage_disadvantage_cancel",
+        },
+        source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.attack.advantage",
+        description="Atacar uma criatura cega ou impedida concede vantagem.",
+        priority=60,
+        when=lambda f: (
+            f["type"] == "condition_effect" and f.get("action") == "attack"
+            and bool(set(f.get("target_conditions", [])) & {"blinded", "restrained"})
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "advantage", "reason": "target_condition",
+        },
+        source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.attack.disadvantage",
+        description="Atacar enquanto cego, envenenado ou impedido impõe desvantagem.",
+        priority=50,
+        when=lambda f: (
+            f["type"] == "condition_effect" and f.get("action") == "attack"
+            and bool(set(f.get("attacker_conditions", [])) & {"blinded", "poisoned", "restrained"})
+        ),
+        resolve=lambda f: {
+            "type": f["type"], "result": "disadvantage", "reason": "attacker_condition",
+        },
+        source="D&D 2024 — condições",
+    ))
     return engine

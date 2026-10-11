@@ -60,6 +60,48 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "saving_throw", "roll": 1, "modifier": 20, "dc": 10})
         self.assertEqual(result.outcome["reason"], "natural_1")
 
+    def test_spell_cast_is_blocked_without_slot(self):
+        result = self.engine.evaluate({
+            "type": "spell_cast", "spell_level": 3, "slot_level": 3, "has_slot": False,
+        })
+        self.assertEqual(result.outcome["result"], "blocked")
+        self.assertEqual(result.outcome["reason"], "no_slot")
+
+    def test_spell_cast_replaces_previous_concentration(self):
+        result = self.engine.evaluate({
+            "type": "spell_cast", "spell_level": 2, "slot_level": 3, "has_slot": True,
+            "concentration_required": True, "concentrating": True,
+        })
+        self.assertEqual(result.outcome["result"], "cast")
+        self.assertTrue(result.outcome["ends_previous_concentration"])
+
+    def test_spell_cast_is_blocked_when_slot_is_too_low(self):
+        result = self.engine.evaluate({
+            "type": "spell_cast", "spell_level": 4, "slot_level": 2, "has_slot": True,
+        })
+        self.assertEqual(result.outcome["reason"], "slot_level_too_low")
+
+    def test_immune_target_does_not_receive_condition(self):
+        result = self.engine.evaluate({
+            "type": "condition", "operation": "apply", "condition": "poisoned",
+            "immunities": ["poisoned"],
+        })
+        self.assertEqual(result.outcome["result"], "not_applied")
+
+    def test_active_condition_can_be_removed(self):
+        result = self.engine.evaluate({
+            "type": "condition", "operation": "remove", "condition": "restrained",
+            "active_conditions": ["restrained"],
+        })
+        self.assertEqual(result.outcome["result"], "removed")
+
+    def test_conditions_can_cancel_advantage_and_disadvantage(self):
+        result = self.engine.evaluate({
+            "type": "condition_effect", "action": "attack",
+            "attacker_conditions": ["poisoned"], "target_conditions": ["blinded"],
+        })
+        self.assertEqual(result.outcome["result"], "normal")
+
 
 if __name__ == "__main__":
     unittest.main()
