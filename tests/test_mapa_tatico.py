@@ -77,7 +77,8 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
         self.assertIn(body["ataque"]["result"], {"hit", "miss"})
-        self.assertIn("roll", body["ataque"])
+        self.assertGreaterEqual(body["rolagem"], 1)
+        self.assertLessEqual(body["rolagem"], 20)
         bandido = next(t for t in body["mapa"]["tokens"] if t["id"] == "inimigo-bandido")
         self.assertEqual(bandido["hp"], 11 - body["dano"])
 
