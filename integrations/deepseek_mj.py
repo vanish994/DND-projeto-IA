@@ -234,7 +234,11 @@ class DeepSeekMJ:
         else:
             return {"resultado": "bloqueado", "motivo": "ferramenta_desconhecida"}
         resolution = self.engine.evaluate(facts)
-        return {"status": resolution.status, **dict(resolution.outcome)}
+        resultado = {"status": resolution.status, **dict(resolution.outcome)}
+        for chave in ("character_id", "proficiency_applied", "modifier_source"):
+            if chave in facts:
+                resultado[chave] = facts[chave]
+        return resultado
 
     @staticmethod
     def _message_dict(message: Any) -> dict[str, Any]:
