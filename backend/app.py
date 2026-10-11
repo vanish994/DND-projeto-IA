@@ -119,6 +119,12 @@ class AtualizarMagiasPersonagem(BaseModel):
     espacos_totais: dict[str, int] = Field(default_factory=dict)
 
 
+class AtualizarMagiasPersonagem(BaseModel):
+    truques: list[str] = Field(default_factory=list, max_length=20)
+    magias_preparadas: list[str] = Field(default_factory=list, max_length=50)
+    espacos_totais: dict[str, int] = Field(default_factory=dict)
+
+
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
     """Toda ficha passa pelo Rule Engine; nada é calculado no cliente."""
     try:
@@ -298,6 +304,11 @@ def catalogo_magias() -> list[dict]:
     return listar_magias()
 
 
+@app.get("/v1/catalogo/magias")
+def catalogo_magias() -> list[dict]:
+    return listar_magias()
+
+
 @app.get("/v1/campanhas/{campanha_id}/personagens")
 def listar_personagens(
     campanha_id: str,
@@ -396,6 +407,37 @@ def atualizar_magias_personagem(
         "magias_preparadas": preparadas,
         "espacos_totais": dados.espacos_totais,
     }
+    atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, ficha)
+    if atualizado is None:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return atualizado
+
+
+@app.patch("/v1/campanhas/{campanha_id}/personagens/{personagem_id}/magias")
+def atualizar_magias_personagem(
+    campanha_id: str,
+    personagem_id: str,
+    dados: AtualizarMagiasPersonagem,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    personagem = _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+    truques = list(dict.fromkeys(dados.truques))
+    preparadas = list(dict.fromkeys(dados.magias_preparadas))
+    if len(truques) != len(dados.truques) or len(preparadas) != len(dados.magias_preparadas):
+        raise HTTPException(status_code=422, detail="Não repita magias na ficha")
+    for nome_magia in truques:
+        magia = obter_magia(nome_magia)
+        if not magia or magia.get("circulo") != 0:
+            raise HTTPException(status_code=422, detail=f"Truque inválido: {nome_magia}")
+    for nome_magia in preparadas:
+        magia = obter_magia(nome_magia)
+        if not magia or magia.get("circulo") is None or magia.get("circulo") == 0:
+            raise HTTPException(status_code=422, detail=f"Magia preparada inválida: {nome_magia}")
+    if any(not isinstance(n, int) or n < 0 or n > 20 for n in dados.espacos_totais.values()):
+        raise HTTPException(status_code=422, detail="Quantidade de espaços inválida")
+    ficha = {k: v for k, v in personagem.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+    ficha["conjuracao"] = {"truques": truques, "magias_preparadas": preparadas, "espacos_totais": dados.espacos_totais}
     atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, ficha)
     if atualizado is None:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
