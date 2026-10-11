@@ -1071,6 +1071,65 @@ def _extrair_ataques_monstro(monstro: dict) -> list[dict]:
     return resultado
 
 
+def _expandir_multiataque(monstro: dict, ataques: list[dict]) -> list[str] | None:
+    """Converte apenas instruções inequívocas de Multiattack em ataques catalogados.
+
+    Retorna None quando a descrição tem escolhas, contagens aleatórias ou formatos
+    que não podem ser resolvidos sem decisão adicional; nunca inventa ataques.
+    """
+    import re
+    acoes = monstro.get("acoes") or []
+    multi = next((
+        a for a in acoes if isinstance(a, dict)
+        and str(a.get("nome", "")).casefold().startswith("multiattack")
+    ), None)
+    if not multi:
+        return None
+    descricao = str(multi.get("desc") or multi.get("descricao") or "")
+    if not descricao:
+        return None
+    # Opções com "or" exigem escolher a alternativa correta; não escolher por conta própria.
+    if re.search(r"\\bor\\b", descricao, re.I):
+        return None
+    por_nome = {str(a["nome"]).casefold(): a for a in ataques}
+    def achar_ataque(referencia: str) -> str | None:
+        ref = re.sub(r"\\s+", " ", referencia.strip().casefold()).rstrip(" .")
+        candidatas = [ref, ref.rstrip("s"), ref + "s"]
+        for chave in candidatas:
+            if chave in por_nome:
+                return por_nome[chave]["nome"]
+        matches = [a["nome"] for a in ataques if ref in a["nome"].casefold() or a["nome"].casefold() in ref]
+        return matches[0] if len(matches) == 1 else None
+    palavras = {"one": 1, "once": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
+    especificos = []
+    padrao = r"\\b(one|two|three|four|five|six|[1-6])\\s+with\\s+(?:its|the)\\s+([a-z][a-z -]*?)(?=\\s*(?:,|and\\b|\\.|$))"
+    for m in re.finditer(padrao, descricao, re.I):
+        quantidade = palavras.get(m.group(1).casefold(), int(m.group(1)) if m.group(1).isdigit() else 0)
+        nome = achar_ataque(m.group(2))
+        if not nome or quantidade < 1:
+            return None
+        especificos.extend([nome] * quantidade)
+    if especificos:
+        return especificos
+    # Forma compacta: "makes two Bite attacks" / "makes three Tentacle attacks".
+    m = re.search(r"\\b(one|two|three|four|five|six|[1-6])\\s+([a-z][a-z -]*?)\\s+attacks?\\b", descricao, re.I)
+    if m:
+        quantidade = palavras.get(m.group(1).casefold(), int(m.group(1)) if m.group(1).isdigit() else 0)
+        nome = achar_ataque(m.group(2))
+        if nome and quantidade > 0:
+            return [nome] * quantidade
+        return None
+    # "makes two melee attacks": só é seguro quando há um único ataque corpo a corpo disponível.
+    m = re.search(r"\\b(one|two|three|four|five|six|[1-6])\\s+melee attacks?\\b", descricao, re.I)
+    if m:
+        quantidade = palavras.get(m.group(1).casefold(), int(m.group(1)) if m.group(1).isdigit() else 0)
+        corpo_a_corpo = [a for a in ataques if a["alcance_corpo_a_corpo"] > 0]
+        nomes = {a["nome"] for a in corpo_a_corpo}
+        if quantidade > 0 and len(nomes) == 1:
+            return [corpo_a_corpo[0]["nome"]] * quantidade
+    return None
+
+
 @app.post("/v1/campanhas/{campanha_id}/mapa-tatico/ataque-monstro")
 def atacar_com_monstro_tatico(
     campanha_id: str,
@@ -1095,6 +1154,44 @@ def atacar_com_monstro_tatico(
     if not monstro:
         raise HTTPException(status_code=404, detail="Bloco do monstro não encontrado no bestiário")
     ataques = _extrair_ataques_monstro(monstro)
+    if pedido.acao and pedido.acao.casefold().startswith("multiattack"):
+        sequencia = _expandir_multiataque(monstro, ataques)
+        if not sequencia:
+            raise HTTPException(status_code=422, detail={
+                "motivo": "multiataque_ambiguo_ou_nao_suportado",
+                "monstro": monstro.get("nome"),
+                "detalhe": "A descrição contém alternativas ou uma forma que ainda não pode ser resolvida com segurança. Selecione um ataque individual.",
+                "acoes_individuais": [a["nome"] for a in ataques],
+            })
+        resultados = []
+        for nome_ataque in sequencia:
+            mapa_atual = _estado_mapa_normalizado(repo, jogador, campanha_id)
+            alvo_atual = next((t for t in mapa_atual["tokens"] if t["id"] == pedido.alvo_id), None)
+            atacante_atual = next((t for t in mapa_atual["tokens"] if t["id"] == pedido.atacante_id), None)
+            if not alvo_atual or not atacante_atual or alvo_atual["hp"] <= 0 or atacante_atual["hp"] <= 0:
+                break
+            resultado = atacar_com_monstro_tatico(
+                campanha_id,
+                AcaoMonstroTatico(
+                    atacante_id=pedido.atacante_id,
+                    alvo_id=pedido.alvo_id,
+                    acao=nome_ataque,
+                    cobertura=pedido.cobertura,
+                ),
+                jogador,
+                repo,
+            )
+            resultados.append(resultado)
+        return {
+            "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
+            "monstro": monstro["nome"],
+            "acao": str(pedido.acao),
+            "multiataque": True,
+            "sequencia": sequencia,
+            "ataques_resolvidos": resultados,
+            "total_dano": sum(int(r.get("dano", 0)) for r in resultados),
+            "nota": "Cada ataque foi resolvido separadamente pelo motor, com rolagem, alcance, cobertura e dano; a sequência para se o alvo ou atacante chegar a 0 PV.",
+        }
     if not ataques:
         raise HTTPException(status_code=422, detail={
             "motivo": "ataques_do_bloco_nao_estruturados",
