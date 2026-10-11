@@ -416,6 +416,27 @@ class BackendMapaTaticoTests(unittest.TestCase):
         bandido = next(t for t in mapa["tokens"] if t["id"] == "inimigo-bandido")
         self.assertIn("prone", bandido["conditions"])
 
+    def test_duracao_textual_ate_fim_do_turno_expira_automaticamente(self):
+        condicao = self.client.post(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/condicoes",
+            headers=self.headers,
+            json={"operacao": "apply", "condicao": "amedrontado", "duracao": "até o fim do próximo turno"},
+        )
+        self.assertEqual(condicao.status_code, 200, condicao.text)
+        self.save_encounter()
+        with patch.object(backend_app.secrets, "randbelow", side_effect=[10, 10]):
+            inicio = self.client.post(self.url + "/iniciativa/iniciar", headers=self.headers)
+        self.assertEqual(inicio.status_code, 200, inicio.text)
+        bruto = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
+        bruto["iniciativa"].sort(key=lambda item: item["token_id"] != "heroi-vex")
+        bruto["turno_indice"] = 0
+        self.repo.salvar_mapa_tatico("jogador-mapa", self.cid, bruto)
+        avancar = self.client.post(self.url + "/turno/avancar", headers=self.headers, json={"token_id": "heroi-vex"})
+        self.assertEqual(avancar.status_code, 200, avancar.text)
+        self.assertIn("amedrontado", avancar.json()["duracoes_encerradas"])
+        ficha = self.repo.obter_personagem("jogador-mapa", self.cid, self.hero["id"])
+        self.assertNotIn("amedrontado", ficha.get("condicoes_ativas", []))
+
     def test_iniciativa_impede_acao_fora_do_turno(self):
         self.save_encounter()
         with patch.object(backend_app.secrets, "randbelow", side_effect=[10, 10]):
