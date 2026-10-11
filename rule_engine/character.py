@@ -101,7 +101,7 @@ PROFICIENCIAS_CLASSE = {
     "barbaro": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
     "bardo": {"armaduras": ["leves"], "armas": ["simples", "bestas_de_mao", "espadas_longas", "rapieiras", "espadas_curtas"], "ferramentas": []},
     "clerigo": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples"], "ferramentas": []},
-    "druida": {"armaduras": ["leves", "medias", "escudos"], "armas": ["clavas", "adagas", "dardos", "azagaias", "macas", "cajados", "cimitarras", "foices", "fundas", "lancas"], "ferramentas": []},
+    "druida": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples", "clavas", "adagas", "dardos", "azagaias", "macas", "cajados", "cimitarras", "foices", "fundas", "lancas"], "ferramentas": []},
     "guerreiro": {"armaduras": ["leves", "medias", "pesadas", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
     "monge": {"armaduras": [], "armas": ["simples", "espadas_curtas"], "ferramentas": []},
     "paladino": {"armaduras": ["leves", "medias", "pesadas", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
