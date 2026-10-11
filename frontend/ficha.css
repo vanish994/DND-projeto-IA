@@ -1,0 +1,390 @@
+/* Ficha, grupo e assistente de criação. Usa somente tokens de design-tokens.css. */
+
+/* ---------- Estrutura da planilha ---------- */
+.sheet-tall .sheet-head { align-items: center; }
+.sheet-heading { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.sheet-head-actions { display: flex; align-items: center; gap: var(--space-2); flex: none; }
+.sheet-actions:empty { display: none; }
+.sheet-tall .sheet-body { padding-bottom: var(--space-8); }
+
+/* ---------- Painéis e títulos ---------- */
+.painel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-inset);
+}
+.painel-titulo {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: var(--space-3);
+}
+.painel-nota { color: var(--color-text-muted); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
+.regra-fina {
+  height: 1px;
+  border: 0;
+  margin: var(--space-4) 0;
+  background: linear-gradient(90deg, var(--color-line-strong), transparent);
+}
+
+/* ---------- Cabeçalho do personagem ---------- */
+.cabecalho-ficha { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+.nameplate {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--text-2xl);
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  overflow-wrap: anywhere;
+}
+.linha-resumo { color: var(--color-text-muted); font-size: var(--text-sm); }
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 1.75rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-veil);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.badge-destaque { border-color: var(--color-line-strong); color: var(--color-accent-hover); }
+.badge-alerta { border-color: var(--color-danger); color: var(--color-danger); }
+.badge-magia { border-color: color-mix(in srgb, var(--color-arcane) 55%, transparent); color: var(--color-arcane); }
+
+/* ---------- Pontos de vida ---------- */
+.pv { display: flex; flex-direction: column; gap: var(--space-3); }
+.pv-topo { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.pv-numero { font-family: var(--font-display); font-size: var(--text-2xl); line-height: 1; }
+.pv-numero strong { font-size: var(--text-3xl); font-weight: 400; }
+.pv-numero span { color: var(--color-text-muted); font-size: var(--text-lg); }
+.pv-estado { font-size: var(--text-sm); font-weight: 700; }
+.pv-barra {
+  height: .75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  overflow: hidden;
+}
+.pv-preenchimento {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--color-danger), var(--color-accent) 35%, var(--color-success));
+  transition: width .25s ease;
+}
+.pv-controles { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pv-controles .icon-button { min-width: var(--tap-target); font-variant-numeric: tabular-nums; }
+.pv-controles .text-button { min-width: var(--tap-target); font-variant-numeric: tabular-nums; }
+
+/* ---------- Bloco de combate (dados e regras) ---------- */
+.bloco-combate { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: var(--space-2); }
+.bloco-valor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: center;
+  text-align: center;
+  padding: var(--space-3) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  box-shadow: var(--shadow-inset);
+}
+.bloco-valor .rotulo {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.bloco-valor .valor { font-family: var(--font-display); font-size: var(--text-2xl); line-height: 1.1; }
+.bloco-valor .nota { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* ---------- Chips e dados ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-veil);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+.chip-dado { border-color: var(--color-line-strong); color: var(--color-accent-hover); font-variant-numeric: tabular-nums; }
+.chip-magia { border-color: color-mix(in srgb, var(--color-arcane) 55%, transparent); color: var(--color-arcane); }
+.chip-dano { border-color: color-mix(in srgb, var(--color-danger) 55%, transparent); color: var(--color-danger); }
+.chip .chip-rotulo { color: var(--color-text-muted); font-size: var(--text-xs); letter-spacing: .1em; text-transform: uppercase; }
+.dado-icone {
+  width: .875rem;
+  height: .875rem;
+  flex: none;
+  border: 1px solid currentColor;
+  border-radius: .25rem;
+  position: relative;
+}
+.dado-icone::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: .55;
+}
+
+/* Dados citados dentro do texto da narração */
+.bubble .chip {
+  display: inline-flex;
+  vertical-align: middle;
+  min-height: 1.5rem;
+  margin: 0 var(--space-1);
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Atributos ---------- */
+.atributos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.atributo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  box-shadow: var(--shadow-inset);
+}
+.atributo .atributo-nome {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.atributo .atributo-valor { font-family: var(--font-display); font-size: var(--text-3xl); line-height: 1; }
+.atributo .atributo-mod {
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-veil);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.atributo[data-destaque="sim"] .atributo-mod { color: var(--color-accent-hover); }
+
+/* ---------- Perícias e salvaguardas ---------- */
+.lista-pericias { list-style: none; margin: 0; padding: 0; }
+.linha-pericia {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-target);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.linha-pericia:last-child { border-bottom: 0; }
+.marca {
+  width: .75rem;
+  height: .75rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-text-muted);
+  justify-self: center;
+}
+.marca[data-proficiente="sim"] { background: var(--color-accent); border-color: var(--color-accent); }
+.nome-pericia { min-width: 0; overflow-wrap: anywhere; }
+.atributo-pericia { color: var(--color-text-muted); font-size: var(--text-xs); letter-spacing: .1em; text-transform: uppercase; }
+.total-pericia { font-weight: 700; font-variant-numeric: tabular-nums; }
+.linha-pericia[data-proficiente="sim"] .total-pericia { color: var(--color-accent-hover); }
+
+/* ---------- Espaços de magia ---------- */
+.espacos { display: grid; gap: var(--space-2); }
+.linha-espaco { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.rotulo-espaco { min-width: 6.5rem; color: var(--color-text-muted); font-size: var(--text-sm); }
+.pips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.pip {
+  width: .875rem;
+  height: .875rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-line-strong);
+  background: transparent;
+}
+.pip[data-preenchido="sim"] { background: var(--color-arcane); border-color: var(--color-arcane); }
+
+/* ---------- Seletor circular (truques/magias) ---------- */
+.lista-magias { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-2); }
+.botao-magia {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--tap-target);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.botao-magia[aria-pressed="true"] { border-color: color-mix(in srgb, var(--color-arcane) 60%, transparent); background: var(--color-surface-raised); }
+.botao-magia .magia-nome { font-weight: 700; }
+.botao-magia .magia-meta { color: var(--color-text-muted); font-size: var(--text-sm); }
+.botao-magia[aria-pressed="true"] .magia-meta { color: var(--color-arcane); }
+
+/* ---------- Abas da ficha ---------- */
+.abas {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.abas::-webkit-scrollbar { display: none; }
+.aba {
+  flex: none;
+  min-height: var(--tap-target);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.aba[aria-selected="true"] {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+/* ---------- Cartões do grupo ---------- */
+.cartao-grupo {
+  width: 100%;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-inset);
+}
+.cartao-grupo:hover { border-color: var(--color-accent); }
+.cartao-topo { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.cartao-nome { font-family: var(--font-display); font-size: var(--text-xl); line-height: 1.2; overflow-wrap: anywhere; }
+.cartao-nivel { color: var(--color-accent); font-size: var(--text-sm); font-weight: 800; white-space: nowrap; }
+.cartao-barra { height: .5rem; border-radius: var(--radius-pill); background: var(--color-bg); border: 1px solid var(--color-border); overflow: hidden; }
+.cartao-barra > span { display: block; height: 100%; background: linear-gradient(90deg, var(--color-danger), var(--color-accent) 35%, var(--color-success)); }
+
+/* ---------- Assistente de criação ---------- */
+.stepper { list-style: none; display: flex; gap: var(--space-1); margin: 0 0 var(--space-4); padding: 0 var(--space-6); }
+.passo { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); min-width: 0; }
+.passo-marca {
+  position: relative;
+  z-index: 1;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+/* Traço que liga um passo ao anterior, desenhado atrás do marcador. */
+.passo:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  top: .875rem;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--color-border);
+}
+.passo[data-estado="atual"] .passo-marca { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-ink); }
+.passo[data-estado="feito"] .passo-marca { border-color: var(--color-line-strong); color: var(--color-accent-hover); }
+.passo[data-estado="feito"]::before { background: var(--color-line-strong); }
+.passo-rotulo {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.passo[data-estado="atual"] .passo-rotulo { color: var(--color-text); font-weight: 700; }
+.resumo-escolhas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 var(--space-6) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.resumo-escolhas strong { color: var(--color-text); font-weight: 700; }
+
+.escolhas-grade { display: grid; gap: var(--space-2); }
+.escolha-cartao {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  min-height: var(--tap-target);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.escolha-cartao:hover { border-color: var(--color-accent); }
+.escolha-cartao:has(input:checked) {
+  border-color: var(--color-line-strong);
+  border-left-color: var(--color-accent);
+  background: var(--color-surface-raised);
+}
+.escolha-cartao:has(input:focus-visible) { box-shadow: var(--focus-ring); }
+.escolha-cartao input { accent-color: var(--color-accent); width: 1.25rem; height: 1.25rem; margin: var(--space-1) 0 0; flex: none; }
+.escolha-texto { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.escolha-titulo { font-family: var(--font-display); font-size: var(--text-lg); line-height: 1.2; }
+.escolha-meta { color: var(--color-text-muted); font-size: var(--text-sm); }
+
+.compra-linha { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.compra-custo { color: var(--color-text-muted); font-size: var(--text-sm); }
+.zona-perigo { border-color: color-mix(in srgb, var(--color-danger) 45%, transparent); }
+
+@media (min-width: 720px) {
+  .atributos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .escolhas-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .passo-rotulo { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv-preenchimento { transition: none; }
+}

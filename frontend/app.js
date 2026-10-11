@@ -119,13 +119,34 @@ function atualizarCampanha(dados) {
   renderList();
 }
 
+// Dados e CDs citados na narração ganham destaque visual; o texto não é alterado.
+const PADRAO_DADOS = /(\d*d\d+(?:\s*[+\-\u2212]\s*\d+)?)|(CD\s*\d+)/gi;
+
+function textoComDados(texto) {
+  const fragmento = document.createDocumentFragment();
+  let ultimo = 0;
+  for (const ocorrencia of String(texto).matchAll(PADRAO_DADOS)) {
+    if (ocorrencia.index > ultimo) fragmento.append(String(texto).slice(ultimo, ocorrencia.index));
+    const chip = document.createElement('span');
+    chip.className = 'chip chip-dado';
+    const icone = document.createElement('span');
+    icone.className = 'dado-icone';
+    icone.setAttribute('aria-hidden', 'true');
+    chip.append(icone, document.createTextNode(ocorrencia[0].trim()));
+    fragmento.append(chip);
+    ultimo = ocorrencia.index + ocorrencia[0].length;
+  }
+  fragmento.append(String(texto).slice(ultimo));
+  return fragmento;
+}
+
 function addMessage(papel, texto, extraClass = '') {
   messages.querySelector('.empty-state')?.remove();
   const role = papel === 'user' ? 'user' : 'mj';
   const article = document.createElement('article');
   article.className = `message message-${role} ${extraClass}`.trim();
   article.innerHTML = `<div class="avatar" aria-hidden="true">${role === 'mj' ? 'MJ' : 'VOCÊ'}</div><div class="bubble"><span class="visually-hidden">${role === 'mj' ? 'MJ:' : 'Você:'}</span><span class="bubble-text"></span></div>`;
-  article.querySelector('.bubble-text').textContent = texto;
+  article.querySelector('.bubble-text').replaceChildren(textoComDados(texto));
   messages.append(article);
   messages.scrollTop = messages.scrollHeight;
   return article;
