@@ -472,9 +472,9 @@ class RuleEngineTests(unittest.TestCase):
 
     def test_all_player_handbook_conditions_are_available(self):
         from rule_engine import CONDICOES
-        self.assertEqual(len(CONDICOES), 16)
+        self.assertEqual(len(CONDICOES), 15)
         self.assertIn("cego", CONDICOES)
-        self.assertIn("lento", CONDICOES)
+        self.assertNotIn("lento", CONDICOES)
         self.assertIn("inconsciente", CONDICOES)
 
     def test_condition_state_applies_immunity_and_expires_duration(self):
@@ -523,18 +523,18 @@ class RuleEngineTests(unittest.TestCase):
             "type": "condition_effect", "action": "attack",
             "attacker_conditions": ["blinded"], "target_conditions": ["invisible"],
         })
-        self.assertEqual(result.outcome["resultado"], "normal")
+        self.assertEqual(result.outcome["resultado"], "disadvantage")
 
     def test_frightened_charmed_prone_slowed_and_exhaustion_have_effects(self):
         result = self.engine.evaluate({
             "type": "condition_effect", "action": "move",
-            "target_conditions": ["frightened", "charmed", "prone", "slowed", "exhaustion"],
+            "target_conditions": ["frightened", "charmed", "prone", "exhaustion"],
             "exhaustion_niveis": 2,
         })
         self.assertTrue(result.outcome["não_pode_se_aproximar_da_fonte"])
         self.assertTrue(result.outcome["não_pode_atacar_o_enfeiticador"])
         self.assertEqual(result.outcome["movimento_para_levantar"], "metade_do_deslocamento")
-        self.assertTrue(result.outcome["deslocamento_reduzido"])
+        self.assertEqual(result.outcome["deslocamento_reduzido_m"], 3)
         self.assertEqual(result.outcome["modificador_d20"], -4)
 
     def test_armor_class_uses_dexterity_cap_and_shield(self):
