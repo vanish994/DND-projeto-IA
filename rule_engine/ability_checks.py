@@ -186,11 +186,14 @@ def resolver_inspiracao_heroica(fatos: Mapping[str, Any]) -> dict[str, Any]:
         return {"resultado": "bloqueado", "motivo": "sem_inspiracao_heroica"}
     if "rerrolagem" not in fatos and "reroll" not in fatos:
         return {"resultado": "bloqueado", "motivo": "novo_d20_ausente"}
+    if not bool(fatos.get("imediatamente_apos_rolar", fatos.get("immediate", True))):
+        return {"resultado": "bloqueado", "motivo": "inspiracao_deve_ser_gasta_imediatamente"}
     original = int(fatos.get("dado_original", fatos.get("original", 0)))
     novo = int(fatos.get("rerrolagem", fatos.get("reroll", 0)))
-    if not 1 <= original <= 20 or not 1 <= novo <= 20:
-        return {"resultado": "bloqueado", "motivo": "d20_fora_do_intervalo"}
-    return {"resultado": "resolvido", "dado_anterior": original, "dado_usado": novo, "inspiracao_heroica_consumida": True}
+    lados = fatos.get("lados_dado", fatos.get("die_sides"))
+    if original < 1 or novo < 1 or (lados is not None and (int(lados) < 2 or original > int(lados) or novo > int(lados))):
+        return {"resultado": "bloqueado", "motivo": "resultado_fora_do_intervalo_do_dado"}
+    return {"resultado": "resolvido", "dado_anterior": original, "dado_usado": novo, "lados_dado": int(lados) if lados is not None else None, "inspiracao_heroica_consumida": True}
 
 def resolver_salvaguarda(fatos: Mapping[str, Any]) -> dict[str, Any]:
     """Resolve uma salvaguarda com atributo e proficiência da classe/personagem."""
