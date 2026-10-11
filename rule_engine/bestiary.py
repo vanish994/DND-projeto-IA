@@ -2099,9 +2099,157 @@ BESTIARIO = [{'nome': 'Aboleth',
   'xp': 50}]
 
 
+# Os blocos completos do SRD são importados como dados, não reconstruídos por
+# heurísticas. O arquivo inclui ações, traços, reações, ações lendárias,
+# atributos, salvaguardas, sentidos, perícias e resistências quando publicados.
+import json as _json
+from pathlib import Path as _Path
+
+_SRD_DATA_PATH = _Path(__file__).with_name("srd_monsters_data.json")
+with _SRD_DATA_PATH.open("r", encoding="utf-8") as _arquivo_srd:
+    _SRD_DATA = _json.load(_arquivo_srd)
+
+_ABREV_PT = {
+    "str": "forca", "dex": "destreza", "con": "constituicao",
+    "int": "inteligencia", "wis": "sabedoria", "cha": "carisma",
+}
+_ABREV_EN = {v: k for k, v in _ABREV_PT.items()}
+
+
+def _modificador_5e(valor: int) -> int:
+    return (int(valor) - 10) // 2
+
+
+def _proficiencia_por_nd(nd: str) -> int:
+    valor = _valor_nd(nd) if "_valor_nd" in globals() else (
+        float(nd) if "/" not in str(nd) else float(str(nd).split("/", 1)[0]) / float(str(nd).split("/", 1)[1])
+    )
+    if valor >= 29: return 9
+    if valor >= 25: return 8
+    if valor >= 21: return 7
+    if valor >= 17: return 6
+    if valor >= 13: return 5
+    if valor >= 9: return 4
+    if valor >= 5: return 3
+    return 2
+
+
+def _itens_descritivos(itens: object) -> list[dict]:
+    if isinstance(itens, dict):
+        itens = itens.get("actions", [])
+    if not isinstance(itens, list):
+        return []
+    return [
+        {
+            "nome": str(item.get("name") or item.get("nome") or "Ação"),
+            "desc": str(item.get("description") or item.get("desc") or ""),
+            **({"bonus_ataque": int(item["attack_bonus"])} if item.get("attack_bonus") is not None else {}),
+            **({"dano_dados": str(item["damage"][0].get("dice", "")).replace(" ", "")} if item.get("damage") else {}),
+            **({"tipo_dano": str(item["damage"][0].get("type", "")).title()} if item.get("damage") else {}),
+            "tipo": "ataque" if item.get("attack_bonus") is not None else "efeito",
+            **({"custo": int(item["cost"])} if item.get("cost") is not None else {}),
+        }
+        for item in itens if isinstance(item, dict)
+    ]
+
+
+def _normalizar_monstro_srd(registro: dict) -> dict:
+    bloco = registro.get("stat_block") or {}
+    atributos_en = bloco.get("ability_scores") or {}
+    atributos = {_ABREV_PT[k]: int(v) for k, v in atributos_en.items() if k in _ABREV_PT}
+    modificadores = {k: _modificador_5e(v) for k, v in atributos.items()}
+    salvaguardas = {
+        _ABREV_PT[k]: int(v) for k, v in (bloco.get("saving_throws") or {}).items() if k in _ABREV_PT
+    }
+    nd = str(registro.get("challenge_rating") or "0")
+    velocidade = bloco.get("speed") or {}
+    lendarias = bloco.get("legendary_actions") or {}
+    xp = XP_POR_ND.get(nd, 0)
+    return {
+        "nome": str(registro["name"]),
+        "tamanho": str(registro.get("size") or "Medium"),
+        "tipo": str(registro.get("type") or "unknown").casefold(),
+        "alinhamento": "não informado",
+        "ca": int(registro.get("armor_class") or 10),
+        "pv": int(registro.get("hit_points") or 1),
+        "dados_pv": str(registro.get("hit_dice") or ""),
+        "nd": nd,
+        "xp": xp,
+        "iniciativa": int(registro.get("initiative_modifier") or 0),
+        "atributos": atributos,
+        "modificadores": modificadores,
+        "salvaguardas": salvaguardas,
+        "bonus_proficiencia": _proficiencia_por_nd(nd),
+        "deslocamento_pes": int(velocidade.get("walk", velocidade.get("fly", velocidade.get("swim", 30))) or 0),
+        "velocidades": velocidade,
+        "acoes": _itens_descritivos(bloco.get("actions")),
+        "acoes_bonus": _itens_descritivos(bloco.get("bonus_actions")),
+        "reacoes": _itens_descritivos(bloco.get("reactions")),
+        "acoes_lendarias": _itens_descritivos(lendarias),
+        "tracos": _itens_descritivos(bloco.get("traits")),
+        "pericias": bloco.get("skills") or {},
+        "sentidos": bloco.get("senses") or {},
+        "idiomas": bloco.get("languages") or [],
+        "resistencias_dano": bloco.get("damage_resistances") or [],
+        "imunidades_dano": bloco.get("damage_immunities") or [],
+        "vulnerabilidades_dano": bloco.get("damage_vulnerabilities") or [],
+        "imunidades_condicao": bloco.get("condition_immunities") or [],
+        "origem": "D&D SRD 5.2.1 — CC BY 4.0",
+        "bloco_srd": bloco,
+    }
+
+
+# Primeiro preservamos o catálogo já existente (incluindo os nomes legados) e
+# completamos/atualizamos cada nome que consta no conjunto estruturado do SRD.
 for _monstro in BESTIARIO:
     _bloco = BLOCOS_COMPLETOS.get(_monstro["nome"], {})
     _monstro.update(_bloco)
+
+_INDICE_EXISTENTE = {m["nome"].casefold(): m for m in BESTIARIO}
+for _registro_srd in _SRD_DATA.get("monsters", []):
+    _normalizado = _normalizar_monstro_srd(_registro_srd)
+    _chave = _normalizado["nome"].casefold()
+    if _chave in _INDICE_EXISTENTE:
+        _existente = _INDICE_EXISTENTE[_chave]
+        _alinhamento = _existente.get("alinhamento", "não informado")
+        _existente.update(_normalizado)
+        if _alinhamento and _alinhamento != "não informado":
+            _existente["alinhamento"] = _alinhamento
+    else:
+        BESTIARIO.append(_normalizado)
+        _INDICE_EXISTENTE[_chave] = BESTIARIO[-1]
+
+# Aliases entre nomes antigos do catálogo e nomes padronizados no SRD 5.2.1.
+_ALIASES_SRD = {
+    "animated flying sword": "flying sword",
+    "animated rug of smothering": "rug of smothering",
+    "azer sentinel": "azer",
+    "centaur trooper": "centaur",
+    "giant seahorse": "giant sea horse",
+    "giant venomous snake": "giant poisonous snake",
+    "gnoll warrior": "gnoll",
+    "kobold warrior": "kobold",
+    "merfolk skirmisher": "merfolk",
+    "minotaur of baphomet": "minotaur",
+    "seahorse": "sea horse",
+    "shrieker fungus": "shrieker",
+    "venomous snake": "poisonous snake",
+    "will-o’-wisp": "will-o'-wisp",
+}
+for _nome_antigo, _nome_srd in _ALIASES_SRD.items():
+    _antigo = _INDICE_EXISTENTE.get(_nome_antigo)
+    _fonte = _INDICE_EXISTENTE.get(_nome_srd)
+    if _antigo and _fonte and not _antigo.get("bloco_srd"):
+        for _campo in (
+            "atributos", "modificadores", "salvaguardas", "bonus_proficiencia",
+            "deslocamento_pes", "velocidades", "acoes", "acoes_bonus", "reacoes",
+            "acoes_lendarias", "tracos", "pericias", "sentidos", "idiomas",
+            "resistencias_dano", "imunidades_dano", "vulnerabilidades_dano",
+            "imunidades_condicao", "bloco_srd",
+        ):
+            if _campo in _fonte:
+                _antigo[_campo] = _fonte[_campo]
+        _antigo["origem"] = f"Alias de bloco SRD 5.2.1: {_fonte['nome']}"
 
 POR_NOME = {m["nome"].casefold(): m for m in BESTIARIO}
 
