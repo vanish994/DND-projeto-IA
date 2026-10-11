@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
@@ -108,7 +109,8 @@ class NovoPersonagem(BaseModel):
 
 
 class AtualizarPersonagem(BaseModel):
-    pv_atual: int = Field(ge=0)
+    pv_atual: int | None = Field(default=None, ge=0)
+    ajuste_pv: int | None = Field(default=None, ge=-100, le=100)
 
 
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
@@ -146,7 +148,8 @@ def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) ->
     for p in grupo:
         atributos = ", ".join(f"{nome[:3].upper()} {valor}" for nome, valor in p["atributos"].items())
         linhas.append(
-            f"- {p['nome']}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
+            nome_seguro = ''.join(c for c in str(p['nome']) if c.isalnum() or c in " _-' ")[:80].strip() or 'Personagem'
+        f"- {nome_seguro}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
             f"PV {p['pv_atual']}/{p['pv_maximo']}, BP +{p['bonus_proficiencia']}, {atributos}"
         )
     return (
@@ -348,7 +351,15 @@ def atualizar_pv_personagem(
     repo: RepositorioCampanhas = Depends(obter_repositorio),
 ) -> dict:
     _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
-    return repo.atualizar_personagem(jogador, campanha_id, personagem_id, pv_atual=dados.pv_atual)
+    if dados.ajuste_pv is not None and dados.pv_atual is None:
+        atualizado = repo.ajustar_pv_personagem(jogador, campanha_id, personagem_id, dados.ajuste_pv)
+    elif dados.pv_atual is not None and dados.ajuste_pv is None:
+        atualizado = repo.atualizar_personagem(jogador, campanha_id, personagem_id, pv_atual=dados.pv_atual)
+    else:
+        raise HTTPException(status_code=422, detail="Informe exatamente pv_atual ou ajuste_pv")
+    if atualizado is None:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return atualizado
 
 
 @app.delete("/v1/campanhas/{campanha_id}/personagens/{personagem_id}", status_code=204)
