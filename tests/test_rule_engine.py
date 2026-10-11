@@ -963,6 +963,19 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result["deslocamento_reduzido_m"], 4.5)
         self.assertFalse(result["morre_no_nivel_6"])
 
+    def test_short_rest_tracks_spent_hit_dice_and_long_rest_restores_them(self):
+        estado = EstadoVital(20, 5, dados_vida_maximos=4)
+        self.engine.evaluate({"type": "short_rest", "estado": estado, "hit_dice_rolls": [4, 6], "constitution_modifier": 2, "duration_hours": 1})
+        self.assertEqual(estado.dados_vida_disponiveis, 2)
+        self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 8})
+        self.assertEqual(estado.dados_vida_disponiveis, 4)
+
+    def test_stabilization_requires_medicine_check_or_healers_kit(self):
+        from rule_engine import estabilizar
+        estado = EstadoVital(10, 0, inconsciente=True)
+        self.assertEqual(estabilizar(estado)["resultado"], "bloqueado")
+        self.assertEqual(estabilizar(estado, teste_medicina=9)["resultado"], "falha")
+        self.assertEqual(estabilizar(estado, kit_medico=True)["resultado"], "sucesso")
     def test_long_rest_does_not_erase_temporary_hit_points_by_default(self):
         estado = EstadoVital(20, 10, pv_temporarios=5)
         self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 8})
