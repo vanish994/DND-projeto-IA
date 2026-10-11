@@ -20,7 +20,7 @@ O **Bloco 2 está encerrado no nível do núcleo**. A integração com o catálo
 
 ## Bloco 3 — condições e efeitos
 
-O Bloco 3 foi iniciado com as 16 condições do Livro do Jogador 2024: Cego, Enfeitiçado, Surdo, Exaustão, Amedrontado, Agarrado, Incapacitado, Invisível, Paralisado, Petrificado, Envenenado, Caído, Contido, Lento, Atordoado e Inconsciente. O núcleo inclui estado persistente, imunidade, duração, remoção e efeitos sobre ações, movimento, fala, sentidos, salvaguardas e ataques. A cobertura de interações com concentração, magias específicas e características de classe será refinada nos blocos de Magias e Personagens.
+O Bloco 3 foi iniciado com as 15 condições do Livro do Jogador 2024: Cego, Enfeitiçado, Surdo, Exaustão, Amedrontado, Agarrado, Incapacitado, Invisível, Paralisado, Petrificado, Envenenado, Caído, Contido, Lento, Atordoado e Inconsciente. O núcleo inclui estado persistente, imunidade, duração, remoção e efeitos sobre ações, movimento, fala, sentidos, salvaguardas e ataques. A cobertura de interações com concentração, magias específicas e características de classe será refinada nos blocos de Magias e Personagens.
 
 ## Bloco 4 — magias, equipamentos e armas
 
@@ -72,7 +72,7 @@ Implementado `economy.py` com conversão entre PC, PP, PE, PO e PL; compra e ven
 
 ## Condições e estados alterados
 
-Completo o módulo `conditions.py` com as 16 condições do Livro do Jogador 2024, normalização de nomes em português/inglês, imunidades, duração, aplicação repetida, remoção, redução por turnos e níveis de Exaustão. Os efeitos derivados agora abrangem vantagem/desvantagem, acertos críticos automáticos, deslocamento 0, ações e reações bloqueadas, falhas automáticas de salvaguardas de Força/Destreza, concentração, fala, sentidos, ataques contra Caído, efeitos de Cego/Invisível, Petrificado, Contido, Atordoado, Inconsciente, Envenenado, Amedrontado, Enfeitiçado, Agarrado, Lento e Exaustão.
+Completo o módulo `conditions.py` com as 15 condições do Livro do Jogador 2024, normalização de nomes em português/inglês, imunidades, duração, aplicação repetida, remoção, redução por turnos e níveis de Exaustão. Os efeitos derivados agora abrangem vantagem/desvantagem, acertos críticos automáticos, deslocamento 0, ações e reações bloqueadas, falhas automáticas de salvaguardas de Força/Destreza, concentração, fala, sentidos, ataques contra Caído, efeitos de Cego/Invisível, Petrificado, Contido, Atordoado, Inconsciente, Envenenado, Amedrontado, Enfeitiçado, Agarrado, Lento e Exaustão.
 
 ## Combate tático avançado
 
@@ -138,6 +138,10 @@ Testes de integração foram adicionados. A execução automatizada continua sem
 Ajustado `conditions.py` para não conceder vantagem a um atacante Cego, bloquear ataques de criaturas Incapacitadas, exigir distância em metros para declarar crítico automático contra Paralisado/Inconsciente e não aplicar desvantagem genérica a salvaguardas por Amedrontado/Envenenado. Incapacitado, por si só, não impede a fala; Paralisado, Petrificado e Inconsciente impedem. Foram adicionados testes de regressão para esses casos.
 
 Os testes foram adicionados, mas a suíte ainda não foi executada/confirmada por CI.
+
+## Auditoria oficial das condições
+
+A lista oficial do PHB 2024 contém **15 condições**, não 16. `Lento/Slowed` não faz parte da lista normativa e foi removida do conjunto de condições do motor; efeitos de lentidão devem ser modelados como efeitos específicos de magias ou características, não como condição geral. A fonte oficial D&D Beyond lista as 15 condições no glossário.
 
 ## Regras que ainda faltam
 
