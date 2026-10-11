@@ -453,3 +453,8 @@ Adicionado Tiefling ao catálogo base de criação de personagem com tamanho Peq
 ## Auditoria de falsos positivos — talentos
 
 O resolvedor de talentos agora retorna `nao_implementado` para talentos que só têm metadados de categoria e efeitos catalogados, mas ainda não possuem resolução mecânica específica. Apenas os talentos com um ramo explícito no resolvedor continuam retornando `resolvido`. Foram adicionados testes para um talento sem resolução, um ramo existente e um talento desconhecido. O catálogo de efeitos não deve ser interpretado como implementação completa dos talentos.
+
+
+## Normalização de nomes de talentos
+
+O resolvedor normaliza acentos, espaços e hífens nos nomes dos talentos antes da consulta. Isso evita que variações de digitação em português causem falsos “talento desconhecido”. A normalização não significa que os efeitos do talento estejam implementados; os talentos sem ramo mecânico específico continuam retornando `nao_implementado`.
