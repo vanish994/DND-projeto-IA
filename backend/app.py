@@ -394,6 +394,8 @@ def _diagnostico_erro_provedor(exc: Exception) -> tuple[str, int | None]:
         return ("O provedor recusou a chave de API. Confira TOKENHARBOR_API_KEY no Render.", status or 401)
     if tipo == "PermissionDeniedError" or status == 403:
         return ("O provedor negou acesso ao modelo. Confira a conta, permissões e modelo configurado.", status or 403)
+    if status == 402:
+        return ("O saldo de créditos do TokenHarbor parece insuficiente ou expirou. Abra o painel Billing para conferir a carteira e, se necessário, adicione créditos; depois tente novamente.", 402)
     if tipo == "RateLimitError" or status == 429:
         return ("O provedor atingiu um limite ou não tem cota disponível. Aguarde e confira os créditos/limites da conta.", status or 429)
     if tipo == "NotFoundError" or status == 404:
