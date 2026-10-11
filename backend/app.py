@@ -36,6 +36,7 @@ from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, Q
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
 from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS
 from rule_engine.ability_checks import resolver_salvaguarda
+from rule_engine.conditions import EstadoCondicoes, resolver_efeitos_condicao
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +181,13 @@ class AtualizarEquipamentoPersonagem(BaseModel):
     arma: str | None = Field(default=None, max_length=80)
     armadura: str | None = Field(default=None, max_length=80)
     escudo: bool = False
+
+
+class AtualizarCondicaoPersonagem(BaseModel):
+    operacao: str = Field(pattern="^(apply|remove|tick|query)$")
+    condicao: str | None = Field(default=None, max_length=40)
+    duracao: int | str | None = None
+    unidades: int = Field(default=1, ge=1, le=100)
 
 
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
@@ -678,6 +686,90 @@ def mensagem_mj(
         repo.criar(jogador, campanha_id=pedido.sessao_id)
     resposta = _responder(mj, repo, jogador, pedido.sessao_id, pedido.mensagem)
     return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta)
+
+
+def _condicoes_da_ficha(ficha: dict) -> EstadoCondicoes:
+    return EstadoCondicoes(
+        ativas=set(ficha.get("condicoes_ativas") or []),
+        imunidades=set(ficha.get("imunidades_condicoes") or []),
+        duracoes=dict(ficha.get("duracoes_condicoes") or {}),
+        exaustao=int(ficha.get("exaustao_nivel", 0)),
+    )
+
+
+def _salvar_condicoes_ficha(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem: dict, estado: EstadoCondicoes) -> dict:
+    dados = {k: v for k, v in personagem.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+    dados["condicoes_ativas"] = sorted(estado.ativas)
+    dados["imunidades_condicoes"] = sorted(estado.imunidades)
+    dados["duracoes_condicoes"] = dict(estado.duracoes)
+    dados["exaustao_nivel"] = estado.exaustao
+    atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], dados)
+    if atualizado is None:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return atualizado
+
+
+def _resolver_concentracao_apos_dano(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str, dano: int) -> dict | None:
+    """Aplica a salvaguarda de concentração ao dano real recebido pelo personagem."""
+    ficha = repo.obter_personagem(jogador, campanha_id, personagem_id)
+    if not ficha:
+        return None
+    magia = ficha.get("concentrando")
+    if not magia:
+        return {"resultado": "não_concentrando", "concentracao_mantida": False}
+    estado = _condicoes_da_ficha(ficha)
+    efeitos = resolver_efeitos_condicao({"action": "move", "target_conditions": list(estado.ativas)})
+    if ficha.get("pv_atual", 1) <= 0 or efeitos.get("encerra_concentracao"):
+        ficha_atualizada = {k: v for k, v in ficha.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+        ficha_atualizada["concentrando"] = None
+        repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, ficha_atualizada)
+        return {"resultado": "concentracao_encerrada", "concentracao_mantida": False, "motivo": "incapacitado_ou_inconsciente", "magia": magia}
+    modificadores = ficha.get("modificadores") or {}
+    profs = ficha.get("proficiencias_salvaguarda") or ficha.get("proficiencias_salvacao") or []
+    if isinstance(profs, str):
+        profs = [profs]
+    bonus = int(modificadores.get("constituicao", 0))
+    if "constituicao" in {str(p).casefold() for p in profs}:
+        bonus += int(ficha.get("bonus_proficiencia", 2))
+    rolagem = secrets.randbelow(20) + 1
+    resolucao = build_default_engine().evaluate({
+        "type": "concentration_check", "concentrating": True,
+        "damage": int(dano), "roll": rolagem, "constitution_modifier": bonus,
+    }).outcome
+    resolucao["magia"] = magia
+    resolucao["rolagem"] = rolagem
+    resolucao["bonus_constituicao"] = bonus
+    if not resolucao.get("concentracao_mantida"):
+        dados = {k: v for k, v in ficha.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+        dados["concentrando"] = None
+        repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, dados)
+    return resolucao
+
+
+@app.post("/v1/campanhas/{campanha_id}/personagens/{personagem_id}/condicoes")
+def atualizar_condicoes_personagem(
+    campanha_id: str,
+    personagem_id: str,
+    pedido: AtualizarCondicaoPersonagem,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    ficha = _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+    estado = _condicoes_da_ficha(ficha)
+    fatos = {"estado": estado, "operation": pedido.operacao, "units": pedido.unidades}
+    if pedido.operacao != "tick":
+        if not pedido.condicao:
+            raise HTTPException(status_code=422, detail="Informe a condição para aplicar, remover ou consultar")
+        fatos["condition"] = pedido.condicao
+    if pedido.operacao == "apply":
+        fatos["duration"] = pedido.duracao
+    try:
+        resultado = build_default_engine().evaluate({"type": "condition_state", **fatos}).outcome
+    except (TypeError, ValueError, KeyError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if pedido.operacao in {"apply", "remove", "tick"}:
+        ficha = _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, estado)
+    return {"personagem_id": personagem_id, "condicoes_ativas": sorted(estado.ativas), "duracoes": dict(estado.duracoes), "exaustao_nivel": estado.exaustao, "resolucao": resultado}
 
 
 def _calcular_ca_ficha(personagem: dict) -> int:
@@ -1361,6 +1453,7 @@ def atacar_com_monstro_tatico(
         defesas_aplicadas = _aplicar_defesas_monstro(dano, selecionado["tipo_dano"], defesas_alvo)
         dano = defesas_aplicadas["dano"]
         repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
+        concentracao = _resolver_concentracao_apos_dano(repo, jogador, campanha_id, alvo["character_id"], dano) if dano > 0 else None
 
     efeitos = []
     if ataque.get("result") == "hit" and selecionado.get("texto"):
@@ -1694,13 +1787,17 @@ def conjurar_no_mapa_tatico(
             dano_alvo = (dano_base // 2) if salvaguarda.get("sucesso") and mecanica.get("sucesso_metade") else (0 if salvaguarda.get("sucesso") else dano_base)
             if token_area["kind"] == "hero" and dano_alvo:
                 repo.ajustar_pv_personagem(jogador, campanha_id, token_area["character_id"], -dano_alvo)
+                concentracao_alvo = _resolver_concentracao_apos_dano(repo, jogador, campanha_id, token_area["character_id"], dano_alvo)
+                if concentracao_alvo:
+                    # Cada resultado de área expõe a checagem individual do alvo atingido.
+                    pass
             elif token_area["kind"] == "enemy" and dano_alvo:
                 estado_bruto_area = repo.obter_mapa_tatico(jogador, campanha_id) or {}
                 for bruto_area in estado_bruto_area.get("tokens", []):
                     if bruto_area.get("id") == token_area["id"]:
                         bruto_area["hp"] = max(0, int(bruto_area.get("hp", token_area["maxHp"])) - dano_alvo)
                 repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto_area)
-            resultados_area.append({"alvo_id": token_area["id"], "nome": token_area["name"], "salvaguarda": salvaguarda, "dados_dano": dados_area, "dano": dano_alvo})
+            resultados_area.append({"alvo_id": token_area["id"], "nome": token_area["name"], "salvaguarda": salvaguarda, "dados_dano": dados_area, "dano": dano_alvo, "concentracao": concentracao_alvo if token_area["kind"] == "hero" and dano_alvo else None})
         dano = sum(x["dano"] for x in resultados_area)
     else:
         raise HTTPException(status_code=422, detail="Esta magia ainda não tem efeito implementado no combate tático")
@@ -1713,6 +1810,7 @@ def conjurar_no_mapa_tatico(
             repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
         else:
             repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
+            concentracao_alvo = _resolver_concentracao_apos_dano(repo, jogador, campanha_id, alvo["character_id"], dano)
     if cura:
         if alvo["kind"] == "enemy":
             estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
@@ -1722,11 +1820,15 @@ def conjurar_no_mapa_tatico(
             repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
         else:
             repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], cura)
+    dados_ficha_conjurador = {k: v for k, v in ficha.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+    # Conjurar uma magia com concentração substitui a concentração anterior; magias sem concentração não a encerram.
+    if bool(magia.get("concentracao", magia.get("concentration", False))):
+        dados_ficha_conjurador["concentrando"] = nome
     if circulo > 0:
         restantes[str(espaco_usado)] = restantes.get(str(espaco_usado), 0) - 1
-        dados_ficha = {k: v for k, v in ficha.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
-        dados_ficha["conjuracao"] = {**conjuracao, "espacos_restantes": restantes, "espacos_totais": totais}
-        repo.atualizar_dados_ficha(jogador, campanha_id, conjurador["character_id"], dados_ficha)
+        dados_ficha_conjurador["conjuracao"] = {**conjuracao, "espacos_restantes": restantes, "espacos_totais": totais}
+    if circulo > 0 or bool(magia.get("concentracao", magia.get("concentration", False))):
+        repo.atualizar_dados_ficha(jogador, campanha_id, conjurador["character_id"], dados_ficha_conjurador)
     return {
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "magia": nome, "resolucao_motor": resolucao_magia,
