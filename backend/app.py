@@ -1177,6 +1177,17 @@ def _expandir_multiataque(monstro: dict, ataques: list[dict]) -> list[str] | Non
         return matches[0] if len(matches) == 1 else None
     palavras = {"one": 1, "once": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
     especificos = []
+    # Forma explícita: "one with its bite and one with its claws".
+    par = re.search(
+        r"\bone\s+with\s+(?:its|the)\s+([a-z][a-z -]*?)\s+and\s+one\s+with\s+(?:its|the)\s+([a-z][a-z -]*?)(?:[,.]|$)",
+        descricao, re.I,
+    )
+    if par:
+        primeiro = achar_ataque(par.group(1))
+        segundo = achar_ataque(par.group(2))
+        if primeiro and segundo:
+            return [primeiro, segundo]
+        return None
     padrao = r"\b(one|two|three|four|five|six|[1-6])\s+with\s+(?:its|the)\s+([a-z][a-z -]*?)(?=\s*(?:,|and\b|\\.|$))"
     for m in re.finditer(padrao, descricao, re.I):
         quantidade = palavras.get(m.group(1).casefold(), int(m.group(1)) if m.group(1).isdigit() else 0)
@@ -1613,18 +1624,38 @@ def conjurar_no_mapa_tatico(
             if token_area["kind"] == "enemy":
                 from rule_engine.bestiary import consultar_monstro
                 ficha_monstro = consultar_monstro(token_area.get("monster_name") or token_area["name"])
-                if not ficha_monstro or not ficha_monstro.get("salvaguardas") or not ficha_monstro.get("modificadores"):
+                if not ficha_monstro:
                     raise HTTPException(status_code=422, detail={
                         "motivo": "salvaguarda_monstro_indisponivel",
                         "alvo": token_area["name"],
-                        "detalhe": "O bloco não contém modificadores e salvaguardas estruturados. A área foi rejeitada sem gastar espaço.",
+                        "detalhe": "Não foi possível obter o bloco do monstro. A área foi rejeitada sem gastar espaço.",
+                    })
+                # Deriva os modificadores dos seis atributos quando o bloco não
+                # declara salvaguardas próprias; sem proficiência usa o modificador.
+                atributos_srd = ficha_monstro.get("atributos") or {}
+                mapa_atributos = {
+                    "for": "forca", "str": "forca", "des": "destreza", "dex": "destreza",
+                    "con": "constituicao", "int": "inteligencia",
+                    "sab": "sabedoria", "wis": "sabedoria", "car": "carisma", "cha": "carisma",
+                }
+                mods_monstro = dict(ficha_monstro.get("modificadores") or {})
+                for sigla, atributo_pt in mapa_atributos.items():
+                    valor = atributos_srd.get(sigla)
+                    if valor is not None and atributo_pt not in mods_monstro:
+                        mods_monstro[atributo_pt] = (int(valor) - 10) // 2
+                salvaguardas_monstro = dict(ficha_monstro.get("salvaguardas") or mods_monstro)
+                if not mods_monstro:
+                    raise HTTPException(status_code=422, detail={
+                        "motivo": "salvaguarda_monstro_indisponivel",
+                        "alvo": token_area["name"],
+                        "detalhe": "O bloco não contém atributos para derivar modificadores. A área foi rejeitada sem gastar espaço.",
                     })
                 fichas_alvos[token_area["id"]] = {
-                    "modificadores": ficha_monstro["modificadores"],
-                    "salvaguardas": ficha_monstro["salvaguardas"],
+                    "modificadores": mods_monstro,
+                    "salvaguardas": salvaguardas_monstro,
                     "proficiencias_salvaguarda": [
-                        atributo for atributo, bonus in ficha_monstro["salvaguardas"].items()
-                        if int(bonus) != int(ficha_monstro["modificadores"].get(atributo, 0))
+                        atributo for atributo, bonus in salvaguardas_monstro.items()
+                        if int(bonus) != int(mods_monstro.get(atributo, 0))
                     ],
                     "bonus_proficiencia": int(ficha_monstro.get("bonus_proficiencia", 2)),
                 }
