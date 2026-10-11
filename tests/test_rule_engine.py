@@ -944,11 +944,11 @@ class RuleEngineTests(unittest.TestCase):
         self.assertFalse(result.outcome["pode_realizar_reacoes"])
         self.assertTrue(result.outcome["falha_salvaguardas_forca_destreza"])
 
-    def test_incapacitated_creature_can_speak_but_cannot_attack(self):
+    def test_incapacitated_creature_cannot_speak_or_attack(self):
         from rule_engine import resolver_efeitos_condicao
         move = resolver_efeitos_condicao({"action": "move", "target_conditions": ["incapacitated"]})
         attack = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["incapacitated"], "target_conditions": []})
-        self.assertTrue(move["pode_falar"])
+        self.assertFalse(move["pode_falar"])
         self.assertEqual(attack["resultado"], "bloqueado")
 
     def test_frightened_and_poisoned_do_not_impose_saving_throw_disadvantage(self):
