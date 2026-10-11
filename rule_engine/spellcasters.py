@@ -1,11 +1,13 @@
 """Características centrais das classes conjuradoras do PHB 2024."""
 
+import unicodedata
+
 FULL_CASTER_SLOTS = {
     1: [2], 2: [3], 3: [4, 2], 4: [4, 3], 5: [4, 3, 2], 6: [4, 3, 3],
     7: [4, 3, 3, 1], 8: [4, 3, 3, 2], 9: [4, 3, 3, 3, 1], 10: [4, 3, 3, 3, 2],
     11: [4, 3, 3, 3, 2, 1], 12: [4, 3, 3, 3, 2, 1], 13: [4, 3, 3, 3, 2, 1, 1],
     14: [4, 3, 3, 3, 2, 1, 1], 15: [4, 3, 3, 3, 2, 1, 1, 1],
-    16: [4, 3, 3, 3, 2, 1, 1, 1], 17: [4, 3, 3, 3, 2, 1, 1, 1, 1],
+    16: [4, 3, 3, 3, 2, 1, 1, 1], 17: [4, 3, 3, 3, 3, 1, 1, 1, 1],
     18: [4, 3, 3, 3, 3, 1, 1, 1, 1], 19: [4, 3, 3, 3, 3, 2, 1, 1, 1],
     20: [4, 3, 3, 3, 3, 2, 2, 1, 1],
 }
@@ -17,18 +19,37 @@ def _mod(valor: int) -> int:
     return (int(valor) - 10) // 2
 
 
+def _normalizar_classe(valor: object) -> str:
+    texto = unicodedata.normalize("NFKD", str(valor).strip().lower())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return texto.replace("-", "_").replace(" ", "_")
+
+
+def _quantidade_truques(classe: str, nivel: int) -> int:
+    """Quantidade de truques conhecidos por classe e marcos do PHB 2024."""
+    base = {"bardo": 2, "clerigo": 3, "druida": 2, "mago": 3}[classe]
+    if nivel >= 10:
+        return base + 2
+    if nivel >= 4:
+        return base + 1
+    return base
+
+
 def resolver_progressao_conjuracao(fatos: dict) -> dict:
-    classe = str(fatos["classe"]).lower()
-    nivel = int(fatos["nivel"])
+    classe = _normalizar_classe(fatos.get("classe", ""))
+    try:
+        nivel = int(fatos.get("nivel", 0))
+    except (TypeError, ValueError):
+        nivel = 0
     if classe not in CASTING_ABILITY or not 1 <= nivel <= 20:
         return {"resultado": "bloqueado", "motivo": "classe_ou_nivel_invalido"}
     atributo = CASTING_ABILITY[classe]
     modificador = _mod(int(fatos.get(atributo, 10)))
-    preparados = max(1, nivel + modificador) if classe in {"clerigo", "druida"} else (4 + nivel if classe == "mago" else max(2, nivel + modificador))
+    preparados = max(1, nivel + modificador) if classe in {"clerigo", "druida", "mago"} else max(2, nivel + modificador)
     return {"resultado": "resolvido", "classe": classe, "atributo_conjuracao": atributo,
-            "espacos": FULL_CASTER_SLOTS[nivel], "magias_preparadas": preparados,
-            "truques": 3 if classe in {"bardo", "clerigo", "druida"} else 4,
-            "foco": "instrumento_musical" if classe == "bardo" else "simbolo_sagrado" if classe == "clerigo" else "foco_druida" if classe == "druida" else "foco_arcano_ou_livro"}
+            "espacos": list(FULL_CASTER_SLOTS[nivel]), "magias_preparadas": preparados,
+            "truques": _quantidade_truques(classe, nivel),
+            "foco": "instrumento_musical" if classe == "bardo" else "simbolo_sagrado" if classe == "clerigo" else "foco_druida" if classe == "druida" else "foco_arcano"}
 
 
 def resolver_inspiracao_bardo(fatos: dict) -> dict:
