@@ -884,8 +884,9 @@ class RuleEngineTests(unittest.TestCase):
         partial = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_velocidade", "nivel": 19})
         self.assertEqual(partial.outcome["resultado"], "nao_implementado")
         self.assertNotIn("deslocamento_adicional_m", partial.outcome)
-        result = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_visao_verdadeira", "nivel": 19})
-        self.assertEqual(result.outcome["visao_verdadeira_m"], 18)
+        true_sight = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_visao_verdadeira", "nivel": 19})
+        self.assertEqual(true_sight.outcome["resultado"], "nao_implementado")
+        self.assertNotIn("visao_verdadeira_m", true_sight.outcome)
 
     def test_spell_catalog_is_queryable_by_school_and_circle(self):
         from rule_engine import ESCOLAS, listar_magias, obter_magia
