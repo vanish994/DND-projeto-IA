@@ -83,6 +83,15 @@ def _modificadores(fatos: Mapping[str, Any], pericia: str | None = None) -> dict
         "vantagem_por_pericia_e_ferramenta": ferramenta and pericia_prof,
     }
 
+def _validar_modificadores(fatos: Mapping[str, Any]) -> str | None:
+    if not any(fatos.get(k) is not None for k in ("modificador_atributo", "valor_atributo", "ability_score")):
+        return "modificador_de_atributo_ausente"
+    proficiente = bool(fatos.get("proficiente", fatos.get("proficient", fatos.get("proficiente_pericia", fatos.get("skill_proficient", False)))))
+    expertise = bool(fatos.get("expertise", fatos.get("especialista", False)))
+    if (proficiente or expertise) and fatos.get("bonus_proficiencia") is None and fatos.get("nivel", fatos.get("level")) is None:
+        return "bonus_de_proficiencia_ausente"
+    return None
+
 def _cd(fatos: Mapping[str, Any]) -> int | None:
     valor = fatos.get("cd", fatos.get("dc"))
     if valor is None:
@@ -100,6 +109,9 @@ def resolver_teste_habilidade(fatos: Mapping[str, Any]) -> dict[str, Any]:
         return {"resultado": "bloqueado", "motivo": "pericia_desconhecida", "pericia": pericia}
     if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
         return {"resultado": "bloqueado", "motivo": "resultado_de_d20_ausente"}
+    erro_mod = _validar_modificadores(fatos)
+    if erro_mod:
+        return {"resultado": "bloqueado", "motivo": erro_mod}
     cd = _cd(fatos)
     if cd is None:
         return {"resultado": "bloqueado", "motivo": "cd_ausente"}
@@ -131,6 +143,9 @@ def resolver_teste_passivo(fatos: Mapping[str, Any]) -> dict[str, Any]:
     pericia = _normalizar_pericia(pericia_raw) if pericia_raw else None
     if pericia and pericia not in PERICIAS:
         return {"resultado": "bloqueado", "motivo": "pericia_desconhecida", "pericia": pericia}
+    erro_mod = _validar_modificadores(fatos)
+    if erro_mod:
+        return {"resultado": "bloqueado", "motivo": erro_mod}
     cd = _cd(fatos)
     mod = _modificadores(fatos, pericia)
     ajuste = 5 if mod["vantagem"] and not mod["desvantagem"] else -5 if mod["desvantagem"] and not mod["vantagem"] else 0
