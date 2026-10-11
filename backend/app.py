@@ -147,6 +147,7 @@ class AcaoAtaqueTatico(BaseModel):
     atacante_id: str = Field(min_length=1, max_length=80)
     alvo_id: str = Field(min_length=1, max_length=80)
     cobertura: str = Field(default="nenhuma", pattern="^(nenhuma|meia|tres_quartos|total)$")
+    arma: str | None = Field(default=None, max_length=80)
 
 
 class AtualizarMagiasPersonagem(BaseModel):
@@ -867,18 +868,54 @@ def atacar_token_tatico(
     })
     if geometria.get("resultado") != "permitido":
         raise HTTPException(status_code=422, detail={"motivo": geometria.get("motivo", "ataque_bloqueado"), "geometria": geometria})
+    ficha_atacante = repo.obter_personagem(jogador, campanha_id, atacante["character_id"])
+    if not ficha_atacante:
+        raise HTTPException(status_code=404, detail="Ficha do atacante não encontrada")
+    equipamento = ficha_atacante.get("equipamento") or {}
+    nome_arma = pedido.arma or equipamento.get("arma")
+    modificadores = int(atacante.get("str_mod", 0))
+    dados_arma: list[int] = []
+    if nome_arma:
+        arma = CATALOGO_ARMAS.get(nome_arma)
+        if not arma:
+            raise HTTPException(status_code=422, detail="Arma não encontrada no catálogo")
+        profs = ficha_atacante.get("proficiencias_classe") or {}
+        prof_armas = set(profs.get("armas", [])) if isinstance(profs, dict) else set()
+        armas_simples = {"Clava", "Clava Grande", "Adaga", "Dardo", "Machadinha", "Martelo Leve", "Maça", "Cajado", "Funda", "Azagaia", "Arco Curto", "Besta Leve"}
+        categoria_arma = "simples" if nome_arma in armas_simples else "marciais"
+        if categoria_arma not in prof_armas:
+            raise HTTPException(status_code=422, detail="A ficha não confirma proficiência com esta arma")
+        if int(arma.get("alcance", 0)) > 0:
+            raise HTTPException(status_code=422, detail="Armas à distância/arremesso ainda não estão implementadas neste ataque; use uma arma corpo a corpo")
+        if "extensao" in arma.get("propriedades", []):
+            alcance_corpo_a_corpo = 10
+        else:
+            alcance_corpo_a_corpo = 5
+        distancia_pes = max(abs(int(atacante["x"]) - int(alvo["x"])), abs(int(atacante["y"]) - int(alvo["y"]))) * 5
+        if distancia_pes > alcance_corpo_a_corpo:
+            raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_pes": alcance_corpo_a_corpo})
+        try:
+            qtd, lados = map(int, arma["dano"].lower().split("d"))
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=422, detail="Dado de dano inválido no catálogo")
+        dados_arma = [secrets.randbelow(lados) + 1 for _ in range(qtd)]
+        if "acuidade" in arma.get("propriedades", []) and int(atacante.get("dex_mod", 0)) > modificadores:
+            modificadores = int(atacante.get("dex_mod", 0))
+    bonus = int(atacante.get("proficiency", 2)) + modificadores
     rolagem = secrets.randbelow(20) + 1
-    modificadores = atacante.get("str_mod", 0)
-    bonus = int(atacante.get("proficiency", 2)) + int(modificadores)
     engine = build_default_engine()
     ataque = engine.evaluate({"type": "attack", "roll": rolagem, "modifier": bonus, "target_ac": int(alvo["ac"])}).outcome
     if rolagem == 1:
         ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
     dano = 0
     if ataque.get("result") == "hit":
+        dados_dano = list(dados_arma)
+        if ataque.get("critical") and nome_arma:
+            dados_dano += list(dados_arma)
+        modificador_dano = int(modificadores) if nome_arma else max(0, 1 + int(modificadores))
         dano_resolvido = engine.evaluate({
-            "type": "damage", "damage_dice": [], "damage_modifier": max(0, 1 + int(modificadores)),
-            "critical": bool(ataque.get("critical", False)),
+            "type": "damage", "damage_dice": dados_dano, "damage_modifier": modificador_dano,
+            "critical": False,
         }).outcome
         dano = max(0, int(dano_resolvido.get("total", 0)))
         if alvo["kind"] == "enemy":
@@ -893,7 +930,9 @@ def atacar_token_tatico(
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "ataque": ataque, "dano": dano, "rolagem": rolagem, "bonus_ataque": bonus,
         "geometria": geometria,
-        "nota": "Ataque desarmado básico; CA de personagem sem equipamento é uma referência provisória. Armas, magias, condições e ações próprias dos monstros ainda precisam ser conectadas.",
+        "arma": nome_arma or "Ataque desarmado",
+        "ca_alvo": int(alvo["ac"]),
+        "nota": "CA calculada a partir do equipamento registrado. Armas corpo a corpo usam dados do catálogo; ataques à distância, magias, condições e ações de monstros ainda precisam ser conectados.",
     }
 
 
