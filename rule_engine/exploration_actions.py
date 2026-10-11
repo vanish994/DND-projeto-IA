@@ -85,7 +85,7 @@ def resolver_acao_influenciar(fatos: Mapping[str, Any]) -> dict[str, Any]:
 def resolver_fim_esconderijo(fatos: Mapping[str, Any]) -> dict[str, Any]:
     """Aplica os eventos que encerram imediatamente o estado de escondido no PHB 2024."""
     escondido = bool(fatos.get("escondido", True))
-    evento = str(fatos.get("evento", facts.get("event", ""))).strip().lower().replace(" ", "_")
+    evento = str(fatos.get("evento", fatos.get("event", ""))).strip().lower().replace(" ", "_")
     aliases = {"loud_sound": "som_alto", "enemy_finds": "inimigo_encontra", "attack_roll": "rolagem_de_ataque", "verbal_spell": "magia_com_componente_verbal"}
     evento = aliases.get(evento, evento)
     encerra = evento in {"som_alto", "inimigo_encontra", "rolagem_de_ataque", "ataque", "magia_com_componente_verbal", "magia_verbal"}
