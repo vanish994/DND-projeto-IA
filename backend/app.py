@@ -32,7 +32,7 @@ from rule_engine import (
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine.spells import listar_magias, obter_magia
-from rule_engine.character import PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE
+from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
 
 logger = logging.getLogger(__name__)
@@ -114,6 +114,7 @@ class NovoPersonagem(BaseModel):
     aumentos_antecedente: dict[str, int]
     talento_antecedente: str | None = None
     pericias_classe: list[str] | None = Field(default=None, max_length=10)
+    ferramenta_artesao: str | None = Field(default=None, max_length=80)
 
 
 class AtualizarPersonagem(BaseModel):
@@ -155,6 +156,7 @@ class AtualizarMagiasPersonagem(BaseModel):
 
 class AtualizarProficienciasPersonagem(BaseModel):
     pericias_classe: list[str] = Field(min_length=1, max_length=10)
+    ferramenta_artesao: str | None = Field(default=None, max_length=80)
 
 
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
@@ -177,6 +179,7 @@ def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
             "background_increases": dados.aumentos_antecedente,
             "background_feat": dados.talento_antecedente,
             **({"class_skill_proficiencies": dados.pericias_classe} if dados.pericias_classe is not None else {}),
+            **({"artisan_tool_proficiency": dados.ferramenta_artesao} if dados.ferramenta_artesao is not None else {}),
         })
     except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc).strip("'\"")) from exc
@@ -376,6 +379,7 @@ def catalogo_personagens() -> dict:
         "dadivas_sombrias": sorted(DARK_GIFT_FEATS),
         "pericias_classe_opcoes": {classe: sorted(opcoes) for classe, opcoes in PERICIAS_CLASSE_OPCOES.items()},
         "quantidade_pericias_classe": dict(QUANTIDADE_PERICIAS_CLASSE),
+        "ferramentas_artesao": sorted(FERRAMENTAS_ARTESAO),
         "matriz_padrao": sorted(gerar_atributos_matriz_padrao().values(), reverse=True),
         "compra_pontos": {"total": 27, "custos": {8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}},
     }
@@ -487,6 +491,7 @@ def atualizar_proficiencias_personagem(
     personagem = _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
     entrada = dict(personagem.get("entrada") or {})
     entrada["pericias_classe"] = dados.pericias_classe
+    entrada["ferramenta_artesao"] = dados.ferramenta_artesao
     try:
         novo = NovoPersonagem.model_validate(entrada)
         nova_entrada, nova_ficha = _resolver_ficha(novo)
