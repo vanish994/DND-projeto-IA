@@ -1053,11 +1053,14 @@ def mover_token_tatico(
         if not atualizado:
             raise HTTPException(status_code=404, detail="Personagem não encontrado")
     token["x"], token["y"] = destino
-    repo.salvar_mapa_tatico(jogador, campanha_id, {
+    bruto_mapa = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+    mapa_atualizado = {
+        **{k: bruto_mapa[k] for k in ("iniciativa", "turno_indice", "rodada", "combate_ativo") if k in bruto_mapa},
         "title": estado["title"], "terrain": estado["terrain"],
         "tokens": [{k: t[k] for k in ("id", "kind", "character_id", "monster_name", "x", "y", "hp", "maxHp") if k in t} for t in tokens],
-        "bloqueados": [], "terreno_dificil": [],
-    })
+        "bloqueados": bruto_mapa.get("bloqueados", []), "terreno_dificil": bruto_mapa.get("terreno_dificil", []),
+    }
+    repo.salvar_mapa_tatico(jogador, campanha_id, mapa_atualizado)
     return {"mapa": _estado_mapa_normalizado(repo, jogador, campanha_id), "resolucao": resolucao}
 
 
