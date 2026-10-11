@@ -10,7 +10,7 @@ from .combat_special import (
 )
 from .engine import Rule, RuleEngine
 from .ability_checks import resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica, resolver_salvaguarda, resolver_iniciativa
-from .exploration_actions import resolver_acao_esconder, resolver_acao_influenciar, resolver_fim_esconderijo, resolver_acao_procurar, resolver_acao_ajudar
+from .exploration_actions import resolver_acao_esconder, resolver_acao_influenciar, resolver_fim_esconderijo, resolver_acao_procurar, resolver_acao_ajudar, resolver_acao_estudar
 from .combat_geometry import (
     resolver_ataque_geometria, resolver_alcance, resolver_cobertura,
     resolver_queda, resolver_linha_de_visao, espaco_por_tamanho,
@@ -979,5 +979,11 @@ def build_default_engine() -> RuleEngine:
         description="Prepara vantagem para o próximo teste ou ataque com a ação Ajuda.",
         priority=70, when=lambda f: f["type"] == "help_action",
         resolve=resolver_acao_ajudar, source="D&D 2024 — Help",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.study",
+        description="Resolve Study usando as perícias de Inteligência do PHB 2024.",
+        priority=70, when=lambda f: f["type"] == "study_action",
+        resolve=resolver_acao_estudar, source="D&D 2024 — Study",
     ))
     return engine
