@@ -1067,6 +1067,24 @@ def _aplicar_defesas_monstro(dano: int, tipo_dano: str, monstro: dict) -> dict:
             "aplicacao": "normal", "fator": 1}
 
 
+def _defesas_personagem(ficha: dict) -> dict:
+    """Normaliza defesas de dano opcionais da ficha do personagem."""
+    def lista(*chaves):
+        for chave in chaves:
+            valor = ficha.get(chave)
+            if valor:
+                if isinstance(valor, str):
+                    return [parte.strip() for parte in valor.replace(";", ",").split(",") if parte.strip()]
+                if isinstance(valor, (list, tuple, set)):
+                    return [str(parte).strip() for parte in valor if str(parte).strip()]
+        return []
+    return {
+        "resistencias_dano": lista("resistencias_dano", "resistencias", "damage_resistances"),
+        "imunidades_dano": lista("imunidades_dano", "imunidades", "damage_immunities"),
+        "vulnerabilidades_dano": lista("vulnerabilidades_dano", "vulnerabilidades", "damage_vulnerabilities"),
+    }
+
+
 def _acoes_monstro_como_lista(monstro: dict) -> list[str]:
     """Normaliza as ações do bloco SRD sem inventar ataques ausentes."""
     acoes = monstro.get("acoes", [])
@@ -1324,7 +1342,13 @@ def atacar_com_monstro_tatico(
         if ataque.get("critical"):
             dados_dano += [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
         dano = max(0, sum(dados_dano) + modificador) if ataque.get("result") == "hit" else 0
-    if dano:
+    dano_bruto = dano
+    defesas_aplicadas = None
+    if dano and ataque.get("result") == "hit":
+        ficha_alvo = repo.obter_personagem(jogador, campanha_id, alvo["character_id"]) or {}
+        defesas_alvo = _defesas_personagem(ficha_alvo)
+        defesas_aplicadas = _aplicar_defesas_monstro(dano, selecionado["tipo_dano"], defesas_alvo)
+        dano = defesas_aplicadas["dano"]
         repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
 
     efeitos = []
@@ -1412,7 +1436,9 @@ def atacar_com_monstro_tatico(
         "rolagem": rolagem, "rolagens": [rolagem, *rolagens_extra],
         "bonus_ataque": selecionado["bonus_ataque"],
         "dados_dano": dados_dano if ataque.get("result") == "hit" else [],
-        "dano": dano, "tipo_dano": selecionado["tipo_dano"], "geometria": geometria,
+        "dano": dano, "dano_bruto": dano_bruto,
+        "defesas_dano": defesas_aplicadas,
+        "tipo_dano": selecionado["tipo_dano"], "geometria": geometria,
         "efeitos": efeitos,
         "nota": "Ataques e salvaguardas dos efeitos secundários são resolvidos quando a descrição é reconhecida; duração e fim de condições dependem do controle de turnos, ainda não automatizado.",
     }
