@@ -312,6 +312,18 @@ class RepositorioCampanhas:
             conn.execute(update(personagens).where(personagens.c.id == personagem_id).values(**valores))
         return self.obter_personagem(jogador_id, campanha_id, personagem_id)
 
+    def atualizar_dados_ficha(self, jogador_id: str, campanha_id: str, personagem_id: str, ficha: dict[str, Any]) -> dict[str, Any] | None:
+        """Atualiza escolhas complementares sem alterar PV ou dados de criação."""
+        if self.obter_personagem(jogador_id, campanha_id, personagem_id) is None:
+            return None
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(personagens)
+                .where(personagens.c.id == personagem_id, personagens.c.campanha_id == campanha_id)
+                .values(ficha=json.dumps(ficha, ensure_ascii=False), atualizado_em=_agora())
+            )
+        return self.obter_personagem(jogador_id, campanha_id, personagem_id)
+
     def ajustar_pv_personagem(self, jogador_id: str, campanha_id: str, personagem_id: str, delta: int) -> dict[str, Any] | None:
         """Aplica dano/cura como operação atômica, sem valores absolutos obsoletos."""
         atual = self.obter_personagem(jogador_id, campanha_id, personagem_id)
