@@ -1,11 +1,11 @@
-"""Estado persistente e efeitos das 16 condições do Livro do Jogador 2024."""
+"""Estado persistente e efeitos das 15 condições do Livro do Jogador 2024."""
 from __future__ import annotations
 from dataclasses import dataclass, field
 import unicodedata
 from typing import Any, Mapping
 
-CONDICOES = {"cego", "enfeiticado", "surdo", "exaustao", "amedrontado", "agarrado", "incapacitado", "invisivel", "paralisado", "petrificado", "envenenado", "caido", "contido", "lento", "atordoado", "inconsciente"}
-ALIASES = {"blinded": "cego", "charmed": "enfeiticado", "deafened": "surdo", "exhaustion": "exaustao", "frightened": "amedrontado", "grappled": "agarrado", "incapacitated": "incapacitado", "invisible": "invisivel", "paralyzed": "paralisado", "petrified": "petrificado", "poisoned": "envenenado", "prone": "caido", "restrained": "contido", "slowed": "lento", "stunned": "atordoado", "unconscious": "inconsciente"}
+CONDICOES = {"cego", "enfeiticado", "surdo", "exaustao", "amedrontado", "agarrado", "incapacitado", "invisivel", "paralisado", "petrificado", "envenenado", "caido", "contido", "atordoado", "inconsciente"}
+ALIASES = {"blinded": "cego", "charmed": "enfeiticado", "deafened": "surdo", "exhaustion": "exaustao", "frightened": "amedrontado", "grappled": "agarrado", "incapacitated": "incapacitado", "invisible": "invisivel", "paralyzed": "paralisado", "petrified": "petrificado", "poisoned": "envenenado", "prone": "caido", "restrained": "contido", "stunned": "atordoado", "unconscious": "inconsciente"}
 
 
 def _chave(valor: str) -> str:
@@ -34,17 +34,23 @@ class EstadoCondicoes:
     def __post_init__(self) -> None:
         self.ativas = {normalizar_condicao(c) for c in self.ativas}
         self.imunidades = {normalizar_condicao(c) for c in self.imunidades}
-        self.exaustao = max(0, int(self.exaustao))
+        for condicao in self.ativas | self.imunidades:
+            validar_condicao(condicao)
+        self.exaustao = min(6, max(0, int(self.exaustao)))
+        if self.exaustao:
+            self.ativas.add("exaustao")
 
     def aplicar(self, condicao: str, duracao: int | str | None = None) -> dict[str, Any]:
         c = normalizar_condicao(condicao)
         validar_condicao(c)
+        if c in self.imunidades:
+            return {"resultado": "não_aplicada", "motivo": "imune", "condicao": c}
+        if isinstance(duracao, int) and duracao < 1:
+            raise ValueError("A duração deve ser positiva")
         if c == "exaustao":
             self.exaustao = min(6, self.exaustao + max(1, int(duracao or 1)))
             self.ativas.add(c)
-            return {"resultado": "aplicada", "condicao": c, "nivel": self.exaustao}
-        if c in self.imunidades:
-            return {"resultado": "não_aplicada", "motivo": "imune", "condicao": c}
+            return {"resultado": "aplicada", "condicao": c, "nivel": self.exaustao, "morto": self.exaustao >= 6}
         if c in self.ativas:
             if duracao is not None:
                 self.duracoes[c] = duracao
@@ -94,6 +100,7 @@ def resolver_estado_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if operacao == "tick":
         return {"resultado": "durações_reduzidas", "encerradas": estado.reduzir_duracoes(fatos.get("units", 1))}
     if operacao == "query":
+        validar_condicao(c)
         return {"resultado": "ativa" if c in estado.ativas else "não_ativa", "condicao": c, "nivel_exaustao": estado.exaustao}
     raise ValueError("Operação de condição inválida")
 
@@ -102,21 +109,43 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     alvo = {normalizar_condicao(c) for c in fatos.get("target_conditions", fatos.get("condicoes_alvo", ())) }
     atacante = {normalizar_condicao(c) for c in fatos.get("attacker_conditions", fatos.get("condicoes_atacante", ())) }
     acao = str(fatos.get("action", "")).lower()
-    distancia = str(fatos.get("distance", "corpo_a_corpo")).lower()
+    distancia_raw = fatos.get("distance")
+    distancia = str(distancia_raw).lower() if distancia_raw is not None else None
     resultado: dict[str, Any] = {"tipo": "condition_effect", "resultado": "normal", "result": "normal"}
 
     if acao == "attack":
-        vantagem = bool({"cego", "contido", "paralisado", "atordoado", "inconsciente"} & alvo) or "invisivel" in atacante or "cego" in atacante
-        desvantagem = bool({"cego", "envenenado", "contido"} & atacante) or "invisivel" in alvo
+        incapacitantes_atacante = {"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & atacante
+        if incapacitantes_atacante:
+            return {**resultado, "resultado": "bloqueado", "result": "blocked", "motivo": "atacante_incapacitado", "condicoes": sorted(incapacitantes_atacante)}
+        if "enfeiticado" in atacante and fatos.get("alvo_e_enfeiticador", False):
+            return {**resultado, "resultado": "bloqueado", "result": "blocked", "motivo": "nao_pode_atacar_ou_afetar_enfeiticador"}
+        atacante_invisivel_visto = bool(fatos.get("alvo_pode_ver_atacante", False))
+        alvo_invisivel_visto = bool(fatos.get("atacante_pode_ver_alvo", False))
+        vantagem = bool({"cego", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo) or ("invisivel" in atacante and not atacante_invisivel_visto)
+        desvantagem = bool({"cego", "envenenado", "contido", "caido"} & atacante) or ("invisivel" in alvo and not alvo_invisivel_visto)
+        if "agarrado" in atacante and not fatos.get("alvo_e_agarrador", False):
+            desvantagem = True
         if "amedrontado" in atacante and fatos.get("fonte_no_campo_de_visao", True):
             desvantagem = True
-        if "caido" in alvo and distancia != "corpo_a_corpo":
+        if fatos.get("alvo_esquivando", False) and fatos.get("atacante_visivel_para_alvo", True):
             desvantagem = True
-        if "caido" in alvo and distancia == "corpo_a_corpo":
-            vantagem = True
+        if "caido" in alvo:
+            distancia_m = fatos.get("distancia_m", fatos.get("distance_m"))
+            if distancia_m is not None:
+                if float(distancia_m) <= 1.5:
+                    vantagem = True
+                else:
+                    desvantagem = True
+            elif distancia == "corpo_a_corpo":
+                vantagem = True
+            elif distancia in {"a_distancia", "ranged", "distancia"}:
+                desvantagem = True
+            else:
+                resultado["distancia_indefinida_para_caido"] = True
         resultado["resultado"] = "normal" if vantagem == desvantagem else "vantagem" if vantagem else "desvantagem"
         resultado["result"] = resultado["resultado"]
-        resultado["acerto_critico_automatico"] = bool({"paralisado", "inconsciente"} & alvo and distancia == "corpo_a_corpo")
+        distancia_m = fatos.get("distancia_m", fatos.get("distance_m"))
+        resultado["acerto_critico_automatico"] = bool({"paralisado", "inconsciente"} & alvo and distancia_m is not None and float(distancia_m) <= 1.5)
         return resultado
 
     incapacitado = {"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo
@@ -125,19 +154,29 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         "deslocamento": 0 if {"agarrado", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo else "normal",
         "pode_realizar_acoes": not bool(incapacitado),
         "pode_realizar_reacoes": not bool(incapacitado),
-        "pode_falar": not bool({"incapacitado", "inconsciente"} & alvo),
+        "pode_falar": not bool({"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo),
         "pode_ver": "cego" not in alvo,
         "pode_ouvir": "surdo" not in alvo,
-        "desvantagem_salvaguardas": bool({"amedrontado", "envenenado", "contido"} & alvo),
+        "falha_automaticamente_teste_que_exige_visao": "cego" in alvo,
+        "falha_automaticamente_teste_que_exige_audicao": "surdo" in alvo,
+        "encerra_concentracao": bool(incapacitado),
+        "desvantagem_salvaguardas": False,
         "desvantagem_salvaguarda_destreza": "contido" in alvo,
+        "desvantagem_testes_habilidade": ("envenenado" in alvo) or ("amedrontado" in alvo and fatos.get("fonte_no_campo_de_visao", True)),
         "falha_salvaguardas_forca_destreza": bool({"paralisado", "petrificado", "atordoado", "inconsciente"} & alvo),
     })
     if "petrificado" in alvo:
-        resultado.update({"resistencia_todos_danos": True, "imune_envenenado_e_doenca": True})
+        resultado.update({"resistencia_todos_danos": True, "imune_envenenado_e_doenca": True, "pode_falar": False, "peso_multiplicado": 10, "envelhecimento_suspenso": True})
+    if "inconsciente" in alvo:
+        resultado.update({"tambem_caido": True, "derruba_objetos_empunhados": True, "desatento_ao_ambiente": True})
+    if "agarrado" in alvo and (fatos.get("agarrador_incapacitado", False) or fatos.get("distancia_agarrador_m") is not None and float(fatos["distancia_agarrador_m"]) > float(fatos.get("alcance_agarrador_m", 1.5))):
+        resultado["agarrado_termina"] = True
     if "amedrontado" in alvo:
         resultado["não_pode_se_aproximar_da_fonte"] = True
     if "enfeiticado" in alvo:
-        resultado["não_pode_atacar_o_enfeiticador"] = True
+        resultado.update({"não_pode_atacar_o_enfeiticador": True, "não_pode_afetar_o_enfeiticador_com_efeito_nocivo": True})
+        if fatos.get("atacante_e_enfeiticador", False):
+            resultado["vantagem_em_testes_sociais_contra_alvo"] = True
     if "invisivel" in alvo:
         resultado["não_pode_ser_visto"] = True
     if "caido" in alvo:
@@ -146,7 +185,7 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if "exaustao" in alvo:
         nivel = int(fatos.get("exaustao_niveis", fatos.get("exhaustion_niveis", fatos.get("exhaustion_levels", 1))))
         resultado["modificador_d20"] = -2 * nivel
-    if "lento" in alvo:
-        resultado["deslocamento_reduzido_m"] = int(fatos.get("reducao_lento_m", 3))
-        resultado["deslocamento_reduzido"] = True
+        resultado["deslocamento_reduzido_m"] = 1.5 * nivel
+        resultado["morre_no_nivel_6"] = nivel >= 6
+
     return resultado
