@@ -27,6 +27,7 @@ from rule_engine import (
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine.spells import listar_magias, obter_magia
+from rule_engine.spells import listar_magias, obter_magia
 
 logger = logging.getLogger(__name__)
 
