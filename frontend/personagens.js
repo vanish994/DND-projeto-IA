@@ -125,6 +125,44 @@
     const atributoMagia = ({bardo:'carisma', clerigo:'sabedoria', druida:'sabedoria', paladino:'carisma', guardiao:'sabedoria', feiticeiro:'carisma', bruxo:'carisma', mago:'inteligencia', artifice:'inteligencia'})[p.classe];
     const cdMagia = atributoMagia ? 8 + p.bonus_proficiencia + modificador(atributoMagia) : null;
     const ataqueMagia = atributoMagia ? p.bonus_proficiencia + modificador(atributoMagia) : null;
+    const equipamentoAtual = p.equipamento || {};
+    const armaSelect = el('select', {className: 'field-control', ariaLabel: 'Arma equipada'});
+    armaSelect.append(el('option', {value: '', textContent: 'Sem arma equipada'}));
+    for (const arma of ['Adaga', 'Clava', 'Clava Grande', 'Machadinha', 'Martelo Leve', 'Maça', 'Cajado', 'Espada Curta', 'Espada Longa', 'Rapieira', 'Cimitarra', 'Machado de Batalha', 'Martelo de Guerra', 'Arco Curto', 'Besta Leve', 'Besta de Mão']) {
+      armaSelect.append(el('option', {value: arma, textContent: arma}));
+    }
+    armaSelect.value = equipamentoAtual.arma || '';
+    const armaduraSelect = el('select', {className: 'field-control', ariaLabel: 'Armadura equipada'});
+    armaduraSelect.append(el('option', {value: '', textContent: 'Sem armadura'}));
+    for (const armadura of ['Acolchoada', 'Couro', 'Couro Batido', 'Gibão de Peles', 'Cota de Malha Parcial', 'Loriga de Escamas', 'Couraça Peitoral', 'Placas Parcial', 'Cota de Anéis', 'Cota de Malha', 'Armadura de Talas', 'Placas']) {
+      armaduraSelect.append(el('option', {value: armadura, textContent: armadura}));
+    }
+    armaduraSelect.value = equipamentoAtual.armadura || '';
+    const escudoCheck = el('input', {type: 'checkbox', checked: Boolean(equipamentoAtual.escudo)});
+    const equipamentoStatus = el('p', {className: 'choice-meta', role: 'status', textContent: 'CA calculada pelo equipamento registrado.'});
+    const salvarEquipamento = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar equipamento'});
+    salvarEquipamento.addEventListener('click', async () => {
+      salvarEquipamento.disabled = true;
+      equipamentoStatus.textContent = 'Validando equipamento e proficiências…';
+      try {
+        const atualizado = await api(url('/' + encodeURIComponent(p.id) + '/equipamento'), {
+          method: 'PATCH',
+          body: JSON.stringify({arma: armaSelect.value || null, armadura: armaduraSelect.value || null, escudo: escudoCheck.checked}),
+        });
+        Object.assign(p, atualizado);
+        equipamentoStatus.textContent = 'Equipamento salvo. O mapa calculará a CA e o dano da arma.';
+        mostrarFicha(p);
+      } catch (erro) {
+        equipamentoStatus.textContent = 'Não foi possível equipar: ' + erro.message;
+        salvarEquipamento.disabled = false;
+      }
+    });
+    const secaoEquipamento = el('section', {className: 'spell-sheet'},
+      el('h3', {textContent: 'Armas e armadura'}),
+      el('label', {className: 'field-label', textContent: 'Arma equipada'}, armaSelect),
+      el('label', {className: 'field-label', textContent: 'Armadura'}, armaduraSelect),
+      el('label', {className: 'field-label'}, escudoCheck, document.createTextNode(' Escudo (+2 CA)')),
+      equipamentoStatus, salvarEquipamento);
     const apagar = el('button', {type: 'button', className: 'danger-button', textContent: 'Apagar personagem'});
     apagar.addEventListener('click', async () => {
       if (!window.confirm(`Apagar ${p.nome}? Esta ação não pode ser desfeita.`)) return;
@@ -156,6 +194,7 @@
         ...fato('Ferramenta de antecedente', p.ferramenta || '—'),
         ...fato('Talentos', p.talentos.map(talentoNome).join(', ') || '—'),
         ...fato('Equipamento inicial', equip)),
+      secaoEquipamento,
       apagar);
     carregarProficienciasClasse(p);
     carregarConjuracao(p);
