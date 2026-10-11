@@ -127,6 +127,12 @@ Adicionado `ability_checks.py` e integração ao `build_default_engine()` para:
 
 Os testes foram adicionados em `tests/test_ability_checks.py`. **Ainda não há confirmação de execução da suíte pelo GitHub Actions**, portanto este lote está implementado, mas não marcado como validado.
 
+## Lote de fundamentos — salvaguardas e iniciativa
+
+Ampliado o módulo `ability_checks.py` com `saving_throw_check` e `initiative_check`. Salvaguardas agora podem calcular o modificador do atributo e aplicar a proficiência declarada para aquele atributo; iniciativa usa Destreza e aceita bônus explícitos de características. Ambos validam a presença dos fatos necessários e aceitam vantagem/desvantagem com os mesmos controles de rolagem.
+
+Testes de integração foram adicionados. A execução automatizada continua sem confirmação; o lote não é considerado validado até que a suíte seja executada.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
@@ -137,14 +143,12 @@ Os testes foram adicionados em `tests/test_ability_checks.py`. **Ainda não há 
 - Multiplicação e divisão do Bônus de Proficiência no máximo uma vez.
 - Testes resistidos.
 - Regra para decidir quando não pedir um teste.
-- Proficiência em salvaguardas integrada ao cálculo.
 - Proficiência em ferramentas.
 - Rerrolagem/substituição de um único dado sob Vantagem ou Desvantagem.
 - Interação social estruturada com atitude, objetivo, medo, desejo, simpatia e reação de NPC.
 
 ### 2. Combate e ações
 
-- Iniciativa com modificador de Destreza integrado.
 - Surpresa conforme percepção e estado Incapacitado.
 - Grid, quadrados, diagonais, cantos e distância.
 - Tamanho e espaço ocupado por criaturas.
