@@ -43,6 +43,7 @@ from .economy import comprar_item, consultar_item, resolver_inventario, resolver
 from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
 from .class_features import resolver_caracteristica
 from .bestiary import resolver_bestiario
+from .dice import rolar_d20_auditavel
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -68,6 +69,14 @@ def build_default_engine() -> RuleEngine:
     """
 
     engine = RuleEngine()
+    engine.register(Rule(
+        rule_id="ability-check.engine-roll",
+        description="O motor gera um d20 auditável; a CD pode ser definida pelo MJ.",
+        priority=80,
+        when=lambda f: f["type"] == "ability_check" and "roll" not in f,
+        resolve=rolar_d20_auditavel,
+        source="D&D 2024 — teste de d20; rolagem auditável do motor",
+    ))
     engine.register(Rule(
         rule_id="ability-check.natural-20",
         description="Um 20 natural resolve o teste como sucesso automático.",

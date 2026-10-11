@@ -26,6 +26,13 @@ ferramentas disponíveis. Nunca invente conteúdo mecânico e nunca apresente um
 regra caseira como oficial. Se o Rule Engine bloquear ou não encontrar algo,
 informe isso claramente e peça uma decisão narrativa ao MJ.
 
+Em testes de habilidade, o MJ pode definir a CD, mas nunca forneça ou invente o
+resultado do d20. Chame resolver_regra com type=ability_check, ability, skill,
+modifier e, se já definida, dc. O motor gera o d20 e devolve uma seed auditável.
+Se a resposta vier com result=requires_dc, peça ao MJ a CD e repita o teste com
+a mesma seed para reproduzir a rolagem. Só narre sucesso ou falha após a resposta
+final do motor.
+
 As ferramentas devolvem dados normativos. Você decide como apresentar e narrar
 o resultado, sem alterar os valores oficiais. A escolha final de monstros e o
 rumo da história permanecem com o MJ.
@@ -79,7 +86,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "resolver_regra",
-            "description": "Resolve fatos mecânicos usando o Rule Engine determinístico.",
+            "description": "Resolve fatos mecânicos usando o Rule Engine; em ability_check sem roll, o motor gera o d20 auditável.",
             "parameters": {
                 "type": "object",
                 "properties": {

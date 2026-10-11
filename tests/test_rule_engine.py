@@ -1073,5 +1073,19 @@ class RuleEngineTests(unittest.TestCase):
         self.assertTrue(soul.outcome["reacao_evitar_morte"])
 
 
+    def test_engine_generates_auditable_d20_and_waits_for_mj_dc(self):
+        pending = self.engine.evaluate({
+            "type": "ability_check", "ability": "carisma", "skill": "persuasao",
+            "modifier": 5, "seed": "teste-persuasao",
+        })
+        self.assertEqual(pending.outcome["result"], "requires_dc")
+        self.assertEqual(pending.outcome["roll_source"], "rule_engine")
+        resolved = self.engine.evaluate({
+            "type": "ability_check", "ability": "carisma", "skill": "persuasao",
+            "modifier": 5, "dc": 15, "seed": pending.outcome["seed"],
+        })
+        self.assertEqual(resolved.outcome["roll"], pending.outcome["roll"])
+        self.assertEqual(resolved.outcome["total"], resolved.outcome["roll"] + 5)
+
 if __name__ == "__main__":
     unittest.main()

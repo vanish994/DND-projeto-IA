@@ -2,6 +2,7 @@
 
 from .engine import Rule, RuleEngine, Resolution
 from .core import ResultadoD20, bonus_proficiencia, modificador_atributo, resolver_teste_d20
+from .dice import rolar_d20_auditavel
 from .combat_special import (
     cd_ataque_desarmado, resolver_agarrar, resolver_ataque_oportunidade,
     resolver_empurrar, resolver_escape_agarramento,
@@ -46,7 +47,7 @@ from .survival import (
 )
 
 __all__ = [
-    "Rule", "RuleEngine", "Resolution", "ResultadoD20", "bonus_proficiencia",
+    "Rule", "RuleEngine", "Resolution", "ResultadoD20", "bonus_proficiencia", "rolar_d20_auditavel",
     "modificador_atributo", "resolver_teste_d20", "build_default_engine",
     "Participante", "EstadoTurno", "RastreadorCombate", "ordenar_iniciativa",
     "cd_ataque_desarmado", "resolver_agarrar", "resolver_ataque_oportunidade",
