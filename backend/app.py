@@ -965,11 +965,45 @@ def atacar_token_tatico(
         dano = max(0, int(dano_resolvido.get("total", 0)))
         if alvo["kind"] == "enemy":
             estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+            monstro_alvo = next((m for m in BESTIARIO if m["nome"] == alvo.get("monster_name")), None)
+            bloco_alvo = (monstro_alvo or {})
+            from rule_engine.bestiary import consultar_monstro
+            bloco_completo_alvo = consultar_monstro(alvo.get("monster_name") or alvo.get("name")) or {}
+            fortitude = None
+            hp_anterior = int(alvo["hp"])
+            hp_resultante = max(0, hp_anterior - dano)
+            if hp_resultante == 0 and hp_anterior > 0:
+                tracos = bloco_completo_alvo.get("tracos") or []
+                possui_fortitude = any(
+                    isinstance(t, dict) and str(t.get("nome", "")).casefold() == "undead fortitude"
+                    for t in tracos
+                )
+                if possui_fortitude and dano > 0 and not ataque.get("critical"):
+                    tipo_dano_arma = str((CATALOGO_ARMAS.get(nome_arma or "") or {}).get("tipo_dano", "")).casefold()
+                    if tipo_dano_arma != "radiant":
+                        salvaguardas = bloco_completo_alvo.get("salvaguardas") or {}
+                        bonus_constituicao = int(salvaguardas.get("constituicao", (bloco_completo_alvo.get("modificadores") or {}).get("constituicao", 0)))
+                        rolagem_fortitude = secrets.randbelow(20) + 1
+                        dc_fortitude = 5 + dano
+                        sucesso_fortitude = rolagem_fortitude != 1 and (
+                            rolagem_fortitude == 20 or rolagem_fortitude + bonus_constituicao >= dc_fortitude
+                        )
+                        if sucesso_fortitude:
+                            hp_resultante = 1
+                        fortitude = {
+                            "traco": "Undead Fortitude",
+                            "rolagem": rolagem_fortitude,
+                            "bonus_salvaguarda": bonus_constituicao,
+                            "cd": dc_fortitude,
+                            "sucesso": sucesso_fortitude,
+                            "pv_final": hp_resultante,
+                        }
             for bruto in estado_bruto.get("tokens", []):
                 if bruto.get("id") == alvo["id"]:
-                    bruto["hp"] = max(0, int(bruto.get("hp", alvo["maxHp"])) - dano)
+                    bruto["hp"] = hp_resultante
             repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
         else:
+            fortitude = None
             repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
     return {
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
