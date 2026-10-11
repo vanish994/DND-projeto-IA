@@ -32,7 +32,7 @@ from rule_engine import (
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine.spells import listar_magias, obter_magia, resolver_magia
-from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE, escolha_ferramenta_do_antecedente
+from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE, CATEGORIAS_FERRAMENTA_ANTECEDENTE, escolha_ferramenta_do_antecedente
 from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA, escolha_de_especie
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
 from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS, INSTRUMENTOS_MUSICAIS, KITS_DE_JOGOS
@@ -468,7 +468,7 @@ def catalogo_personagens() -> dict:
         "heranca_draconica": HERANCA_DRACONICA,
         "ferramentas_antecedente": {
             categoria: {"rotulo": dados["rotulo"], "opcoes": dados["opcoes"]}
-            for categoria, dados in __import__("rule_engine.character", fromlist=["CATEGORIAS_FERRAMENTA_ANTECEDENTE"]).CATEGORIAS_FERRAMENTA_ANTECEDENTE.items()
+            for categoria, dados in CATEGORIAS_FERRAMENTA_ANTECEDENTE.items()
         },
         "instrumentos_musicais": INSTRUMENTOS_MUSICAIS,
         "kits_de_jogos": KITS_DE_JOGOS,
