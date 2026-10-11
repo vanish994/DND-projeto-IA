@@ -725,8 +725,8 @@
       const id = 'species-choice';
       const select = el('select', {id, className: 'field-control'},
         el('option', {value: '', textContent: 'Escolha uma herança dracônica…'}),
-        ...Object.entries(escolha.opcoes || {}).map(([chave, info]) =>
-          el('option', {value: chave, textContent: `${info.nome} — dano ${info.dano}`})));
+        ...((escolha.opcoes || []).map((info) =>
+          el('option', {value: info.chave, textContent: `${info.nome} — dano ${info.dano}`})));
       select.value = dados.heranca_draconica || '';
       select.addEventListener('change', () => { dados.heranca_draconica = select.value; });
       extras.push(meta(escolha.nota), el('label', {htmlFor: id, textContent: escolha.rotulo}), select);
@@ -791,10 +791,8 @@
       extraEscolhas.replaceChildren();
       const bg = catalogo.antecedentes[dados.antecedente];
       if (!bg) return;
-      const texto = String(bg.ferramenta || '').toLowerCase();
-      const categoria = Object.keys(catalogo.ferramentas_antecedente || {}).find((chave) => texto.includes(chave));
-      if (categoria) {
-        const info = catalogo.ferramentas_antecedente[categoria];
+      const info = catalogo.ferramentas_antecedente?.[dados.antecedente];
+      if (info) {
         const id = 'background-tool';
         const select = el('select', {id, className: 'field-control'},
           el('option', {value: '', textContent: `Escolha ${info.rotulo}…`}),
@@ -1046,9 +1044,8 @@
       if (!dados.antecedente) return 'Escolha um antecedente.';
       if (catalogo.antecedentes[dados.antecedente].talento === 'dadiva_sombria' && !dados.talento_antecedente) return 'Escolha uma Dádiva Sombria.';
       const bg = catalogo.antecedentes[dados.antecedente];
-      const ferramentaTexto = String(bg.ferramenta || '').toLowerCase();
-      const categoriaFerramenta = Object.keys(catalogo.ferramentas_antecedente || {}).find((chave) => ferramentaTexto.includes(chave));
-      if (categoriaFerramenta && !dados.ferramenta_antecedente) return `Escolha ${catalogo.ferramentas_antecedente[categoriaFerramenta].rotulo} para o antecedente.`;
+      const ferramenta = catalogo.ferramentas_antecedente?.[dados.antecedente];
+      if (ferramenta && !dados.ferramenta_antecedente) return `Escolha ${ferramenta.rotulo} para o antecedente.`;
       if (!dados.equipamento_antecedente) return 'Escolha o pacote de equipamento A ou B.';
     }
     if (passo === 5) {
