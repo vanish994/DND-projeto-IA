@@ -97,11 +97,19 @@ PROFICIENCIAS_SALVAGUARDA_CLASSE = {
     "artifice": ["constituicao", "inteligencia"],
 }
 PROFICIENCIAS_CLASSE = {
-    "artifice": {
-        "armaduras": ["leves", "medias", "escudos"],
-        "armas": ["simples"],
-        "ferramentas": ["Ferramentas de Ladrão", "Ferramentas de Funileiro", "um tipo de Ferramentas de Artesão"],
-    },
+    "artifice": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples"], "ferramentas": ["Ferramentas de Ladrão", "Ferramentas de Funileiro", "um tipo de Ferramentas de Artesão"]},
+    "barbaro": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
+    "bardo": {"armaduras": ["leves"], "armas": ["simples", "bestas_de_mao", "espadas_longas", "rapieiras", "espadas_curtas"], "ferramentas": []},
+    "clerigo": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples"], "ferramentas": []},
+    "druida": {"armaduras": ["leves", "medias", "escudos"], "armas": ["clavas", "adagas", "dardos", "azagaias", "macas", "cajados", "cimitarras", "foices", "fundas", "lancas"], "ferramentas": []},
+    "guerreiro": {"armaduras": ["leves", "medias", "pesadas", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
+    "monge": {"armaduras": [], "armas": ["simples", "espadas_curtas"], "ferramentas": []},
+    "paladino": {"armaduras": ["leves", "medias", "pesadas", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
+    "guardiao": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
+    "ladino": {"armaduras": ["leves"], "armas": ["simples", "bestas_de_mao", "espadas_longas", "rapieiras", "espadas_curtas"], "ferramentas": ["Ferramentas de Ladrão"]},
+    "feiticeiro": {"armaduras": [], "armas": ["adagas", "dardos", "fundas", "cajados", "bestas_leves"], "ferramentas": []},
+    "bruxo": {"armaduras": ["leves"], "armas": ["simples"], "ferramentas": []},
+    "mago": {"armaduras": [], "armas": ["adagas", "dardos", "fundas", "cajados", "bestas_leves"], "ferramentas": []},
 }
 
 
