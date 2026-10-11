@@ -486,5 +486,24 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(response.json()["detail"]["motivo"], "movimento_impedido_por_condicao")
 
 
+    def test_salvar_mapa_sem_mudar_participantes_preserva_iniciativa(self):
+        self.save_encounter()
+        with patch.object(backend_app.secrets, "randbelow", side_effect=[10, 10]):
+            inicio = self.client.post(self.url + "/iniciativa/iniciar", headers=self.headers)
+        self.assertEqual(inicio.status_code, 200, inicio.text)
+        mapa_inicial = inicio.json()["mapa"]
+        ordem_inicial = [item["token_id"] for item in mapa_inicial["iniciativa"]]
+        ativo_inicial = mapa_inicial["token_ativo"]
+
+        salvo = self.save_encounter(hero_x=1, hero_y=1, enemy_x=3, enemy_y=1)
+        self.assertEqual(salvo.status_code, 200, salvo.text)
+        mapa_salvo = self.client.get(self.url, headers=self.headers).json()["mapa"]
+
+        self.assertTrue(mapa_salvo["combate_ativo"])
+        self.assertEqual([item["token_id"] for item in mapa_salvo["iniciativa"]], ordem_inicial)
+        self.assertEqual(mapa_salvo["token_ativo"], ativo_inicial)
+        self.assertEqual(mapa_salvo["rodada"], mapa_inicial["rodada"])
+
+
 if __name__ == "__main__":
     unittest.main()
