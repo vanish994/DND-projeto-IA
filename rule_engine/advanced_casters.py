@@ -37,7 +37,9 @@ def resolver_bruxo(fatos: dict) -> dict:
         if circulo_arcana is None:
             return {"resultado": "bloqueado", "motivo": "nivel_sem_arcana_mistica"}
         return {"resultado": "resolvido", "circulo": circulo_arcana, "usos": 1, "recarga": "descanso_longo"}
-    return {"resultado": "resolvido", "espacos": espacos, "circulo": circulo, "invocacoes": invocacoes, "atributo_conjuracao": "carisma"}
+    if acao == "progressao":
+        return {"resultado": "resolvido", "espacos": espacos, "circulo": circulo, "invocacoes": invocacoes, "atributo_conjuracao": "carisma"}
+    return {"resultado": "bloqueado", "motivo": "acao_desconhecida", "acao": acao}
 
 
 def resolver_feiticeiro(fatos: dict) -> dict:
@@ -59,7 +61,9 @@ def resolver_feiticeiro(fatos: dict) -> dict:
         return {"resultado": "ativada", "custo": 2, "metamagias_por_magia": 2}
     if acao == "apoteose_arcana":
         return {"resultado": "resolvido", "metamagia_gratuita_por_turno": True}
-    return {"resultado": "resolvido", "pontos_de_feiticaria": pontos, "espacos": list(FULL_CASTER_SLOTS[nivel]), "atributo_conjuracao": "carisma"}
+    if acao == "progressao":
+        return {"resultado": "resolvido", "pontos_de_feiticaria": pontos, "espacos": list(FULL_CASTER_SLOTS[nivel]), "atributo_conjuracao": "carisma"}
+    return {"resultado": "bloqueado", "motivo": "acao_desconhecida", "acao": acao}
 
 
 def resolver_guardiao(fatos: dict) -> dict:
@@ -79,7 +83,7 @@ def resolver_guardiao(fatos: dict) -> dict:
         return {"resultado": "ativado", "acao": "bonus", "duracao": "ate_o_fim_do_proximo_turno", "invisivel": True, "usos": max(1, _mod(int(fatos.get("sabedoria", 10))))}
     if acao == "predador_implacavel":
         return {"resultado": "resolvido", "mantem_concentracao_ao_sofrer_dano": True}
-    return {"resultado": "resolvido", "caracteristica": acao}
+    return {"resultado": "bloqueado", "motivo": "acao_desconhecida", "acao": acao}
 
 
 def resolver_paladino(fatos: dict) -> dict:
