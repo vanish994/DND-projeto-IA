@@ -28,6 +28,9 @@ class EstadoTurno:
     movimento_restante: int = 0
     movimento_maximo: int = 0
     surpreendido: bool = False
+    ataques_oportunidade_bloqueados: bool = False
+    esquivando: bool = False
+    acao_preparada: dict[str, str] | None = None
 
 
 @dataclass
@@ -84,15 +87,16 @@ class RastreadorCombate:
             raise ValueError(f"{recurso} já foi gasto ou está indisponível")
         setattr(turno, atributo, False)
 
-    def mover(self, distancia: int) -> int:
-        """Consome movimento e retorna o movimento restante."""
+    def mover(self, distancia: int, *, terreno_dificil: bool = False) -> int:
+        """Consome movimento; terreno difícil custa o dobro por metro."""
         turno = self._exigir_turno()
         distancia = int(distancia)
         if distancia < 0:
             raise ValueError("A distância não pode ser negativa")
-        if distancia > turno.movimento_restante:
+        custo = distancia * (2 if terreno_dificil else 1)
+        if custo > turno.movimento_restante:
             raise ValueError("Movimento insuficiente")
-        turno.movimento_restante -= distancia
+        turno.movimento_restante -= custo
         return turno.movimento_restante
 
     def correr(self) -> int:
@@ -101,6 +105,53 @@ class RastreadorCombate:
         self.gastar("acao")
         turno.movimento_restante += turno.movimento_maximo
         return turno.movimento_restante
+
+    def executar_acao(self, nome: str, **parametros: str) -> dict[str, object]:
+        """Executa uma ação estruturada e retorna seus efeitos auditáveis."""
+        nome = nome.strip().lower()
+        if nome == "correr":
+            movimento = self.correr()
+            return {"acao": nome, "resultado": "executada", "movimento_restante": movimento}
+
+        nomes_acao = {
+            "ajudar", "atacar", "analisar", "desengajar", "esconder", "esquivar",
+            "influenciar", "preparar", "procurar", "usar_magia", "usar_objeto",
+        }
+        if nome not in nomes_acao:
+            raise ValueError(f"Ação inválida: {nome}")
+        if nome == "preparar" and (
+            not parametros.get("gatilho", "").strip()
+            or not parametros.get("resposta", "").strip()
+        ):
+            raise ValueError("Preparar exige gatilho e resposta")
+        self.gastar("acao")
+        turno = self._exigir_turno()
+        efeitos: dict[str, object] = {"acao": nome, "resultado": "executada"}
+
+        if nome == "desengajar":
+            turno.ataques_oportunidade_bloqueados = True
+            efeitos["ataques_oportunidade_bloqueados"] = True
+        elif nome == "esquivar":
+            turno.esquivando = True
+            efeitos["esquivando"] = True
+        elif nome == "preparar":
+            gatilho = parametros.get("gatilho", "").strip()
+            resposta = parametros.get("resposta", "").strip()
+            turno.acao_preparada = {"gatilho": gatilho, "resposta": resposta}
+            efeitos["acao_preparada"] = turno.acao_preparada
+        elif nome == "esconder":
+            efeitos["requer_teste_furtividade"] = True
+        elif nome == "procurar":
+            efeitos["requer_teste_percepcao_ou_investigacao"] = True
+        elif nome == "ajudar":
+            efeitos["alvo_deve_ser_especificado"] = True
+        elif nome == "atacar":
+            efeitos["pode_realizar_jogada_de_ataque"] = True
+        elif nome == "usar_magia":
+            efeitos["deve_validar_conjuracao"] = True
+        elif nome == "influenciar":
+            efeitos["deve_resolver_interacao_social"] = True
+        return efeitos
 
     def _exigir_turno(self) -> EstadoTurno:
         if self.turno_atual is None:

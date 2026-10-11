@@ -187,6 +187,44 @@ class RuleEngineTests(unittest.TestCase):
         self.assertFalse(turno.acao_disponivel)
         self.assertEqual(turno.movimento_restante, 0)
 
+    def test_disengage_blocks_opportunity_attacks(self):
+        rastreador = RastreadorCombate([Participante("A", 10)])
+        turno = rastreador.iniciar_proximo_turno()
+        efeito = rastreador.executar_acao("desengajar")
+        self.assertTrue(efeito["ataques_oportunidade_bloqueados"])
+        self.assertTrue(turno.ataques_oportunidade_bloqueados)
+
+    def test_dodge_marks_turn_as_dodging(self):
+        rastreador = RastreadorCombate([Participante("A", 10)])
+        turno = rastreador.iniciar_proximo_turno()
+        rastreador.executar_acao("esquivar")
+        self.assertTrue(turno.esquivando)
+
+    def test_ready_requires_trigger_and_response(self):
+        rastreador = RastreadorCombate([Participante("A", 10)])
+        rastreador.iniciar_proximo_turno()
+        with self.assertRaises(ValueError):
+            rastreador.executar_acao("preparar", gatilho="", resposta="atacar")
+        efeito = rastreador.executar_acao(
+            "preparar", gatilho="o inimigo aparecer", resposta="usar o arco"
+        )
+        self.assertEqual(efeito["resultado"], "executada")
+
+    def test_hide_search_and_spell_actions_return_required_follow_up(self):
+        rastreador = RastreadorCombate([Participante("A", 10)])
+        rastreador.iniciar_proximo_turno()
+        self.assertTrue(rastreador.executar_acao("esconder")["requer_teste_furtividade"])
+        rastreador.iniciar_proximo_turno()
+        self.assertTrue(rastreador.executar_acao("procurar")["requer_teste_percepcao_ou_investigacao"])
+        rastreador.iniciar_proximo_turno()
+        self.assertTrue(rastreador.executar_acao("usar_magia")["deve_validar_conjuracao"])
+
+    def test_difficult_terrain_costs_extra_movement(self):
+        rastreador = RastreadorCombate([Participante("A", 10)], deslocamentos={"A": 9})
+        turno = rastreador.iniciar_proximo_turno()
+        rastreador.mover(3, terreno_dificil=True)
+        self.assertEqual(turno.movimento_restante, 3)
+
 
 if __name__ == "__main__":
     unittest.main()
