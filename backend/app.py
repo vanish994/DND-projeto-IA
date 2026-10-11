@@ -1138,10 +1138,9 @@ def conjurar_no_mapa_tatico(
             bonus_atributo = int(mods_alvo.get(atributo, 0))
             profs_salva = ficha_alvo.get("proficiencias_salvaguarda") or []
             proficiente = atributo in {str(p).casefold() for p in profs_salva}
-            bonus_salva = bonus_atributo + (int(ficha_alvo.get("bonus_proficiencia", 2)) if proficiente else 0)
             rolagem_salva = secrets.randbelow(20) + 1
             salvaguarda = resolver_salvaguarda({
-                "atributo": atributo, "roll": rolagem_salva, "modifier": bonus_salva,
+                "atributo": atributo, "roll": rolagem_salva, "modifier": bonus_atributo,
                 "dc": dc, "proficiente": proficiente, "bonus_proficiencia": int(ficha_alvo.get("bonus_proficiencia", 2)),
             })
             if salvaguarda.get("resultado") == "bloqueado":
