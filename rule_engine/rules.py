@@ -37,7 +37,7 @@ from .spellcasters import (
     resolver_inspiracao_bardo, resolver_livro_de_magias,
     resolver_progressao_conjuracao,
 )
-from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guardiao
+from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guardiao, resolver_paladino
 from .warlock_invocations import resolver_invocacao, validar_invocacao
 from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_talento, validar_talento
 from .spells import listar_magias, obter_magia, resolver_magia
@@ -820,6 +820,12 @@ def build_default_engine() -> RuleEngine:
         description="Resolve progressão de Guardião, Inimigo Favorito e recursos de exploração.",
         priority=60, when=lambda f: f["type"] == "advanced_caster_feature" and f.get("classe") == "guardiao",
         resolve=resolver_guardiao, source="D&D 2024 — Guardião",
+    ))
+    engine.register(Rule(
+        rule_id="paladin.features",
+        description="Resolve progressão de conjuração e recursos do Paladino.",
+        priority=60, when=lambda f: f["type"] == "advanced_caster_feature" and f.get("classe") == "paladino",
+        resolve=resolver_paladino, source="D&D 2024 — Paladino",
     ))
     engine.register(Rule(
         rule_id="feat.validate",
