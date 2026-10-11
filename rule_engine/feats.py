@@ -84,19 +84,36 @@ def resolver_talento(fatos: dict) -> dict:
         return validacao
     nome = validacao["talento"]
     resultado = dict(validacao)
-    resultado["resultado"] = "resolvido"
+    # Catálogo e validação não equivalem a uma resolução mecânica completa.
+    # Só declarar resolvido o talento quando existe um ramo específico abaixo.
+    resultado["resultado"] = "nao_implementado"
+    resultado["motivo"] = "talento_catalogado_sem_resolucao_especifica"
     if nome == "vigoroso":
+        resultado["resultado"] = "resolvido"
+        resultado.pop("motivo", None)
         resultado["pv_adicionais"] = 2 * int(fatos.get("nivel", 1))
     elif nome == "sortudo":
+        resultado["resultado"] = "resolvido"
+        resultado.pop("motivo", None)
         resultado["pontos_de_sorte"] = int(fatos.get("bonus_proficiencia", 2))
     elif nome == "conjurador_ritualista":
+        resultado["resultado"] = "resolvido"
+        resultado.pop("motivo", None)
         resultado["magias_rituais"] = int(fatos.get("bonus_proficiencia", 2))
     elif nome == "lider_inspirador":
+        resultado["resultado"] = "resolvido"
+        resultado.pop("motivo", None)
         resultado["pv_temporarios_por_aliado"] = int(fatos.get("nivel", 1)) + int(fatos.get("modificador_atributo", 0))
     elif nome == "dadiva_da_velocidade":
+        resultado["resultado"] = "resolvido"
+        resultado.pop("motivo", None)
         resultado["deslocamento_adicional_m"] = 9
     elif nome == "dadiva_da_visao_verdadeira":
+        resultado["resultado"] = "resolvido"
+        resultado.pop("motivo", None)
         resultado["visao_verdadeira_m"] = 18
     elif nome == "dadiva_da_resistencia_a_energia":
+        resultado["resultado"] = "resolvido"
+        resultado.pop("motivo", None)
         resultado["quantidade_resistencias"] = 2
     return resultado
