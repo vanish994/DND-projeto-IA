@@ -33,6 +33,7 @@ from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine.spells import listar_magias, obter_magia, resolver_magia
 from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE, CATEGORIAS_FERRAMENTA_ANTECEDENTE, escolha_ferramenta_do_antecedente
+from rule_engine.spellcasters import CASTING_ABILITY, resolver_progressao_conjuracao
 from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA, escolha_de_especie
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
 from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS, INSTRUMENTOS_MUSICAIS, KITS_DE_JOGOS
@@ -462,16 +463,21 @@ def catalogo_personagens() -> dict:
         "quantidade_pericias_classe": dict(QUANTIDADE_PERICIAS_CLASSE),
         "ferramentas_artesao": sorted(FERRAMENTAS_ARTESAO),
         "escolhas_especie": {
-            especie: {"rotulo": escolha["rotulo"], "nota": escolha["nota"], "opcoes": escolha["opcoes"]}
+            especie: {"rotulo": escolha["rotulo"], "nota": escolha["nota"], "opcoes": [
+                {"chave": chave, "nome": dados["nome"], "dano": dados["dano"]}
+                for chave, dados in escolha["opcoes"].items()
+            ]}
             for especie, escolha in ESCOLHAS_ESPECIE.items()
         },
         "heranca_draconica": HERANCA_DRACONICA,
         "ferramentas_antecedente": {
-            categoria: {"rotulo": dados["rotulo"], "opcoes": dados["opcoes"]}
-            for categoria, dados in CATEGORIAS_FERRAMENTA_ANTECEDENTE.items()
+            antecedente: escolha_ferramenta_do_antecedente(antecedente)
+            for antecedente in ANTECEDENTES
+            if escolha_ferramenta_do_antecedente(antecedente)
         },
         "instrumentos_musicais": INSTRUMENTOS_MUSICAIS,
         "kits_de_jogos": KITS_DE_JOGOS,
+        "atributo_conjuracao": {"artifice": "inteligencia", **CASTING_ABILITY},
         "matriz_padrao": sorted(gerar_atributos_matriz_padrao().values(), reverse=True),
         "compra_pontos": {"total": 27, "custos": {8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}},
     }
@@ -506,14 +512,38 @@ def catalogo_conjuracao(
     classe: str = Query(min_length=1, max_length=40),
     nivel: int = Query(default=1, ge=1, le=20),
     inteligencia: int = Query(default=10, ge=1, le=30),
+    sabedoria: int = Query(default=10, ge=1, le=30),
+    carisma: int = Query(default=10, ge=1, le=30),
 ) -> dict:
+    """Progressão de conjuração calculada pelo motor; nada é estimado no cliente."""
     classe_normalizada = classe.strip().lower().replace("í", "i").replace(" ", "")
-    if classe_normalizada not in {"artifice", "artífice"}:
-        return {"resultado": "nao_implementado", "motivo": "progressao_de_conjuracao_ainda_nao_validada_para_esta_classe"}
-    try:
-        return progresso_artifice(nivel, inteligencia)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if classe_normalizada in {"artifice", "artífice"}:
+        try:
+            progresso = progresso_artifice(nivel, inteligencia)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {**progresso, "validacao_escolhas": True}
+    progresso = resolver_progressao_conjuracao({
+        "classe": classe_normalizada,
+        "nivel": nivel,
+        "inteligencia": inteligencia,
+        "sabedoria": sabedoria,
+        "carisma": carisma,
+    })
+    if progresso.get("resultado") != "resolvido":
+        return {"resultado": "nao_implementado", "motivo": progresso.get("motivo") or "progressao_de_conjuracao_ainda_nao_validada_para_esta_classe"}
+    espacos = {str(indice + 1): total for indice, total in enumerate(progresso["espacos"]) if total}
+    return {
+        "resultado": "resolvido",
+        "classe": classe_normalizada,
+        "nivel": nivel,
+        "atributo_conjuracao": progresso["atributo_conjuracao"],
+        "truques": progresso["truques"],
+        "magias_preparadas": progresso["magias_preparadas"],
+        "circulo_maximo": max((int(circulo) for circulo in espacos), default=0),
+        "espacos_totais": espacos,
+        "validacao_escolhas": False,
+    }
 
 
 @app.get("/v1/campanhas/{campanha_id}/personagens")
@@ -538,7 +568,18 @@ def criar_personagem_campanha(
     _campanha_ou_404(repo, jogador, campanha_id)
     _exigir_escolhas_de_criacao(dados)
     entrada, ficha = _resolver_ficha(dados)
-    return _com_bloco(repo.criar_personagem(jogador, campanha_id, entrada, ficha))
+    escolhas = None
+    if dados.magias_iniciais:
+        truques = list(dict.fromkeys(dados.magias_iniciais.truques))
+        preparadas = list(dict.fromkeys(dados.magias_iniciais.magias_preparadas))
+        if len(truques) != len(dados.magias_iniciais.truques) or len(preparadas) != len(dados.magias_iniciais.magias_preparadas):
+            raise HTTPException(status_code=422, detail="Não repita magias na ficha")
+        _validar_conjuracao(ficha, truques, preparadas, dados.magias_iniciais.espacos_totais)
+        escolhas = (truques, preparadas, dados.magias_iniciais.espacos_totais)
+    personagem = repo.criar_personagem(jogador, campanha_id, entrada, ficha)
+    if escolhas:
+        personagem = _aplicar_conjuracao(repo, jogador, campanha_id, personagem, *escolhas)
+    return _com_bloco(personagem)
 
 
 def _personagem_ou_404(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str) -> dict:
@@ -599,6 +640,10 @@ def atualizar_proficiencias_personagem(
     entrada = dict(personagem.get("entrada") or {})
     entrada["pericias_classe"] = dados.pericias_classe
     entrada["ferramenta_artesao"] = dados.ferramenta_artesao
+    for campo in ("heranca_draconica", "ferramenta_antecedente", "equipamento_antecedente"):
+        valor = getattr(dados, campo)
+        if valor is not None:
+            entrada[campo] = valor
     entrada["heranca_draconica"] = dados.heranca_draconica
     entrada["ferramenta_antecedente"] = dados.ferramenta_antecedente
     entrada["equipamento_antecedente"] = dados.equipamento_antecedente
@@ -609,6 +654,9 @@ def atualizar_proficiencias_personagem(
         if isinstance(exc, HTTPException):
             raise
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    for chave in ("conjuracao", "equipamento"):
+        if personagem.get(chave):
+            nova_ficha[chave] = personagem[chave]
     atualizado = repo.atualizar_personagem(
         jogador, campanha_id, personagem_id, entrada=nova_entrada, ficha=nova_ficha
     )
@@ -649,6 +697,47 @@ def atualizar_equipamento_personagem(
     return _com_bloco(atualizado)
 
 
+def _validar_conjuracao(personagem: dict, truques: list[str], preparadas: list[str], espacos_totais: dict) -> None:
+    """Nomes, círculos e progressão validada são conferidos pelo motor, nunca pelo cliente."""
+    for nome_magia in truques:
+        magia = obter_magia(nome_magia)
+        if not magia or magia.get("circulo") != 0:
+            raise HTTPException(status_code=422, detail=f"Truque inválido: {nome_magia}")
+    for nome_magia in preparadas:
+        magia = obter_magia(nome_magia)
+        if not magia or magia.get("circulo") is None or magia.get("circulo") == 0:
+            raise HTTPException(status_code=422, detail=f"Magia preparada inválida: {nome_magia}")
+    if any(not isinstance(n, int) or n < 0 or n > 20 for n in espacos_totais.values()):
+        raise HTTPException(status_code=422, detail="Quantidade de espaços inválida")
+    if personagem.get("classe") == "artifice":
+        try:
+            validar_escolhas_artifice(
+                int(personagem.get("nivel", 1)),
+                int((personagem.get("atributos") or {}).get("inteligencia", 10)),
+                truques, preparadas, espacos_totais,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _aplicar_conjuracao(repo, jogador: str, campanha_id: str, personagem: dict, truques: list[str], preparadas: list[str], espacos_totais: dict) -> dict:
+    """Grava magias e espaços sem zerar os espaços já gastos se a progressão não mudou."""
+    espacos = {str(circulo): int(total) for circulo, total in espacos_totais.items()}
+    ficha = {k: v for k, v in personagem.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+    anterior = personagem.get("conjuracao") or {}
+    restantes_anteriores = anterior.get("espacos_restantes") or {}
+    if anterior.get("espacos_totais") == espacos and restantes_anteriores:
+        restantes = {c: max(0, min(total, int(restantes_anteriores.get(c, total)))) for c, total in espacos.items() if total > 0}
+    else:
+        restantes = {c: total for c, total in espacos.items() if total > 0}
+    ficha["conjuracao"] = {"truques": truques, "magias_preparadas": preparadas,
+                           "espacos_totais": espacos, "espacos_restantes": restantes}
+    atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], ficha)
+    if atualizado is None:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return atualizado
+
+
 @app.patch("/v1/campanhas/{campanha_id}/personagens/{personagem_id}/magias")
 def atualizar_magias_personagem(
     campanha_id: str,
@@ -662,48 +751,8 @@ def atualizar_magias_personagem(
     preparadas = list(dict.fromkeys(dados.magias_preparadas))
     if len(truques) != len(dados.truques) or len(preparadas) != len(dados.magias_preparadas):
         raise HTTPException(status_code=422, detail="Não repita magias na ficha")
-    for nome_magia in truques:
-        magia = obter_magia(nome_magia)
-        if not magia or magia.get("circulo") != 0:
-            raise HTTPException(status_code=422, detail=f"Truque inválido: {nome_magia}")
-    for nome_magia in preparadas:
-        magia = obter_magia(nome_magia)
-        if not magia or magia.get("circulo") is None or magia.get("circulo") == 0:
-            raise HTTPException(status_code=422, detail=f"Magia preparada inválida: {nome_magia}")
-    if any(not isinstance(n, int) or n < 0 or n > 20 for n in dados.espacos_totais.values()):
-        raise HTTPException(status_code=422, detail="Quantidade de espaços inválida")
-    if personagem.get("classe") == "artifice":
-        try:
-            validar_escolhas_artifice(
-                int(personagem.get("nivel", 1)),
-                int((personagem.get("atributos") or {}).get("inteligencia", 10)),
-                truques,
-                preparadas,
-                dados.espacos_totais,
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-    ficha = {k: v for k, v in personagem.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
-    espacos_totais = {str(k): int(v) for k, v in dados.espacos_totais.items()}
-    conjuracao_anterior = personagem.get("conjuracao") or {}
-    restantes_anteriores = conjuracao_anterior.get("espacos_restantes") or {}
-    if conjuracao_anterior.get("espacos_totais") == espacos_totais and restantes_anteriores:
-        espacos_restantes = {
-            circulo: max(0, min(total, int(restantes_anteriores.get(circulo, total))))
-            for circulo, total in espacos_totais.items() if total > 0
-        }
-    else:
-        espacos_restantes = {circulo: total for circulo, total in espacos_totais.items() if total > 0}
-    ficha["conjuracao"] = {
-        "truques": truques,
-        "magias_preparadas": preparadas,
-        "espacos_totais": espacos_totais,
-        "espacos_restantes": espacos_restantes,
-    }
-    atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, ficha)
-    if atualizado is None:
-        raise HTTPException(status_code=404, detail="Personagem não encontrado")
-    return _com_bloco(atualizado)
+    _validar_conjuracao(personagem, truques, preparadas, dados.espacos_totais)
+    return _com_bloco(_aplicar_conjuracao(repo, jogador, campanha_id, personagem, truques, preparadas, dados.espacos_totais))
 
 
 @app.post("/v1/campanhas/{campanha_id}/personagens/{personagem_id}/descanso-longo")
