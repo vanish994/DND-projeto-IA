@@ -26,6 +26,7 @@ for bruto, meta in CATALOGO_MAGIAS.items():
 _DETALHADAS = {
     "armadura de agathys": (1, "abjuração", "V, S, M (um caco de vidro azul)", False, "5 PV temporários; 5 dano gélido ao atacante", {"pv_temporarios": "+5 por círculo", "dano_retorno": "+5 por círculo"}),
     "mísseis mágicos": (1, "evocação", "V, S", False, "3 dardos de 1d4+1 dano energético", {"dardos": "+1 por círculo"}),
+    "raio de fogo": (0, "evocação", "V, S", False, "Ataque mágico à distância; 1d10 dano ígneo; alcance 36 m", {"dano": "escala nos níveis 5, 11 e 17"}),
     "escudo": (1, "abjuração", "V, S", False, "+5 CA até o início do próximo turno", {}),
     "curar ferimentos": (1, "necromancia", "V, S", False, "cura 2d8", {"cura": "+2d8 por círculo"}),
     "palavra curativa": (1, "abjuração", "V", False, "cura 1d4 + modificador de conjuração; alcance 18m; ação bônus", {"cura": "+1d4 por círculo"}),
@@ -73,6 +74,10 @@ for _nome_artifice, _circulo_artifice in ARTIFICER_SPELL_LEVELS.items():
 # Fórmulas são devolvidas como dados; o motor de combate continua responsável
 # por rolagens, salvaguardas, aplicação de dano e atualização de estado.
 MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
+    "raio de fogo": {
+        "tipo": "ataque_magico", "dados_dano_base": "1d10", "tipo_dano": "igneo",
+        "alcance_m": 36, "escala_niveis": [5, 11, 17],
+    },
     "armadura de agathys": {
         "tipo": "pv_temporarios_e_dano_retorno", "pv_temporarios_por_nivel": 5,
         "dano_retorno_por_nivel": 5, "tipo_dano": "gelido",
