@@ -106,7 +106,10 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     resultado: dict[str, Any] = {"tipo": "condition_effect", "resultado": "normal", "result": "normal"}
 
     if acao == "attack":
-        vantagem = bool({"cego", "contido", "paralisado", "atordoado", "inconsciente"} & alvo) or "invisivel" in atacante or "cego" in atacante
+        incapacitantes_atacante = {"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & atacante
+        if incapacitantes_atacante:
+            return {**resultado, "resultado": "bloqueado", "result": "blocked", "motivo": "atacante_incapacitado", "condicoes": sorted(incapacitantes_atacante)}
+        vantagem = bool({"cego", "contido", "paralisado", "atordoado", "inconsciente"} & alvo) or "invisivel" in atacante
         desvantagem = bool({"cego", "envenenado", "contido"} & atacante) or "invisivel" in alvo
         if "amedrontado" in atacante and fatos.get("fonte_no_campo_de_visao", True):
             desvantagem = True
@@ -116,7 +119,8 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
             vantagem = True
         resultado["resultado"] = "normal" if vantagem == desvantagem else "vantagem" if vantagem else "desvantagem"
         resultado["result"] = resultado["resultado"]
-        resultado["acerto_critico_automatico"] = bool({"paralisado", "inconsciente"} & alvo and distancia == "corpo_a_corpo")
+        distancia_m = fatos.get("distancia_m", fatos.get("distance_m"))
+        resultado["acerto_critico_automatico"] = bool({"paralisado", "inconsciente"} & alvo and distancia_m is not None and float(distancia_m) <= 1.5)
         return resultado
 
     incapacitado = {"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo
@@ -125,11 +129,12 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         "deslocamento": 0 if {"agarrado", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo else "normal",
         "pode_realizar_acoes": not bool(incapacitado),
         "pode_realizar_reacoes": not bool(incapacitado),
-        "pode_falar": not bool({"incapacitado", "inconsciente"} & alvo),
+        "pode_falar": not bool({"paralisado", "petrificado", "inconsciente"} & alvo),
         "pode_ver": "cego" not in alvo,
         "pode_ouvir": "surdo" not in alvo,
-        "desvantagem_salvaguardas": bool({"amedrontado", "envenenado", "contido"} & alvo),
+        "desvantagem_salvaguardas": False,
         "desvantagem_salvaguarda_destreza": "contido" in alvo,
+        "desvantagem_testes_habilidade": bool({"amedrontado", "envenenado"} & alvo and ("amedrontado" not in alvo or fatos.get("fonte_no_campo_de_visao", True))),
         "falha_salvaguardas_forca_destreza": bool({"paralisado", "petrificado", "atordoado", "inconsciente"} & alvo),
     })
     if "petrificado" in alvo:
