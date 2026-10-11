@@ -94,6 +94,29 @@ class ArtificerSpellValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exatamente 3 magias preparadas"):
             validar_escolhas_artifice(1, 16, ["Luz", "Raio de Gelo"], ["Alarme"], {"1": 2})
 
+    def test_bloqueia_truques_duplicados(self):
+        with self.assertRaisesRegex(ValueError, "Não repita truques"):
+            validar_escolhas_artifice(
+                1, 16, ["Luz", "Luz"],
+                ["Alarme", "Curar Ferimentos", "Onda Trovejante"], {"1": 2},
+            )
+
+    def test_bloqueia_magias_preparadas_duplicadas(self):
+        with self.assertRaisesRegex(ValueError, "Não repita magias preparadas"):
+            validar_escolhas_artifice(
+                1, 16, ["Luz", "Raio de Gelo"],
+                ["Alarme", "Alarme", "Onda Trovejante"], {"1": 2},
+            )
+
+    def test_bloqueia_quantidade_de_espacos_negativa_ou_fracionaria(self):
+        for slots in ({"1": -1}, {"1": 1.5}, {"1": True}):
+            with self.subTest(slots=slots):
+                with self.assertRaisesRegex(ValueError, "inteiro não negativo"):
+                    validar_escolhas_artifice(
+                        1, 16, ["Luz", "Raio de Gelo"],
+                        ["Alarme", "Curar Ferimentos", "Onda Trovejante"], slots,
+                    )
+
     def test_bloqueia_total_de_espacos_inventado(self):
         with self.assertRaisesRegex(ValueError, "Espaços de magia incorretos"):
             validar_escolhas_artifice(
