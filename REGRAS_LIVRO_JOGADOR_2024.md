@@ -122,7 +122,7 @@ Adicionado `ability_checks.py` e integração ao `build_default_engine()` para:
 - Testes passivos, aplicando +5 por vantagem ou -5 por desvantagem.
 - Testes em grupo, exigindo sucesso de pelo menos metade dos participantes.
 - Vantagem quando a mesma tarefa combina proficiência relevante em perícia e ferramenta.
-- Inspiração Heroica com validação do recurso e uso obrigatório do novo resultado do d20.
+- Inspiração Heroica com validação do recurso, rerrolagem imediata de qualquer dado e uso obrigatório do novo resultado.
 - Bloqueio explícito quando faltam modificadores do personagem, Bônus de Proficiência necessário ou resultados de dados.
 
 Os testes foram adicionados em `tests/test_ability_checks.py`. **Ainda não há confirmação de execução da suíte pelo GitHub Actions**, portanto este lote está implementado, mas não marcado como validado.
