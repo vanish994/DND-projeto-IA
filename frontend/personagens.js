@@ -134,7 +134,60 @@
         ...fato('Talentos', p.talentos.map(talentoNome).join(', ') || '—'),
         ...fato('Equipamento inicial', equip)),
       apagar);
+    carregarConjuracao(p);
     groupBody.scrollTop = 0;
+  }
+
+  async function carregarConjuracao(p) {
+    const secao = el("section", {className: "spell-sheet"});
+    secao.append(el("h3", {textContent: "Conjuração"}), el("p", {className: "choice-meta", textContent: "Selecione os truques e as magias da ficha. A disponibilidade por classe e nível ainda precisa ser validada pelo motor."}));
+    const status = el("p", {className: "choice-meta", textContent: "Carregando catálogo de magias…"});
+    secao.append(status);
+    groupBody.append(secao);
+    try {
+      const [catalogoMagias, atual] = await Promise.all([
+        api("/v1/catalogo/magias"),
+        api(url(`/${encodeURIComponent(p.id)}`)),
+      ]);
+      if (!groupBody.contains(secao)) return;
+      const conj = atual.conjuracao || {truques: [], magias_preparadas: [], espacos_totais: {}};
+      status.remove();
+      const selectMagias = (id, titulo, filtro, selecionadas) => {
+        const opcoes = catalogoMagias.filter(filtro);
+        const select = el("select", {id, multiple: true, size: 6, ariaLabel: titulo});
+        for (const magia of opcoes) {
+          const opt = el("option", {value: magia.nome, textContent: magia.circulo === 0 ? `${magia.nome} · Truque` : `${magia.nome} · ${magia.circulo == null ? "círculo não catalogado" : `círculo ${magia.circulo}`}`});
+          opt.selected = selecionadas.includes(magia.nome);
+          select.append(opt);
+        }
+        const bloco = el("div", {className: "spell-field"}, el("label", {htmlFor: id, textContent: titulo}), select,
+          el("p", {className: "choice-meta", textContent: "Toque para selecionar; toque novamente para remover."}));
+        return {select, bloco};
+      };
+      const truques = selectMagias("sheet-cantrips", "Truques", m => m.circulo === 0, conj.truques || []);
+      const preparadas = selectMagias("sheet-prepared-spells", "Magias preparadas/conhecidas", m => m.circulo != null && m.circulo > 0, conj.magias_preparadas || []);
+      const slots = el("input", {id: "sheet-level1-slots", type: "number", min: "0", max: "20", value: String((conj.espacos_totais || {})["1"] ?? 0), inputMode: "numeric"});
+      const slotField = el("div", {className: "spell-field"}, el("label", {htmlFor: slots.id, textContent: "Espaços de magia de 1º círculo (total)"}), slots);
+      const salvar = el("button", {type: "button", className: "primary-button", textContent: "Salvar conjuração"});
+      const feedback = el("p", {className: "choice-meta", role: "status"});
+      salvar.addEventListener("click", async () => {
+        salvar.disabled = true;
+        feedback.textContent = "Salvando…";
+        try {
+          const resultado = await api(url(`/${encodeURIComponent(p.id)}/magias`), {method: "PATCH", body: JSON.stringify({
+            truques: Array.from(truques.select.selectedOptions, o => o.value),
+            magias_preparadas: Array.from(preparadas.select.selectedOptions, o => o.value),
+            espacos_totais: {"1": Math.max(0, Math.min(20, Number(slots.value) || 0))},
+          })});
+          Object.assign(p, resultado);
+          feedback.textContent = "Conjuração salva na ficha da campanha.";
+        } catch (erro) { feedback.textContent = `Não foi possível salvar: ${erro.message}`; }
+        finally { salvar.disabled = false; }
+      });
+      secao.append(truques.bloco, preparadas.bloco, slotField, salvar, feedback);
+    } catch (erro) {
+      status.textContent = `Não foi possível carregar a conjuração. ${erro.message}`;
+    }
   }
 
   // ---- Assistente de criação ----
