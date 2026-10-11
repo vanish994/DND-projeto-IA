@@ -830,6 +830,7 @@ def _estado_mapa_normalizado(repo: RepositorioCampanhas, jogador: str, campanha_
                 "dex_mod": int((p.get("modificadores") or {}).get("destreza", 0)),
                 "proficiency": int(p.get("bonus_proficiencia", 2)),
                 "equipment": p.get("equipamento") or {},
+                "conditions": sorted(p.get("condicoes_ativas") or []),
                 "source": "character",
             })
         elif token.get("kind") == "enemy":
@@ -1724,16 +1725,32 @@ def atacar_com_monstro_tatico(
                     condicoes_aplicar.append("unconscious")
                     efeito["falhou_por_5_ou_mais"] = True
                 if condicoes_aplicar:
-                    estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
-                    for token_bruto in estado_bruto.get("tokens", []):
-                        if token_bruto.get("id") == alvo["id"]:
-                            condicoes_atuais = token_bruto.setdefault("conditions", [])
+                    duracao_condicao = None
+                    if "until the end of its next turn" in efeito_texto:
+                        duracao_condicao = "até o fim do próximo turno"
+                    elif "until the start of its next turn" in efeito_texto:
+                        duracao_condicao = "até o início do próximo turno"
+                    if alvo["kind"] == "hero":
+                        ficha_condicionada = repo.obter_personagem(jogador, campanha_id, alvo["character_id"])
+                        if ficha_condicionada:
+                            estado_condicionado = _condicoes_da_ficha(ficha_condicionada)
                             for condicao in condicoes_aplicar:
-                                if condicao not in condicoes_atuais:
-                                    condicoes_atuais.append(condicao)
-                    repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
+                                estado_condicionado.aplicar(condicao, duracao_condicao)
+                            _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha_condicionada, estado_condicionado)
+                    else:
+                        estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+                        for token_bruto in estado_bruto.get("tokens", []):
+                            if token_bruto.get("id") == alvo["id"]:
+                                condicoes_atuais = token_bruto.setdefault("conditions", [])
+                                duracoes_atuais = token_bruto.setdefault("condition_durations", {})
+                                for condicao in condicoes_aplicar:
+                                    if condicao not in condicoes_atuais:
+                                        condicoes_atuais.append(condicao)
+                                    if duracao_condicao:
+                                        duracoes_atuais[condicao] = duracao_condicao
+                        repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
                     efeito["condicoes_aplicadas"] = condicoes_aplicar
-                    efeito["duracao_texto"] = "Consultar a descrição da ação; o mapa não avança turnos automaticamente nesta versão."
+                    efeito["duracao_texto"] = duracao_condicao or efeito_texto
             efeitos.append(efeito)
     return {
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
