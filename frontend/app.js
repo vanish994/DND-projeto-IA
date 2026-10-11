@@ -1,84 +1,348 @@
-const STORAGE_KEY = 'dnd-mj-sessao';
+const JOGADOR_KEY = 'dnd-mj-jogador';
+const ULTIMA_KEY = 'dnd-mj-ultima-campanha';
+const RASCUNHOS_KEY = 'dnd-mj-rascunhos';
+const LEGADO_KEY = 'dnd-mj-sessao';
+
+const app = document.querySelector('#app');
+const list = document.querySelector('#campaign-list');
+const listStatus = document.querySelector('#campaigns-status');
+const newCampaignButton = document.querySelector('#new-campaign');
+const backButton = document.querySelector('#back-button');
+const optionsButton = document.querySelector('#options-button');
+const helpButton = document.querySelector('#help-button');
+const title = document.querySelector('#campaign-title');
 const messages = document.querySelector('#messages');
 const form = document.querySelector('#chat-form');
 const input = document.querySelector('#message-input');
 const sendButton = document.querySelector('#send-button');
-const newSessionButton = document.querySelector('#new-session');
-const sessionLabel = document.querySelector('#session-label');
+const optionsDialog = document.querySelector('#options-dialog');
+const renameInput = document.querySelector('#rename-input');
+const helpDialog = document.querySelector('#help-dialog');
+const desktop = window.matchMedia('(min-width: 900px)');
 
-function sessionId() {
-  let id = localStorage.getItem(STORAGE_KEY);
+const state = {
+  campanhas: [],
+  atual: null,
+  pendentes: new Set(),
+  rascunhos: lerJson(RASCUNHOS_KEY, {}),
+};
+
+function lerJson(chave, padrao) {
+  try { return JSON.parse(localStorage.getItem(chave)) ?? padrao; } catch (_) { return padrao; }
+}
+
+function jogadorId() {
+  let id = localStorage.getItem(JOGADOR_KEY);
   if (!id) {
-    id = `campanha-${crypto.randomUUID().slice(0, 8)}`;
-    localStorage.setItem(STORAGE_KEY, id);
+    id = `jogador-${crypto.randomUUID()}`;
+    localStorage.setItem(JOGADOR_KEY, id);
   }
   return id;
 }
 
-function addMessage(role, text) {
-  const article = document.createElement('article');
-  article.className = `message message-${role}`;
-  article.innerHTML = `<div class="avatar">${role === 'mj' ? 'MJ' : 'VOCÊ'}</div><div class="bubble"></div>`;
-  article.querySelector('.bubble').textContent = text;
-  messages.append(article);
-  messages.scrollTop = messages.scrollHeight;
+async function api(caminho, opcoes = {}) {
+  const resposta = await fetch(caminho, {
+    ...opcoes,
+    headers: {'Content-Type': 'application/json', 'X-Jogador-Id': jogadorId(), ...(opcoes.headers || {})},
+  });
+  if (resposta.status === 204) return null;
+  const dados = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) {
+    const detalhe = typeof dados.detail === 'string' ? dados.detail : 'Erro inesperado.';
+    throw Object.assign(new Error(detalhe), {status: resposta.status});
+  }
+  return dados;
 }
 
-function setSessionLabel() {
-  sessionLabel.textContent = sessionId();
+function salvarRascunhos() {
+  localStorage.setItem(RASCUNHOS_KEY, JSON.stringify(state.rascunhos));
 }
 
-async function sendMessage(text) {
-  addMessage('user', text);
-  sendButton.disabled = true;
-  input.disabled = true;
-  const typing = document.createElement('article');
-  typing.className = 'message message-mj typing';
-  typing.innerHTML = '<div class="avatar">MJ</div><div class="bubble">O MJ está pensando...</div>';
-  messages.append(typing);
-  messages.scrollTop = messages.scrollHeight;
-  try {
-    const response = await fetch('/v1/mj/mensagem', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({sessao_id: sessionId(), mensagem: text}),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || 'Não foi possível consultar o MJ.');
-    typing.remove();
-    addMessage('mj', data.resposta);
-  } catch (error) {
-    typing.remove();
-    addMessage('mj', `Não consegui consultar o MJ agora. ${error.message}`);
-  } finally {
-    sendButton.disabled = false;
-    input.disabled = false;
-    input.focus();
+function guardarRascunhoAtual() {
+  if (!state.atual) return;
+  const texto = input.value;
+  if (texto.trim()) state.rascunhos[state.atual] = texto;
+  else delete state.rascunhos[state.atual];
+  salvarRascunhos();
+}
+
+function campanha(id) {
+  return state.campanhas.find((c) => c.id === id);
+}
+
+function dataRelativa(iso) {
+  const data = new Date(iso);
+  const dias = Math.floor((Date.now() - data.getTime()) / 86400000);
+  if (dias <= 0) return `hoje, ${data.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+  if (dias === 1) return 'ontem';
+  if (dias < 7) return `há ${dias} dias`;
+  return data.toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'});
+}
+
+function resumo(texto) {
+  if (!texto) return 'Ainda não há mensagens.';
+  const limpo = texto.replace(/\s+/g, ' ').trim();
+  return limpo.length > 90 ? `${limpo.slice(0, 90)}…` : limpo;
+}
+
+function setView(view) {
+  app.dataset.view = view;
+}
+
+function renderList() {
+  list.replaceChildren();
+  if (!state.campanhas.length) {
+    listStatus.textContent = 'Nenhuma campanha ainda. Crie a primeira para começar.';
+    return;
+  }
+  listStatus.textContent = '';
+  for (const c of state.campanhas) {
+    const item = document.createElement('li');
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'campaign-card';
+    botao.dataset.id = c.id;
+    if (c.id === state.atual) botao.setAttribute('aria-current', 'true');
+    botao.innerHTML = '<span class="card-top"><strong class="card-title"></strong><span class="card-date"></span></span><span class="card-preview"></span><span class="card-action">Retomar campanha</span>';
+    botao.querySelector('.card-title').textContent = c.titulo;
+    botao.querySelector('.card-date').textContent = dataRelativa(c.atualizada_em);
+    botao.querySelector('.card-preview').textContent = state.pendentes.has(c.id) ? 'O MJ está respondendo…' : resumo(c.ultima_mensagem);
+    botao.addEventListener('click', () => abrirCampanha(c.id));
+    item.append(botao);
+    list.append(item);
   }
 }
 
+function atualizarCampanha(dados) {
+  state.campanhas = [dados, ...state.campanhas.filter((c) => c.id !== dados.id)];
+  renderList();
+}
+
+function addMessage(papel, texto, extraClass = '') {
+  messages.querySelector('.empty-state')?.remove();
+  const role = papel === 'user' ? 'user' : 'mj';
+  const article = document.createElement('article');
+  article.className = `message message-${role} ${extraClass}`.trim();
+  article.innerHTML = `<div class="avatar" aria-hidden="true">${role === 'mj' ? 'MJ' : 'VOCÊ'}</div><div class="bubble"><span class="visually-hidden">${role === 'mj' ? 'MJ:' : 'Você:'}</span><span class="bubble-text"></span></div>`;
+  article.querySelector('.bubble-text').textContent = texto;
+  messages.append(article);
+  messages.scrollTop = messages.scrollHeight;
+  return article;
+}
+
+function renderEmpty(texto) {
+  messages.replaceChildren();
+  const p = document.createElement('p');
+  p.className = 'empty-state';
+  p.textContent = texto;
+  messages.append(p);
+}
+
+function addTyping() {
+  return addMessage('assistant', 'O MJ está pensando…', 'typing');
+}
+
+function atualizarComposer() {
+  const ocupado = !state.atual || state.pendentes.has(state.atual);
+  input.disabled = !state.atual;
+  sendButton.disabled = ocupado;
+  sendButton.textContent = state.atual && state.pendentes.has(state.atual) ? 'Aguarde' : 'Enviar';
+  optionsButton.disabled = !state.atual;
+}
+
+function autoResize() {
+  input.style.height = 'auto';
+  input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
+  input.style.overflowY = input.scrollHeight > 160 ? 'auto' : 'hidden';
+}
+
+async function abrirCampanha(id) {
+  guardarRascunhoAtual();
+  state.atual = id;
+  localStorage.setItem(ULTIMA_KEY, id);
+  const c = campanha(id);
+  title.textContent = c ? c.titulo : 'Carregando…';
+  input.value = state.rascunhos[id] || '';
+  autoResize();
+  atualizarComposer();
+  renderList();
+  setView('conversa');
+  renderEmpty('Carregando campanha…');
+  try {
+    const detalhe = await api(`/v1/campanhas/${encodeURIComponent(id)}`);
+    if (state.atual !== id) return;
+    title.textContent = detalhe.titulo;
+    messages.replaceChildren();
+    if (!detalhe.mensagens.length) renderEmpty('Ainda não há mensagens. Conte onde a cena começa.');
+    for (const m of detalhe.mensagens) addMessage(m.papel, m.conteudo);
+    if (state.pendentes.has(id)) addTyping();
+  } catch (erro) {
+    if (state.atual !== id) return;
+    if (erro.status === 404) {
+      state.campanhas = state.campanhas.filter((x) => x.id !== id);
+      fecharCampanha();
+      listStatus.textContent = 'Essa campanha não existe mais.';
+      return;
+    }
+    renderEmpty('Não foi possível carregar esta campanha. Tente novamente; seu histórico salvo não foi alterado.');
+  }
+  if (desktop.matches || document.activeElement === document.body) input.focus({preventScroll: true});
+}
+
+function fecharCampanha() {
+  guardarRascunhoAtual();
+  state.atual = null;
+  localStorage.removeItem(ULTIMA_KEY);
+  title.textContent = 'Nenhuma campanha aberta';
+  input.value = '';
+  renderEmpty('Escolha uma campanha ou crie uma nova para começar.');
+  atualizarComposer();
+  renderList();
+  setView('inicio');
+}
+
+async function enviar(texto) {
+  const id = state.atual;
+  state.pendentes.add(id);
+  delete state.rascunhos[id];
+  salvarRascunhos();
+  const enviada = addMessage('user', texto);
+  let typing = addTyping();
+  atualizarComposer();
+  renderList();
+  try {
+    const dados = await api(`/v1/campanhas/${encodeURIComponent(id)}/mensagens`, {
+      method: 'POST',
+      body: JSON.stringify({mensagem: texto}),
+    });
+    state.pendentes.delete(id);
+    atualizarCampanha(dados.campanha);
+    if (state.atual === id) {
+      messages.querySelector('.typing')?.remove();
+      addMessage('assistant', dados.resposta);
+    }
+  } catch (erro) {
+    state.pendentes.delete(id);
+    if (!state.rascunhos[id]) {
+      state.rascunhos[id] = texto;
+      salvarRascunhos();
+    }
+    if (state.atual === id) {
+      messages.querySelector('.typing')?.remove();
+      enviada.remove();
+      if (!input.value.trim()) input.value = texto;
+      autoResize();
+      addMessage('assistant', `Não foi possível falar com o MJ agora (${erro.message}). Sua mensagem não foi salva e voltou para o campo de texto.`, 'message-error');
+    }
+    renderList();
+  } finally {
+    typing = null;
+    atualizarComposer();
+    if (state.atual === id) input.focus({preventScroll: true});
+  }
+}
+
+async function carregarCampanhas() {
+  listStatus.textContent = 'Carregando campanhas…';
+  try {
+    state.campanhas = await api('/v1/campanhas');
+    renderList();
+    return true;
+  } catch (_) {
+    listStatus.textContent = 'Não foi possível carregar as campanhas. Verifique a conexão e recarregue a página.';
+    return false;
+  }
+}
+
+newCampaignButton.addEventListener('click', async () => {
+  newCampaignButton.disabled = true;
+  try {
+    const nova = await api('/v1/campanhas', {method: 'POST', body: JSON.stringify({})});
+    atualizarCampanha(nova);
+    await abrirCampanha(nova.id);
+  } catch (erro) {
+    listStatus.textContent = `Não foi possível criar a campanha. ${erro.message}`;
+  } finally {
+    newCampaignButton.disabled = false;
+  }
+});
+
+backButton.addEventListener('click', () => {
+  guardarRascunhoAtual();
+  setView('inicio');
+  newCampaignButton.focus({preventScroll: true});
+});
+
 form.addEventListener('submit', (event) => {
   event.preventDefault();
-  const text = input.value.trim();
-  if (!text || sendButton.disabled) return;
+  const texto = input.value.trim();
+  if (!texto || !state.atual || state.pendentes.has(state.atual)) return;
   input.value = '';
-  sendMessage(text);
+  autoResize();
+  enviar(texto);
 });
 
 input.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && desktop.matches) {
     event.preventDefault();
     form.requestSubmit();
   }
 });
 
-newSessionButton.addEventListener('click', async () => {
-  const oldId = sessionId();
-  try { await fetch(`/v1/mj/sessoes/${encodeURIComponent(oldId)}`, {method: 'DELETE'}); } catch (_) {}
-  localStorage.removeItem(STORAGE_KEY);
-  messages.innerHTML = '<article class="message message-mj"><div class="avatar">MJ</div><div class="bubble"><p>Uma nova mesa se abre. Onde começa a sua história?</p></div></article>';
-  setSessionLabel();
-  input.focus();
+input.addEventListener('input', () => {
+  autoResize();
+  guardarRascunhoAtual();
 });
 
-setSessionLabel();
+optionsButton.addEventListener('click', () => {
+  const c = campanha(state.atual);
+  renameInput.value = c ? c.titulo : title.textContent;
+  optionsDialog.showModal();
+});
+
+optionsDialog.addEventListener('close', async () => {
+  const id = state.atual;
+  const acao = optionsDialog.returnValue;
+  optionsDialog.returnValue = '';
+  if (!id) return;
+  try {
+    if (acao === 'rename') {
+      const nome = renameInput.value.trim();
+      if (!nome) return;
+      const dados = await api(`/v1/campanhas/${encodeURIComponent(id)}`, {method: 'PATCH', body: JSON.stringify({titulo: nome})});
+      atualizarCampanha(dados);
+      if (state.atual === id) title.textContent = dados.titulo;
+    } else if (acao === 'delete') {
+      const c = campanha(id);
+      if (!window.confirm(`Apagar "${c ? c.titulo : 'esta campanha'}" e todo o histórico?`)) return;
+      await api(`/v1/campanhas/${encodeURIComponent(id)}`, {method: 'DELETE'});
+      state.campanhas = state.campanhas.filter((x) => x.id !== id);
+      delete state.rascunhos[id];
+      salvarRascunhos();
+      fecharCampanha();
+    }
+  } catch (erro) {
+    if (state.atual === id) addMessage('assistant', `Não foi possível concluir a ação. ${erro.message}`, 'message-error');
+  }
+});
+
+helpButton.addEventListener('click', () => helpDialog.showModal());
+
+if (window.visualViewport) {
+  const ajustarAltura = () => {
+    document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
+    if (document.activeElement === input) messages.scrollTop = messages.scrollHeight;
+  };
+  document.documentElement.classList.add('has-visual-viewport');
+  window.visualViewport.addEventListener('resize', ajustarAltura);
+  ajustarAltura();
+}
+
+(async function iniciar() {
+  localStorage.removeItem(LEGADO_KEY);
+  autoResize();
+  atualizarComposer();
+  if (!(await carregarCampanhas())) return;
+  const ultima = localStorage.getItem(ULTIMA_KEY);
+  if (desktop.matches && ultima && campanha(ultima)) abrirCampanha(ultima);
+})();

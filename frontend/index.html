@@ -2,51 +2,78 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>MJ — D&D Projeto IA</title>
+  <link rel="stylesheet" href="/design-tokens.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <main class="app-shell">
-    <aside class="sidebar">
-      <div class="brand-mark">D&D <span>PROJETO IA</span></div>
-      <div class="sidebar-copy">
-        <p class="eyebrow">MESTRE DE JOGO</p>
-        <h1>Uma mesa aberta para a sua história.</h1>
-        <p>O MJ narra livremente. O motor valida as regras quando a sessão precisa delas.</p>
+  <div class="app-shell" id="app" data-view="inicio">
+    <aside class="campaigns" aria-labelledby="campaigns-title">
+      <header class="campaigns-header">
+        <div class="brand-mark">D&amp;D <span>PROJETO IA</span></div>
+        <button id="help-button" class="text-button" type="button">Ajuda</button>
+      </header>
+      <div class="campaigns-intro">
+        <h1 id="campaigns-title">Campanhas</h1>
+        <p class="tagline">A aventura continua de onde sua mesa parou.</p>
       </div>
-      <div class="rule-note">
-        <span class="dot"></span>
-        <div><strong>Motor online</strong><small>Regras mecânicas validadas</small></div>
-      </div>
-      <button id="new-session" class="ghost-button" type="button">+ Nova sessão</button>
+      <button id="new-campaign" class="primary-button" type="button">Nova campanha</button>
+      <p id="campaigns-status" class="campaigns-status" role="status"></p>
+      <ul id="campaign-list" class="campaign-list" aria-label="Campanhas recentes"></ul>
     </aside>
 
-    <section class="chat-panel">
+    <main class="chat-panel" aria-labelledby="campaign-title">
       <header class="chat-header">
-        <div>
-          <p class="eyebrow">SESSÃO ATUAL</p>
-          <h2 id="session-label">Campanha sem título</h2>
+        <button id="back-button" class="icon-button back-button" type="button" aria-label="Voltar para campanhas">
+          <span aria-hidden="true">←</span>
+        </button>
+        <div class="chat-heading">
+          <p class="eyebrow">Campanha</p>
+          <h2 id="campaign-title">Nenhuma campanha aberta</h2>
         </div>
-        <span class="status-pill"><span class="dot"></span> MJ disponível</span>
+        <button id="options-button" class="text-button" type="button" disabled>Opções</button>
       </header>
 
-      <div id="messages" class="messages" aria-live="polite">
-        <article class="message message-mj welcome-message">
-          <div class="avatar">MJ</div>
-          <div class="bubble"><p>As cortinas se abrem. Conte-me onde começa a sua história — ou peça uma cena inicial e eu apresentarei a situação sem fechar o caminho dos aventureiros.</p></div>
-        </article>
+      <div id="messages" class="messages" aria-live="polite" aria-relevant="additions">
+        <p class="empty-state">Escolha uma campanha ou crie uma nova para começar.</p>
       </div>
 
       <form id="chat-form" class="composer">
-        <textarea id="message-input" rows="2" maxlength="20000" placeholder="Escreva para o MJ..." aria-label="Mensagem para o MJ"></textarea>
-        <div class="composer-footer">
-          <span>O MJ decide a narrativa; o motor confere as regras.</span>
-          <button id="send-button" class="send-button" type="submit">Enviar <span>↗</span></button>
-        </div>
+        <label for="message-input" class="visually-hidden">Mensagem para o MJ</label>
+        <textarea id="message-input" rows="1" maxlength="20000" placeholder="Escreva para o MJ..." disabled></textarea>
+        <button id="send-button" class="primary-button send-button" type="submit" disabled>Enviar</button>
       </form>
-    </section>
-  </main>
+    </main>
+  </div>
+
+  <dialog id="options-dialog" class="sheet" aria-labelledby="options-title">
+    <form method="dialog" id="options-form">
+      <h2 id="options-title">Opções da campanha</h2>
+      <label for="rename-input">Nome da campanha</label>
+      <input id="rename-input" type="text" maxlength="120" required autocomplete="off">
+      <div class="sheet-actions">
+        <button value="cancel" class="text-button" type="submit" formnovalidate>Cancelar</button>
+        <button value="rename" class="primary-button" type="submit">Salvar nome</button>
+      </div>
+      <hr>
+      <button id="delete-campaign" value="delete" class="danger-button" type="submit" formnovalidate>Apagar campanha</button>
+      <p class="sheet-note">Apagar remove todo o histórico desta campanha. As outras campanhas não são afetadas.</p>
+    </form>
+  </dialog>
+
+  <dialog id="help-dialog" class="sheet" aria-labelledby="help-title">
+    <form method="dialog">
+      <h2 id="help-title">Como funciona</h2>
+      <p>O MJ narra livremente: mundo, cenas, personagens e consequências são decididos na conversa.</p>
+      <p>Quando a cena envolve uma regra de D&amp;D — monstros, magias, testes, dano — o motor de regras confere o resultado oficial e rola os dados. O MJ não inventa números.</p>
+      <p>Suas campanhas ficam salvas no servidor e ligadas a este navegador. Ainda não há contas, então elas não aparecem em outros dispositivos.</p>
+      <div class="sheet-actions">
+        <button class="primary-button" type="submit">Entendi</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="/app.js"></script>
 </body>
 </html>

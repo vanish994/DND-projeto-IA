@@ -61,17 +61,16 @@ Arquivos:
 - `frontend/styles.css`
 - `frontend/app.js`
 
-A interface já possui:
+A interface segue `docs/DESIGN_SYSTEM.md` e `frontend/design-tokens.css` e já possui:
 
-- Chat em português do Brasil.
-- Histórico da sessão no navegador/backend.
-- Identificador de sessão.
-- Nova sessão.
-- Campo de mensagem.
-- Envio por botão ou Enter.
-- Layout responsivo para celular.
-- Indicador de processamento.
-- Chamadas para `/v1/mj/mensagem`.
+- Tela inicial com campanhas recentes (Retomar campanha) e Nova campanha.
+- Celular: uma tela por vez (lista ou conversa), app-shell 100dvh sem rolagem da página; só o histórico rola.
+- Desktop (≥ 900 px): lista lateral + conversa.
+- Histórico carregado de `/v1/campanhas/{id}`; trocar de campanha não apaga histórico nem rascunho.
+- Rascunho por campanha salvo no `localStorage`; se o MJ falhar, a mensagem volta para o campo.
+- Opções da campanha: renomear e apagar.
+- Diálogo Ajuda com a explicação MJ × motor (fora da tela inicial).
+- `X-Jogador-Id` gerado no navegador (`localStorage`) enviado em toda chamada.
 
 O backend serve a interface em `GET /` por meio de `StaticFiles`.
 
