@@ -19,6 +19,8 @@ class EstadoVital:
     salvaguardas_falha: int = 0
     exaustao: int = 0
     morto: bool = False
+    dados_vida_maximos: int = 0
+    dados_vida_disponiveis: int | None = None
 
     def __post_init__(self) -> None:
         if self.pv_maximos <= 0:
@@ -27,6 +29,12 @@ class EstadoVital:
             raise ValueError("PV atuais devem estar entre 0 e os PV máximos")
         if self.pv_temporarios < 0 or not 0 <= self.exaustao <= 6:
             raise ValueError("PV temporários e Exaustão devem ser válidos")
+        self.dados_vida_maximos = max(0, int(self.dados_vida_maximos))
+        if self.dados_vida_disponiveis is None:
+            self.dados_vida_disponiveis = self.dados_vida_maximos
+        if not 0 <= int(self.dados_vida_disponiveis) <= self.dados_vida_maximos:
+            raise ValueError("Dados de Vida disponíveis devem estar entre 0 e o máximo")
+        self.dados_vida_disponiveis = int(self.dados_vida_disponiveis)
 
 
 def ajustar_dano(
@@ -60,6 +68,7 @@ def aplicar_dano(
             vulneravel=tipo_dano in set(vulnerabilidades),
             imune=tipo_dano in set(imunidades),
         )
+    antes_pv = estado.pv_atuais
     absorvido = min(estado.pv_temporarios, dano)
     estado.pv_temporarios -= absorvido
     restante = dano - absorvido
@@ -74,7 +83,7 @@ def aplicar_dano(
         resultado["origem"] = origem
     if estado.pv_atuais > 0:
         return resultado
-    if restante >= estado.pv_maximos:
+    if antes_pv > 0 and restante >= estado.pv_maximos:
         estado.morto = True
         resultado["estado"] = "morto"
         return resultado
@@ -108,9 +117,11 @@ def curar(estado: EstadoVital, quantidade: int) -> dict[str, Any]:
 
 def salvaguarda_contra_morte(estado: EstadoVital, rolagem: int) -> dict[str, Any]:
     """Resolve uma Salvaguarda contra a Morte quando a criatura está a 0 PV."""
-    if estado.morto or estado.pv_atuais > 0 or not estado.inconsciente:
+    if estado.morto or estado.pv_atuais > 0 or not estado.inconsciente or estado.estavel:
         raise ValueError("A criatura não pode fazer esta Salvaguarda contra a Morte")
     rolagem = int(rolagem)
+    if not 1 <= rolagem <= 20:
+        raise ValueError("A rolagem da Salvaguarda contra a Morte deve estar entre 1 e 20")
     if rolagem == 1:
         estado.salvaguardas_falha = min(3, estado.salvaguardas_falha + 2)
         resultado = "falha"
@@ -135,12 +146,14 @@ def salvaguarda_contra_morte(estado: EstadoVital, rolagem: int) -> dict[str, Any
     }
 
 
-def estabilizar(estado: EstadoVital, *, teste_medicina: int | None = None) -> dict[str, Any]:
-    """Estabiliza com sucesso automático ou Medicina CD 10."""
+def estabilizar(estado: EstadoVital, *, teste_medicina: int | None = None, kit_medico: bool = False) -> dict[str, Any]:
+    """Estabiliza com teste de Sabedoria (Medicina) CD 10 ou uso de kit médico."""
     if estado.pv_atuais > 0 or estado.morto:
         raise ValueError("A criatura não precisa ser estabilizada")
-    if teste_medicina is not None and int(teste_medicina) < 10:
-        return {"resultado": "falha", "estado": "inconsciente"}
+    if teste_medicina is None and not kit_medico:
+        return {"resultado": "bloqueado", "motivo": "teste_medicina_ou_kit_medico_necessario"}
+    if not kit_medico and int(teste_medicina) < 10:
+        return {"resultado": "falha", "estado": "inconsciente", "cd": 10}
     estado.estavel = True
     estado.salvaguardas_sucesso = 3
     return {"resultado": "sucesso", "estado": "estavel"}
@@ -150,20 +163,23 @@ def adicionar_exaustao(estado: EstadoVital, niveis: int = 1) -> dict[str, Any]:
     estado.exaustao = min(6, estado.exaustao + max(0, int(niveis)))
     if estado.exaustao >= 6:
         estado.morto = True
-    return {"exaustao": estado.exaustao, "morto": estado.morto, "modificador_d20": -2 * estado.exaustao}
+    return {"exaustao": estado.exaustao, "morto": estado.morto, "modificador_d20": -2 * estado.exaustao, "deslocamento_reduzido_m": 1.5 * estado.exaustao}
 
 
 def descanso_curto(estado: EstadoVital, rolagens_dados_vida: Iterable[int], modificador_constituicao: int = 0) -> dict[str, Any]:
     """Gasta Dados de Vida durante um Descanso Curto."""
     if estado.pv_atuais <= 0 or estado.morto:
         raise ValueError("É preciso ter pelo menos 1 PV para um Descanso Curto")
+    rolagens = [int(dado) for dado in rolagens_dados_vida]
+    if estado.dados_vida_maximos > 0 and len(rolagens) > int(estado.dados_vida_disponiveis or 0):
+        raise ValueError("Dados de Vida insuficientes")
     recuperado = 0
-    dados = 0
-    for dado in rolagens_dados_vida:
-        recuperado += max(1, int(dado) + int(modificador_constituicao))
-        dados += 1
+    for dado in rolagens:
+        recuperado += max(1, dado + int(modificador_constituicao))
+    if estado.dados_vida_maximos > 0:
+        estado.dados_vida_disponiveis = int(estado.dados_vida_disponiveis or 0) - len(rolagens)
     resultado = curar(estado, recuperado)
-    resultado.update({"dados_de_vida_gastos": dados, "descanso": "curto"})
+    resultado.update({"dados_de_vida_gastos": len(rolagens), "descanso": "curto", "dados_vida_disponiveis": estado.dados_vida_disponiveis})
     return resultado
 
 
@@ -172,7 +188,7 @@ def descanso_longo(estado: EstadoVital) -> dict[str, Any]:
     if estado.pv_atuais <= 0 or estado.morto:
         raise ValueError("É preciso ter pelo menos 1 PV para um Descanso Longo")
     estado.pv_atuais = estado.pv_maximos
-    estado.pv_temporarios = 0
+    estado.dados_vida_disponiveis = estado.dados_vida_maximos
     estado.exaustao = max(0, estado.exaustao - 1)
     estado.inconsciente = False
     estado.estavel = False
@@ -181,6 +197,7 @@ def descanso_longo(estado: EstadoVital) -> dict[str, Any]:
     return {
         "descanso": "longo", "pv_atuais": estado.pv_atuais,
         "pv_temporarios": estado.pv_temporarios, "exaustao": estado.exaustao,
+        "dados_vida_disponiveis": estado.dados_vida_disponiveis,
     }
 
 
@@ -201,12 +218,20 @@ def resolver_descanso(fatos: Mapping[str, Any]) -> dict[str, Any]:
             estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0)
         )
     elif tipo == "longo":
+        if interrompido:
+            if duracao >= 1:
+                resultado = descanso_curto(estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0))
+                resultado.update({"descanso": "curto", "resultado": "beneficios_de_descanso_curto_antes_da_interrupcao"})
+                return resultado
+            return {"descanso": "longo", "resultado": "interrompido_antes_de_uma_hora"}
         if duracao < 8:
             return {"descanso": "longo", "resultado": "duracao_insuficiente"}
         if float(fatos.get("hours_since_last_long_rest", 16)) < 16:
             return {"descanso": "longo", "resultado": "intervalo_insuficiente"}
-        if interrompido:
-            return {"descanso": "longo", "resultado": "interrompido"}
+        sono = float(fatos.get("sleep_hours", 6))
+        atividade_leve = float(fatos.get("light_activity_hours", 2))
+        if sono < 6 or atividade_leve > 2:
+            return {"descanso": "longo", "resultado": "sono_ou_atividade_invalida"}
         resultado = descanso_longo(estado)
     else:
         raise ValueError("Tipo de descanso inválido")
