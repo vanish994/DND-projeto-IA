@@ -6,6 +6,7 @@ from rule_engine import (
     modificador_atributo,
     Participante,
     RastreadorCombate,
+    EstadoVital,
     resolver_teste_d20,
 )
 
@@ -277,6 +278,56 @@ class RuleEngineTests(unittest.TestCase):
             "cd_agarramento": result.outcome["cd"],
         })
         self.assertEqual(escape.outcome["resultado"], "escapou")
+
+    def test_damage_consumes_temporary_hit_points_first(self):
+        estado = EstadoVital(20, 20, pv_temporarios=5)
+        result = self.engine.evaluate({"type": "damage_application", "estado": estado, "damage": 8})
+        self.assertEqual(result.outcome["dano_absorvido_pv_temporarios"], 5)
+        self.assertEqual(estado.pv_atuais, 17)
+        self.assertEqual(estado.pv_temporarios, 0)
+
+    def test_resistance_then_vulnerability_and_immunity(self):
+        from rule_engine import ajustar_dano
+        self.assertEqual(ajustar_dano(25, resistente=True), 12)
+        self.assertEqual(ajustar_dano(25, vulneravel=True), 50)
+        self.assertEqual(ajustar_dano(25, imune=True), 0)
+
+    def test_healing_removes_unconsciousness_without_exceeding_maximum(self):
+        estado = EstadoVital(20, 0, inconsciente=True)
+        result = self.engine.evaluate({"type": "healing", "estado": estado, "amount": 25})
+        self.assertEqual(result.outcome["pv_atuais"], 20)
+        self.assertFalse(estado.inconsciente)
+
+    def test_death_save_natural_one_counts_as_two_failures(self):
+        estado = EstadoVital(20, 0, inconsciente=True)
+        self.engine.evaluate({"type": "death_save", "estado": estado, "roll": 1})
+        self.assertEqual(estado.salvaguardas_falha, 2)
+
+    def test_three_death_save_successes_stabilize(self):
+        estado = EstadoVital(20, 0, inconsciente=True)
+        for _ in range(3):
+            self.engine.evaluate({"type": "death_save", "estado": estado, "roll": 10})
+        self.assertTrue(estado.estavel)
+
+    def test_exhaustion_six_kills_and_long_rest_reduces_one(self):
+        estado = EstadoVital(20, 20)
+        self.engine.evaluate({"type": "exhaustion", "estado": estado, "levels": 5})
+        self.assertEqual(estado.exaustao, 5)
+        self.engine.evaluate({"type": "long_rest", "estado": estado})
+        self.assertEqual(estado.exaustao, 4)
+        self.engine.evaluate({"type": "exhaustion", "estado": estado, "levels": 2})
+        self.assertTrue(estado.morto)
+
+    def test_short_rest_spends_hit_dice_and_long_rest_restores_pv(self):
+        estado = EstadoVital(20, 5)
+        curto = self.engine.evaluate({
+            "type": "short_rest", "estado": estado,
+            "hit_dice_rolls": [4, 6], "constitution_modifier": 2,
+        })
+        self.assertEqual(curto.outcome["pv_atuais"], 19)
+        estado.pv_atuais = 10
+        self.engine.evaluate({"type": "long_rest", "estado": estado})
+        self.assertEqual(estado.pv_atuais, 20)
 
 
 if __name__ == "__main__":

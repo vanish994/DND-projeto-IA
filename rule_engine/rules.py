@@ -9,6 +9,10 @@ from .combat_special import (
     resolver_escape_agarramento,
 )
 from .engine import Rule, RuleEngine
+from .survival import (
+    adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
+    descanso_curto, descanso_longo, salvaguarda_contra_morte, estabilizar,
+)
 
 
 def _check_total(facts: Mapping[str, Any]) -> int:
@@ -372,5 +376,61 @@ def build_default_engine() -> RuleEngine:
         when=lambda f: f["type"] == "grapple_escape",
         resolve=resolver_escape_agarramento,
         source="D&D 2024 — Imobilizado",
+    ))
+    engine.register(Rule(
+        rule_id="survival.damage",
+        description="Aplica dano aos PV e absorve primeiro os PV Temporários.",
+        priority=50,
+        when=lambda f: f["type"] == "damage_application",
+        resolve=lambda f: aplicar_dano(f["estado"], f["damage"], critico=bool(f.get("critical", False)), dano_ajustado=bool(f.get("adjusted", False))),
+        source="D&D 2024 — Pontos de Vida",
+    ))
+    engine.register(Rule(
+        rule_id="survival.healing",
+        description="Cura PV sem ultrapassar os PV máximos.",
+        priority=50,
+        when=lambda f: f["type"] == "healing",
+        resolve=lambda f: curar(f["estado"], f["amount"]),
+        source="D&D 2024 — Cura",
+    ))
+    engine.register(Rule(
+        rule_id="survival.death-save",
+        description="Resolve uma Salvaguarda contra a Morte.",
+        priority=50,
+        when=lambda f: f["type"] == "death_save",
+        resolve=lambda f: salvaguarda_contra_morte(f["estado"], f["roll"]),
+        source="D&D 2024 — Salvaguardas contra a Morte",
+    ))
+    engine.register(Rule(
+        rule_id="survival.stabilize",
+        description="Estabiliza uma criatura com 0 PV.",
+        priority=50,
+        when=lambda f: f["type"] == "stabilize",
+        resolve=lambda f: estabilizar(f["estado"], teste_medicina=f.get("medicine_test")),
+        source="D&D 2024 — Estabilização",
+    ))
+    engine.register(Rule(
+        rule_id="survival.exhaustion",
+        description="Adiciona níveis de Exaustão e aplica seu modificador.",
+        priority=50,
+        when=lambda f: f["type"] == "exhaustion",
+        resolve=lambda f: adicionar_exaustao(f["estado"], f.get("levels", 1)),
+        source="D&D 2024 — Exaustão",
+    ))
+    engine.register(Rule(
+        rule_id="survival.short-rest",
+        description="Gasta Dados de Vida e recupera PV durante um Descanso Curto.",
+        priority=50,
+        when=lambda f: f["type"] == "short_rest",
+        resolve=lambda f: descanso_curto(f["estado"], f.get("hit_dice_rolls", []), f.get("constitution_modifier", 0)),
+        source="D&D 2024 — Descanso Curto",
+    ))
+    engine.register(Rule(
+        rule_id="survival.long-rest",
+        description="Recupera PV e reduz um nível de Exaustão em um Descanso Longo.",
+        priority=50,
+        when=lambda f: f["type"] == "long_rest",
+        resolve=lambda f: descanso_longo(f["estado"]),
+        source="D&D 2024 — Descanso Longo",
     ))
     return engine

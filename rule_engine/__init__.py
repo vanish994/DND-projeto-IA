@@ -8,6 +8,10 @@ from .combat_special import (
 )
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
+from .survival import (
+    EstadoVital, adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
+    descanso_curto, descanso_longo, salvaguarda_contra_morte, estabilizar,
+)
 
 __all__ = [
     "Rule", "RuleEngine", "Resolution", "ResultadoD20", "bonus_proficiencia",
@@ -15,4 +19,6 @@ __all__ = [
     "Participante", "EstadoTurno", "RastreadorCombate", "ordenar_iniciativa",
     "cd_ataque_desarmado", "resolver_agarrar", "resolver_ataque_oportunidade",
     "resolver_empurrar", "resolver_escape_agarramento",
+    "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
+    "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
 ]

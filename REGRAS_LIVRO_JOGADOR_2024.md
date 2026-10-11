@@ -6,6 +6,12 @@ Este documento é o inventário de implementação do **Rule Engine**. Os livros
 
 O motor está **funcional, mas incompleto**. A suíte atual possui **36 testes aprovados**.
 
+## Bloco 1 — núcleo de sobrevivência
+
+O núcleo de sobrevivência foi implementado nesta etapa: Estado Vital, Pontos de Vida, Pontos de Vida Temporários, cura, Resistência, Vulnerabilidade, Imunidade, dano em 0 PV, inconsciência, estabilidade, Salvaguardas contra a Morte, estabilização, Exaustão, Dados de Vida e os benefícios básicos de Descanso Curto e Descanso Longo.
+
+Ainda falta integrar ao núcleo o relógio de duração dos descansos, interrupções de descanso, recursos específicos recuperados por classe e a origem/tipagem de cada dano. Por isso, o Bloco 1 está **implementado no núcleo, mas ainda não encerrado como integração completa**.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.
