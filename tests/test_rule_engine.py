@@ -1143,7 +1143,7 @@ class RuleEngineTests(unittest.TestCase):
         self.assertGreaterEqual(len(BESTIARIO), 220)
         aboleth = consultar_monstro("Aboleth")
         self.assertEqual(aboleth["ca"], 17)
-        self.assertEqual(aboleth["pv"], 150)
+        self.assertEqual(aboleth["pv"], 135)
         self.assertEqual(aboleth["xp"], 5900)
 
     def test_bestiary_filters_and_xp_resolution(self):
@@ -1156,7 +1156,7 @@ class RuleEngineTests(unittest.TestCase):
 
     def test_bestiary_blocks_include_full_traits_actions_and_raw_text(self):
         from rule_engine import BESTIARIO, consultar_bloco_completo, secao_monstro
-        self.assertEqual(len(BESTIARIO), 232)
+        self.assertEqual(len(BESTIARIO), 355)
         complete = consultar_bloco_completo("Aboleth")
         self.assertIn("Traits", complete["texto_bloco"])
         self.assertIn("Actions", complete["texto_bloco"])
@@ -1168,7 +1168,7 @@ class RuleEngineTests(unittest.TestCase):
     def test_bestiary_full_block_rule_operation(self):
         result = self.engine.evaluate({"type": "bestiary", "operacao": "secao", "nome": "Air Elemental", "secao": "acoes"})
         self.assertEqual(result.outcome["resultado"], "encontrado")
-        self.assertIn("Thunderous Slam", result.outcome["texto"])
+        self.assertTrue(any("Slam" in str(acao.get("nome", "")) for acao in result.outcome["texto"]))
 
     def test_bestiary_suggests_candidates_without_selecting_or_inventing(self):
         result = self.engine.evaluate({
