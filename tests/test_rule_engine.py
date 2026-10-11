@@ -225,6 +225,59 @@ class RuleEngineTests(unittest.TestCase):
         rastreador.mover(3, terreno_dificil=True)
         self.assertEqual(turno.movimento_restante, 3)
 
+    def test_opportunity_attack_is_allowed_when_leaving_reach(self):
+        result = self.engine.evaluate({
+            "type": "opportunity_attack", "saiu_do_alcance": True,
+            "reacao_disponivel": True,
+        })
+        self.assertEqual(result.outcome["resultado"], "permitido")
+        self.assertTrue(result.outcome["reacao_gasta"])
+
+    def test_disengage_teleport_and_forced_movement_block_opportunity_attack(self):
+        for facts in (
+            {"desengajou": True},
+            {"teleportou": True},
+            {"movimento_forcado": True},
+        ):
+            result = self.engine.evaluate({
+                "type": "opportunity_attack", "saiu_do_alcance": True,
+                "reacao_disponivel": True, **facts,
+            })
+            self.assertEqual(result.outcome["resultado"], "bloqueado")
+
+    def test_shove_uses_strength_modifier_and_can_knock_prone(self):
+        result = self.engine.evaluate({
+            "type": "shove", "forca_modificador": 4, "bonus_proficiencia": 3,
+            "tamanho_atacante": 2, "tamanho_alvo": 2,
+            "rolagem": 8, "modificador_salvaguarda": 2, "efeito": "caido",
+        })
+        self.assertEqual(result.outcome["cd"], 15)
+        self.assertEqual(result.outcome["resultado"], "aplicado")
+        self.assertEqual(result.outcome["efeito"], "caido")
+
+    def test_grapple_is_blocked_against_target_two_sizes_larger(self):
+        result = self.engine.evaluate({
+            "type": "grapple", "forca_modificador": 3, "bonus_proficiencia": 2,
+            "tamanho_atacante": 1, "tamanho_alvo": 3,
+            "rolagem": 1, "modificador_salvaguarda": -1,
+        })
+        self.assertEqual(result.outcome["resultado"], "bloqueado")
+        self.assertEqual(result.outcome["motivo"], "tamanho_invalido")
+
+    def test_grapple_applies_immobilized_and_can_be_escaped(self):
+        result = self.engine.evaluate({
+            "type": "grapple", "forca_modificador": 3, "bonus_proficiencia": 2,
+            "tamanho_atacante": 2, "tamanho_alvo": 2,
+            "rolagem": 5, "modificador_salvaguarda": 1,
+        })
+        self.assertEqual(result.outcome["resultado"], "aplicado")
+        self.assertEqual(result.outcome["condicao"], "imobilizado")
+        escape = self.engine.evaluate({
+            "type": "grapple_escape", "rolagem": 13, "modificador": 2,
+            "cd_agarramento": result.outcome["cd"],
+        })
+        self.assertEqual(escape.outcome["resultado"], "escapou")
+
 
 if __name__ == "__main__":
     unittest.main()

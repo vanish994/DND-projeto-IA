@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from .combat_special import (
+    resolver_agarrar,
+    resolver_ataque_oportunidade,
+    resolver_empurrar,
+    resolver_escape_agarramento,
+)
 from .engine import Rule, RuleEngine
 
 
@@ -334,5 +340,37 @@ def build_default_engine() -> RuleEngine:
             "type": f["type"], "result": "disadvantage", "reason": "attacker_condition",
         },
         source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="attack.opportunity",
+        description="Uma criatura que sai do alcance pode provocar um ataque de oportunidade.",
+        priority=50,
+        when=lambda f: f["type"] == "opportunity_attack",
+        resolve=resolver_ataque_oportunidade,
+        source="D&D 2024 — ataques de oportunidade",
+    ))
+    engine.register(Rule(
+        rule_id="unarmed.shove",
+        description="Empurrar exige uma salvaguarda de Força ou Destreza e permite empurrar ou deixar Caído.",
+        priority=50,
+        when=lambda f: f["type"] == "shove",
+        resolve=resolver_empurrar,
+        source="D&D 2024 — Ataque Desarmado",
+    ))
+    engine.register(Rule(
+        rule_id="unarmed.grapple",
+        description="Agarrar exige uma salvaguarda de Força ou Destreza e pode aplicar Imobilizado.",
+        priority=50,
+        when=lambda f: f["type"] == "grapple",
+        resolve=resolver_agarrar,
+        source="D&D 2024 — Ataque Desarmado",
+    ))
+    engine.register(Rule(
+        rule_id="grapple.escape",
+        description="A criatura agarrada pode escapar com Atletismo ou Acrobacia contra a CD do agarramento.",
+        priority=50,
+        when=lambda f: f["type"] == "grapple_escape",
+        resolve=resolver_escape_agarramento,
+        source="D&D 2024 — Imobilizado",
     ))
     return engine

@@ -7,7 +7,7 @@ Este arquivo é o mapa de implementação do **Rule Engine**. A biblioteca de li
 | Módulo | Situação | Próxima cobertura |
 |---|---|---|
 | Fundamentos e testes | Em implementação | Atributos, CD, proficiência, vantagem/desvantagem, perícias e interação social |
-| Combate e ações | Em implementação | Iniciativa, rodadas, turnos, ações, movimento, Correr, Desengajar, Esquivar, Preparar e terreno difícil já iniciados; faltam alcance, cobertura e agarrar |
+| Combate e ações | Em implementação | Iniciativa, rodadas, turnos, ações, movimento, agarrar, empurrar e ataques de oportunidade já implementados; faltam alcance, cobertura, montaria e subaquático |
 | Vida, dano e descanso | Parcial | PV, PV temporários, resistência, vulnerabilidade, morte, exaustão e descansos |
 | Condições e efeitos | Parcial | Todas as condições, efeitos derivados e término contextual |
 | Conjuração e magias | Parcial | Componentes, preparação, rituais, alvos, áreas, concentração e duração |
@@ -56,3 +56,6 @@ O módulo de combate já inclui:
 - ações Ajudar, Atacar, Analisar, Desengajar, Esconder, Esquivar, Influenciar, Preparar, Procurar, Usar Magia e Usar Objeto;
 - efeitos estruturados de Desengajar, Esquivar e Preparar;
 - custo dobrado de movimento em terreno difícil.
+- ataques de oportunidade bloqueados por Desengajar, teleporte, movimento forçado ou reação indisponível;
+- CD de Ataque Desarmado para Empurrar e Agarrar;
+- limite de tamanho, condição Imobilizado, efeito Caído, empurrão de 1,5 m e escape por Atletismo/Acrobacia.
