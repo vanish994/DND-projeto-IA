@@ -18,7 +18,7 @@ BASE = {"forca": 8, "destreza": 14, "constituicao": 13, "inteligencia": 15, "sab
 
 
 def fatos(**extra):
-    dados = {"name": "Vex", "species": "elfo", "class": "mago", "level": 1, "ability_scores": dict(BASE)}
+    dados = {"name": "Vex", "species": "elfo", "class": "mago", "level": 1, "ability_scores": dict(BASE), "equipamento_antecedente": "A"}
     dados.update(extra)
     return dados
 
@@ -62,8 +62,8 @@ class AntecedentesTests(unittest.TestCase):
 
     def test_medium_espiritual_exige_dadiva_sombria(self):
         with self.assertRaises(ValueError):
-            criar_personagem(fatos(background="medium_espiritual"))
-        p = criar_personagem(fatos(background="medium_espiritual", background_feat="sussurros_reunidos"))
+            criar_personagem(fatos(background="medium_espiritual", ferramenta_antecedente="Dados"))
+        p = criar_personagem(fatos(background="medium_espiritual", background_feat="sussurros_reunidos", ferramenta_antecedente="Dados"))
         self.assertIn("sussurros_reunidos", p.talentos)
 
     def test_olho_agucado_tem_efeitos_catalogados(self):
@@ -137,6 +137,7 @@ class BackendPersonagensTests(unittest.TestCase):
             "nome": "Vex", "especie": "elfo", "classe": "mago", "metodo_atributos": "matriz_padrao",
             "atributos": {"forca": 8, "destreza": 14, "constituicao": 13, "inteligencia": 15, "sabedoria": 12, "carisma": 10},
             "antecedente": "sabio", "aumentos_antecedente": {"inteligencia": 2, "constituicao": 1},
+            "equipamento_antecedente": "A",
         }
         dados.update(extra)
         return dados
