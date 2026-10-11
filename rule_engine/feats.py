@@ -113,6 +113,8 @@ def validar_talento(fatos: dict) -> dict:
     nivel = int(fatos.get("nivel", fatos.get("nivel_personagem", 1)))
     if nivel < dados.get("nivel", 1):
         return {"resultado": "bloqueado", "motivo": "nivel_insuficiente", "nivel_minimo": dados["nivel"]}
+    if dados.get("requisito") == "campanha_ravenloft" and fatos.get("campanha_ravenloft") is not True:
+        return {"resultado": "bloqueado", "motivo": "requer_campanha_ravenloft"}
     if dados.get("requer_conjuracao") and not fatos.get("caracteristica_conjuracao", fatos.get("magia_de_pacto", False)):
         return {"resultado": "bloqueado", "motivo": "requer_conjuracao"}
     for atributo in dados.get("atributo_13", []):
