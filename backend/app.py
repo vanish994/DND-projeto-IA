@@ -35,6 +35,7 @@ from rule_engine.spells import listar_magias, obter_magia, resolver_magia
 from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
 from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS
+from rule_engine.ability_checks import resolver_salvaguarda
 
 logger = logging.getLogger(__name__)
 
@@ -1091,6 +1092,67 @@ def conjurar_no_mapa_tatico(
         dados = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
         mod = int((ficha.get("modificadores") or {}).get("inteligencia", 0))
         cura = max(0, sum(dados) + mod)
+    elif mecanica.get("tipo") == "dano_em_area":
+        # A área é centrada no alvo escolhido; resolvemos apenas quando todos
+        # os tokens atingidos têm salvaguardas deriváveis de fichas completas.
+        area = mecanica.get("area") or {}
+        forma = str(area.get("forma", "")).lower()
+        if forma == "cone":
+            raio_pes = round(float(area.get("comprimento_m", 0)) * 3.28084)
+        elif forma == "cubo":
+            raio_pes = round(float(area.get("lado_m", 0)) * 3.28084)
+        elif forma == "esfera":
+            raio_pes = round(float(area.get("raio_m", 0)) * 3.28084)
+        elif forma == "linha":
+            raio_pes = round(float(area.get("comprimento_m", 0)) * 3.28084)
+        else:
+            raise HTTPException(status_code=422, detail="Forma de área ainda não suportada pelo mapa tático")
+        if raio_pes <= 0:
+            raise HTTPException(status_code=422, detail="A magia não possui dimensão de área válida")
+        alvos_area = [
+            t for t in tokens
+            if t["hp"] > 0 and max(abs(int(t["x"]) - int(alvo["x"])), abs(int(t["y"]) - int(alvo["y"]))) * 5 <= raio_pes
+        ]
+        if not alvos_area:
+            raise HTTPException(status_code=422, detail="Nenhum alvo dentro da área")
+        fichas_alvos = {}
+        for token_area in alvos_area:
+            if token_area["kind"] == "enemy":
+                raise HTTPException(status_code=422, detail={
+                    "motivo": "salvaguarda_monstro_indisponivel",
+                    "alvo": token_area["name"],
+                    "detalhe": "O catálogo tático atual contém CA e PV, mas não os modificadores de salvaguarda deste monstro. A área foi rejeitada sem gastar espaço.",
+                })
+            ficha_alvo = repo.obter_personagem(jogador, campanha_id, token_area["character_id"])
+            if not ficha_alvo:
+                raise HTTPException(status_code=404, detail="Ficha de alvo da área não encontrada")
+            fichas_alvos[token_area["id"]] = ficha_alvo
+        expressao = str(mecanica.get("dados_dano") or mecanica.get("dados_dano_base") or "2d8")
+        quantidade, lados = map(int, expressao.lower().split("d"))
+        dc = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get("inteligencia", 0))
+        resultados_area = []
+        for token_area in alvos_area:
+            ficha_alvo = fichas_alvos[token_area["id"]]
+            atributo = str(mecanica.get("salvaguarda", "destreza")).lower()
+            mods_alvo = ficha_alvo.get("modificadores") or {}
+            bonus_atributo = int(mods_alvo.get(atributo, 0))
+            profs_salva = ficha_alvo.get("proficiencias_salvaguarda") or []
+            proficiente = atributo in {str(p).casefold() for p in profs_salva}
+            bonus_salva = bonus_atributo + (int(ficha_alvo.get("bonus_proficiencia", 2)) if proficiente else 0)
+            rolagem_salva = secrets.randbelow(20) + 1
+            salvaguarda = resolver_salvaguarda({
+                "atributo": atributo, "roll": rolagem_salva, "modifier": bonus_salva,
+                "dc": dc, "proficiente": proficiente, "bonus_proficiencia": int(ficha_alvo.get("bonus_proficiencia", 2)),
+            })
+            if salvaguarda.get("resultado") == "bloqueado":
+                raise HTTPException(status_code=422, detail={"motivo": "salvaguarda_nao_resolvida", "resultado": salvaguarda})
+            dados_area = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+            dano_base = sum(dados_area)
+            dano_alvo = (dano_base // 2) if salvaguarda.get("sucesso") and mecanica.get("sucesso_metade") else (0 if salvaguarda.get("sucesso") else dano_base)
+            if token_area["kind"] == "hero" and dano_alvo:
+                repo.ajustar_pv_personagem(jogador, campanha_id, token_area["character_id"], -dano_alvo)
+            resultados_area.append({"alvo_id": token_area["id"], "nome": token_area["name"], "salvaguarda": salvaguarda, "dados_dano": dados_area, "dano": dano_alvo})
+        dano = sum(x["dano"] for x in resultados_area)
     else:
         raise HTTPException(status_code=422, detail="Esta magia ainda não tem efeito implementado no combate tático")
     if resultado_ataque and resultado_ataque.get("result") == "hit" and dano:
@@ -1120,7 +1182,8 @@ def conjurar_no_mapa_tatico(
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "magia": nome, "resolucao_motor": resolucao_magia,
         "ataque": resultado_ataque, "rolagem": rolagem, "bonus_ataque": bonus_ataque,
-        "dano": dano, "cura": cura, "espaco_usado": espaco_usado if circulo > 0 else None,
+        "dano": dano, "cura": cura, "resultados_area": resultados_area if mecanica.get("tipo") == "dano_em_area" else [],
+        "espaco_usado": espaco_usado if circulo > 0 else None,
         "espacos_restantes": restantes, "nota": "Magias sem efeito tático implementado são rejeitadas sem gastar espaço. Área, salvaguardas e condições exigem integração própria.",
     }
 
