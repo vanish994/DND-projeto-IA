@@ -49,6 +49,25 @@ _DETALHADAS = {
 for nome, (circulo, escola, componentes, conc, efeito, upcast) in _DETALHADAS.items():
     MAGIAS[nome] = {"nome": nome.title(), "circulo": circulo, "escola": escola, "componentes": componentes, "concentracao": conc, "ritual": False, "duracao": "concentração" if conc else "instantânea", "efeito": efeito, "upcasting": upcast}
 
+# O catálogo extraído contém entradas incompletas sem círculo. Para as magias
+# da lista de Artífice, o círculo é conhecido e validado separadamente do efeito.
+from .spellcasting import ARTIFICER_SPELL_LEVELS, normalizar_nome_magia as _normalizar_nome_spellcasting
+
+for _nome_artifice, _circulo_artifice in ARTIFICER_SPELL_LEVELS.items():
+    _chave_artifice = _normalizar_nome_spellcasting(_nome_artifice)
+    _existente_artifice = next(
+        (m for m in MAGIAS.values() if _normalizar_nome_spellcasting(m["nome"]) == _chave_artifice),
+        None,
+    )
+    if _existente_artifice is not None:
+        _existente_artifice["circulo"] = _circulo_artifice
+    else:
+        MAGIAS[_chave_artifice] = {
+            "nome": _nome_artifice, "circulo": _circulo_artifice,
+            "escola": "transmutação", "componentes": "V, S",
+            "concentracao": False, "ritual": False, "duracao": "instantânea",
+        }
+
 
 # Mecânicas estruturadas para integrar o resultado da magia ao combate.
 # Fórmulas são devolvidas como dados; o motor de combate continua responsável
