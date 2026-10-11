@@ -63,6 +63,10 @@ class AbilityCheckTests(unittest.TestCase):
         self.assertEqual(result["total"], 16)
         self.assertEqual(result["atributo"], "destreza")
 
+    def test_surprise_imposes_disadvantage_on_initiative_not_action_loss(self):
+        result = resolver_iniciativa({"modificador_destreza": 2, "dados": [14, 6], "surpreendido": True})
+        self.assertEqual(result["dado"], 6)
+        self.assertEqual(result["total"], 8)
     def test_engine_registers_saving_throw_and_initiative(self):
         engine = build_default_engine()
         save = engine.evaluate({"type": "saving_throw_check", "atributo": "forca", "modificador_atributo": 2, "roll": 12, "cd": 14})
