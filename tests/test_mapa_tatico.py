@@ -103,7 +103,7 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(equip.status_code, 200, equip.text)
         self.save_encounter()
         response = self.client.post(self.url + "/atacar", headers=self.headers, json={
-            "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandit", "arma": "Espada Longa",
+            "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandido", "arma": "Espada Longa",
         })
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
