@@ -658,7 +658,7 @@
   function novoRascunho() {
     return {nome: '', especie: '', classe: '', antecedente: '', talento_antecedente: '', metodo_atributos: 'matriz_padrao',
       atributos: Object.fromEntries(ATRIBUTOS.map((a) => [a, ''])), compra: Object.fromEntries(ATRIBUTOS.map((a) => [a, 8])),
-      modo_aumento: '2-1', aumento2: '', aumento1: '', pericias_classe: [], ferramenta_artesao: ''};
+      modo_aumento: '2-1', aumento2: '', aumento1: '', pericias_classe: [], ferramenta_artesao: '', heranca_draconica: '', ferramenta_antecedente: '', equipamento_antecedente: ''};
   }
 
   async function abrirCriacao() {
@@ -719,7 +719,21 @@
         `Tamanho ${nome(info.tamanho)} · Deslocamento ${String(info.deslocamento).replace('.', ',')} m`,
         dados.especie === chave, (v) => { dados.especie = v; }));
     }
-    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a espécie'}), grade)];
+    const extras = [];
+    const escolha = catalogo.escolhas_especie?.[dados.especie];
+    if (escolha) {
+      const id = 'species-choice';
+      const select = el('select', {id, className: 'field-control'},
+        el('option', {value: '', textContent: 'Escolha uma herança dracônica…'}),
+        ...Object.entries(escolha.opcoes || {}).map(([chave, info]) =>
+          el('option', {value: chave, textContent: `${info.nome} — dano ${info.dano}`})));
+      select.value = dados.heranca_draconica || '';
+      select.addEventListener('change', () => { dados.heranca_draconica = select.value; });
+      extras.push(meta(escolha.nota), el('label', {htmlFor: id, textContent: escolha.rotulo}), select);
+    } else {
+      dados.heranca_draconica = '';
+    }
+    return [el('fieldset', {}, el('legend', {textContent: 'Escolha a espécie'}), grade, ...extras)];
   }
 
   function passoClasse() {
@@ -772,6 +786,34 @@
     const grupos = [['Livro do Jogador 2024', 'Livro do Jogador'], ['Ravenloft: Horror Wilds', 'Ravenloft']];
     const blocos = [];
     const extra = el('div');
+    const extraEscolhas = el('div');
+    const desenharEscolhasAntecedente = () => {
+      extraEscolhas.replaceChildren();
+      const bg = catalogo.antecedentes[dados.antecedente];
+      if (!bg) return;
+      const texto = String(bg.ferramenta || '').toLowerCase();
+      const categoria = Object.keys(catalogo.ferramentas_antecedente || {}).find((chave) => texto.includes(chave));
+      if (categoria) {
+        const info = catalogo.ferramentas_antecedente[categoria];
+        const id = 'background-tool';
+        const select = el('select', {id, className: 'field-control'},
+          el('option', {value: '', textContent: `Escolha ${info.rotulo}…`}),
+          ...info.opcoes.map((item) => el('option', {value: item, textContent: item})));
+        select.value = dados.ferramenta_antecedente || '';
+        select.addEventListener('change', () => { dados.ferramenta_antecedente = select.value; });
+        extraEscolhas.append(el('label', {htmlFor: id, textContent: `${info.rotulo} do antecedente`}), select);
+      } else {
+        dados.ferramenta_antecedente = '';
+      }
+      const idEquipamento = 'background-equipment';
+      const equipamento = el('select', {id: idEquipamento, className: 'field-control'},
+        el('option', {value: '', textContent: 'Escolha um pacote de equipamento…'}),
+        el('option', {value: 'A', textContent: `Pacote A — ${bg.equipamento.A}`}),
+        el('option', {value: 'B', textContent: `Pacote B — ${bg.equipamento.B}`}));
+      equipamento.value = dados.equipamento_antecedente || '';
+      equipamento.addEventListener('change', () => { dados.equipamento_antecedente = equipamento.value; });
+      extraEscolhas.append(el('label', {htmlFor: idEquipamento, textContent: 'Equipamento inicial do antecedente'}), equipamento);
+    };
     const desenharExtra = () => {
       extra.replaceChildren();
       const bg = catalogo.antecedentes[dados.antecedente];
@@ -796,12 +838,14 @@
             if (v !== dados.antecedente) { dados.aumento2 = ''; dados.aumento1 = ''; dados.talento_antecedente = ''; }
             dados.antecedente = v;
             desenharExtra();
+            desenharEscolhasAntecedente();
           }));
       }
       blocos.push(el('h3', {textContent: titulo}), grade);
     }
     desenharExtra();
-    return [el('fieldset', {}, el('legend', {textContent: 'Escolha o antecedente'}), ...blocos), extra];
+    desenharEscolhasAntecedente();
+    return [el('fieldset', {}, el('legend', {textContent: 'Escolha o antecedente'}), ...blocos), extra, extraEscolhas];
   }
 
   function passoAtributos() {
@@ -975,20 +1019,23 @@
         el('dt', {textContent: 'Perícias do antecedente'}), el('dd', {textContent: bg.pericias.map(nome).join(', ')}),
         el('dt', {textContent: 'Perícias de classe'}), el('dd', {textContent: (dados.pericias_classe || []).map(nome).join(', ')}),
         ...(dados.classe === 'artifice' ? [el('dt', {textContent: 'Ferramenta de artesão'}), el('dd', {textContent: dados.ferramenta_artesao || 'pendente'})] : []),
-        el('dt', {textContent: 'Ferramenta do antecedente'}), el('dd', {textContent: bg.ferramenta}),
-        el('dt', {textContent: 'Equipamento inicial'}), el('dd', {textContent: `A: ${bg.equipamento.A} · ou B: ${bg.equipamento.B}`})),
+        el('dt', {textContent: 'Ferramenta do antecedente'}), el('dd', {textContent: dados.ferramenta_antecedente || bg.ferramenta}),
+        el('dt', {textContent: 'Equipamento inicial'}), el('dd', {textContent: dados.equipamento_antecedente ? `${dados.equipamento_antecedente}: ${bg.equipamento[dados.equipamento_antecedente]}` : `Escolha A: ${bg.equipamento.A} · ou B: ${bg.equipamento.B}`})),
       meta('PV, bônus de proficiência, CA e salvaguardas são calculados pelo motor de regras ao criar o personagem.')];
   }
 
   function payload() {
     return {nome: dados.nome.trim(), especie: dados.especie, classe: dados.classe, nivel: 1, metodo_atributos: dados.metodo_atributos,
       atributos: base(), antecedente: dados.antecedente, aumentos_antecedente: aumentos(), talento_antecedente: dados.talento_antecedente || null,
-      pericias_classe: dados.pericias_classe, ferramenta_artesao: dados.ferramenta_artesao || null};
+      pericias_classe: dados.pericias_classe, ferramenta_artesao: dados.ferramenta_artesao || null,
+      heranca_draconica: dados.heranca_draconica || null, ferramenta_antecedente: dados.ferramenta_antecedente || null,
+      equipamento_antecedente: dados.equipamento_antecedente || null};
   }
 
   function validarPasso() {
     if (passo === 0 && !dados.nome.trim()) return 'Dê um nome ao personagem.';
     if (passo === 1 && !dados.especie) return 'Escolha uma espécie.';
+    if (passo === 1 && catalogo.escolhas_especie?.[dados.especie] && !dados.heranca_draconica) return 'Escolha a herança dracônica.';
     if (passo === 2 && !dados.classe) return 'Escolha uma classe.';
     if (passo === 3) {
       const quantidade = Number(catalogo.quantidade_pericias_classe?.[dados.classe] || 0);
@@ -998,6 +1045,11 @@
     if (passo === 4) {
       if (!dados.antecedente) return 'Escolha um antecedente.';
       if (catalogo.antecedentes[dados.antecedente].talento === 'dadiva_sombria' && !dados.talento_antecedente) return 'Escolha uma Dádiva Sombria.';
+      const bg = catalogo.antecedentes[dados.antecedente];
+      const ferramentaTexto = String(bg.ferramenta || '').toLowerCase();
+      const categoriaFerramenta = Object.keys(catalogo.ferramentas_antecedente || {}).find((chave) => ferramentaTexto.includes(chave));
+      if (categoriaFerramenta && !dados.ferramenta_antecedente) return `Escolha ${catalogo.ferramentas_antecedente[categoriaFerramenta].rotulo} para o antecedente.`;
+      if (!dados.equipamento_antecedente) return 'Escolha o pacote de equipamento A ou B.';
     }
     if (passo === 5) {
       if (dados.metodo_atributos === 'matriz_padrao') {
