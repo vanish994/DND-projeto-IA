@@ -131,4 +131,25 @@ def resolver_acao_ajudar(fatos: Mapping[str, Any]) -> dict[str, Any]:
         return {"resultado": "ajuda_preparada", "tipo_ajuda": "ataque", "alvo": fatos.get("alvo", fatos.get("target")), "vantagem_no_proximo_ataque": True, "expira": "inicio_do_proximo_turno_do_ajudante"}
     return {"resultado": "bloqueado", "motivo": "tipo_ajuda_desconhecido"}
 
-__all__ = ["resolver_acao_esconder", "resolver_acao_influenciar", "resolver_fim_esconderijo", "resolver_acao_procurar", "resolver_acao_ajudar"]
+def resolver_acao_estudar(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Resolve Study com as perícias de Inteligência sugeridas pelo PHB 2024."""
+    area = str(fatos.get("area_conhecimento", fatos.get("knowledge_area", ""))).strip().lower().replace(" ", "_")
+    mapa = {
+        "magia": "arcanismo", "itens_magicos": "arcanismo", "simbolos_magicos": "arcanismo", "planos": "arcanismo", "arcana": "arcanismo",
+        "historia": "historia", "eventos_historicos": "historia", "civilizacoes": "historia", "guerras": "historia",
+        "armadilhas": "investigacao", "cifras": "investigacao", "enigmas": "investigacao", "engenhocas": "investigacao",
+        "terreno": "natureza", "flora": "natureza", "clima": "natureza", "nature": "natureza",
+        "deuses": "religiao", "ritos": "religiao", "cultos": "religiao", "simbolos_sagrados": "religiao", "religion": "religiao",
+    }
+    pericia = mapa.get(area)
+    if pericia is None:
+        return {"resultado": "bloqueado", "motivo": "area_de_conhecimento_desconhecida"}
+    dados = dict(fatos)
+    dados["pericia"] = pericia
+    teste = resolver_teste_habilidade(dados)
+    if teste.get("resultado") == "bloqueado":
+        return teste
+    sucesso = teste["resultado"] == "sucesso"
+    return {"resultado": "informacao_encontrada" if sucesso else "sem_informacao_nova", "sucesso": sucesso, "pericia": pericia, "teste": teste}
+
+__all__ = ["resolver_acao_esconder", "resolver_acao_influenciar", "resolver_fim_esconderijo", "resolver_acao_procurar", "resolver_acao_ajudar", "resolver_acao_estudar"]
