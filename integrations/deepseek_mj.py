@@ -134,27 +134,32 @@ class DeepSeekMJ:
 
     def __init__(self, client: Any | None = None, *, model: str | None = None):
         _carregar_env_local()
-        # Prefere a API oficial DeepSeek; mantém TokenHarbor apenas como fallback legado.
+        # Provedor OpenAI-compatible configurável; Groq é o padrão econômico/gratuito.
+        generic_key = os.getenv("LLM_API_KEY")
         deepseek_key = os.getenv("DEEPSEEK_API_KEY")
         tokenharbor_key = os.getenv("TOKENHARBOR_API_KEY")
-        self.uses_tokenharbor = bool(not deepseek_key and tokenharbor_key)
-        default_model = "deepseek-v4.1-flash:free" if self.uses_tokenharbor else "deepseek-chat"
+        self.base_url = (
+            os.getenv("LLM_BASE_URL")
+            or (os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com") if deepseek_key else "")
+            or (os.getenv("TOKENHARBOR_BASE_URL", "https://tokenharbor.ai/v1") if tokenharbor_key else "")
+            or "https://api.groq.com/openai/v1"
+        )
+        self.uses_tokenharbor = bool(not generic_key and not deepseek_key and tokenharbor_key)
+        self.uses_deepseek_api = "api.deepseek.com" in self.base_url
+        default_model = (
+            os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+            if self.uses_deepseek_api
+            else ("deepseek-v4.1-flash:free" if self.uses_tokenharbor else "llama-3.3-70b-versatile")
+        )
         if client is None:
             from openai import OpenAI
 
-            api_key = deepseek_key or tokenharbor_key
+            api_key = generic_key or deepseek_key or tokenharbor_key
             if not api_key:
-                raise RuntimeError("Defina DEEPSEEK_API_KEY (API oficial) ou TOKENHARBOR_API_KEY (legado)")
-            if deepseek_key:
-                base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-            else:
-                base_url = os.getenv("TOKENHARBOR_BASE_URL", "https://tokenharbor.ai/v1")
-            client = OpenAI(
-                api_key=api_key,
-                base_url=base_url,
-            )
+                raise RuntimeError("Defina LLM_API_KEY (provedor configurado), DEEPSEEK_API_KEY ou TOKENHARBOR_API_KEY")
+            client = OpenAI(api_key=api_key, base_url=self.base_url)
         self.client = client
-        self.model = model or os.getenv("DEEPSEEK_MODEL", default_model)
+        self.model = model or os.getenv("LLM_MODEL") or os.getenv("DEEPSEEK_MODEL", default_model)
         self.system_prompt = carregar_prompt_mj()
         self.engine = build_default_engine()
 
@@ -377,7 +382,7 @@ class DeepSeekMJ:
                 "tool_choice": "auto",
                 "max_tokens": 4096,
             }
-            if not self.uses_tokenharbor:
+            if self.uses_deepseek_api:
                 parametros["extra_body"] = {"thinking": {"type": "disabled"}}
             resposta = self.client.chat.completions.create(**parametros)
             mensagem = resposta.choices[0].message
