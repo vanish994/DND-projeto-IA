@@ -9,7 +9,7 @@ from .combat_special import (
     resolver_escape_agarramento,
 )
 from .engine import Rule, RuleEngine
-from .ability_checks import resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica
+from .ability_checks import resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica, resolver_salvaguarda, resolver_iniciativa
 from .combat_geometry import (
     resolver_ataque_geometria, resolver_alcance, resolver_cobertura,
     resolver_queda, resolver_linha_de_visao, espaco_por_tamanho,
@@ -937,4 +937,16 @@ def build_default_engine() -> RuleEngine:
         resolve=resolver_inspiracao_heroica, source="D&D 2024 — Inspiração Heroica",
     ))
 
+    engine.register(Rule(
+        rule_id="saving-throw.complete",
+        description="Resolve salvaguarda com atributo, bônus de proficiência e vantagem/desvantagem.",
+        priority=120, when=lambda f: f["type"] == "saving_throw_check",
+        resolve=resolver_salvaguarda, source="D&D 2024 — Salvaguardas",
+    ))
+    engine.register(Rule(
+        rule_id="initiative.complete",
+        description="Resolve iniciativa como teste de Destreza com bônus e vantagem/desvantagem.",
+        priority=120, when=lambda f: f["type"] == "initiative_check",
+        resolve=resolver_iniciativa, source="D&D 2024 — Iniciativa",
+    ))
     return engine
