@@ -132,6 +132,53 @@ def resolver_conjuracao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def resolver_salvaguarda_concentracao(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Resolve a salvaguarda de Constituição para manter concentração após dano."""
+    concentrando = fatos.get("concentrating", fatos.get("concentrando", False))
+    incapacitado = bool(fatos.get("incapacitated", fatos.get("incapacitado", False)))
+    morto = bool(fatos.get("dead", fatos.get("morto", False)))
+    if not concentrando:
+        return {"resultado": "não_concentrando", "concentracao_mantida": False, "requer_salvaguarda": False}
+    if incapacitado or morto:
+        motivo = "morto" if morto else "incapacitado"
+        return {
+            "resultado": "concentracao_encerrada", "concentracao_mantida": False,
+            "requer_salvaguarda": False, "motivo": motivo,
+        }
+    dano = int(fatos.get("damage", fatos.get("dano", 0)))
+    if dano <= 0:
+        return {"resultado": "sem_dano", "concentracao_mantida": True, "requer_salvaguarda": False}
+    cd = max(10, dano // 2)
+    vantagem = bool(fatos.get("advantage", fatos.get("vantagem", False)))
+    desvantagem = bool(fatos.get("disadvantage", fatos.get("desvantagem", False)))
+    if vantagem and desvantagem:
+        vantagem = desvantagem = False
+    rolagens = fatos.get("rolls", fatos.get("rolagens"))
+    if rolagens is not None:
+        rolagens = [int(r) for r in rolagens]
+        if not rolagens or any(r < 1 or r > 20 for r in rolagens):
+            raise ValueError("As rolagens devem ser valores de d20 entre 1 e 20")
+        if (vantagem or desvantagem) and len(rolagens) < 2:
+            raise ValueError("Vantagem/desvantagem exige ao menos duas rolagens")
+        rolagem = max(rolagens) if vantagem else min(rolagens) if desvantagem else rolagens[0]
+    else:
+        if "roll" not in fatos and "rolagem" not in fatos:
+            raise ValueError("A salvaguarda de concentração exige rolagem auditável")
+        rolagem = int(fatos.get("roll", fatos.get("rolagem")))
+        if not 1 <= rolagem <= 20:
+            raise ValueError("A rolagem deve ser um valor de d20 entre 1 e 20")
+    modificador = int(fatos.get("constitution_modifier", fatos.get("modificador_constituicao", fatos.get("modifier", fatos.get("modificador", 0)))))
+    total = rolagem + modificador
+    sucesso = total >= cd
+    return {
+        "resultado": "sucesso" if sucesso else "falha",
+        "rolagem": rolagem, "modificador": modificador, "total": total, "cd": cd,
+        "dano_sofrido": dano, "concentracao_mantida": sucesso,
+        "requer_salvaguarda": True,
+        "motivo": "cd_atingida" if sucesso else "cd_nao_atingida",
+    }
+
+
 def resolver_alvo_magia(fatos: Mapping[str, Any]) -> dict[str, Any]:
     """Valida alcance, número de alvos e linha de efeito de uma magia."""
     if float(fatos.get("distance", 0)) > float(fatos.get("range", 0)):
