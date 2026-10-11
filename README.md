@@ -87,4 +87,25 @@ python3 run_mj.py
 
 O `.env` é carregado automaticamente, está excluído pelo `.gitignore` e não é publicado no GitHub.
 
+### Backend recomendado
+
+Para uso real, o cliente não deve falar diretamente com o TokenHarbor. O backend FastAPI mantém `TOKENHARBOR_API_KEY` no servidor, recebe mensagens do MJ e expõe o Rule Engine por trás do adaptador DeepSeek. O `run_mj.py` continua útil apenas para testes locais no terminal.
+
+Instalação e execução:
+
+```bash
+pip install -r requirements.txt
+uvicorn backend.app:app --host 0.0.0.0 --port 8000
+```
+
+Endpoint da sessão:
+
+```bash
+curl -X POST http://localhost:8000/v1/mj/mensagem \
+  -H 'Content-Type: application/json' \
+  -d '{"sessao_id":"campanha-1","mensagem":"Os aventureiros entram nas ruínas."}'
+```
+
+O backend atual mantém sessões em memória para desenvolvimento. Para produção, a sessão deve ser transferida para Redis ou banco de dados e o endpoint deve receber autenticação própria; a chave do TokenHarbor nunca deve chegar ao navegador.
+
 A estimativa de “mais de 300 monstros” não corresponde ao PDF SRD 5.2.1 presente na biblioteca ativa: a extração verificável dessa fonte resulta em 232 blocos completos. O catálogo não inventa entradas para preencher essa diferença.
