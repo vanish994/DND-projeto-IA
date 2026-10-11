@@ -2294,6 +2294,50 @@ def conjurar_no_mapa_tatico(
             repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
         else:
             repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], cura)
+    # Efeitos de condição declarados por una mecânica de magia são aplicados
+    # pelo backend. Se o catálogo declarar salvaguarda repetida, ela acompanha
+    # a condição e será rolada automaticamente no fim do turno do alvo.
+    if mecanica.get("tipo") == "condicao" and mecanica.get("condicao"):
+        condicao_magia = normalizar_condicao(str(mecanica["condicao"]))
+        duracao_magia = mecanica.get("duracao")
+        config_save = mecanica.get("salvaguarda_fim_turno")
+        if alvo["kind"] == "hero":
+            ficha_alvo = repo.obter_personagem(jogador, campanha_id, alvo["character_id"])
+            if ficha_alvo:
+                estado_alvo = _condicoes_da_ficha(ficha_alvo)
+                estado_alvo.aplicar(condicao_magia, duracao_magia)
+                ficha_alvo = _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha_alvo, estado_alvo)
+                metadados_save = dict(ficha_alvo.get("salvaguardas_fim_condicoes") or {})
+                if isinstance(config_save, dict):
+                    dc_config = config_save.get("cd", "conjurador")
+                    dc_final = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get("inteligencia", 0)) if dc_config == "conjurador" else dc_config
+                    atributo_save = config_save.get("atributo")
+                    if isinstance(dc_final, int) and atributo_save in {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"}:
+                        metadados_save[condicao_magia] = {"cd": dc_final, "atributo": atributo_save}
+                else:
+                    metadados_save.pop(condicao_magia, None)
+                dados_alvo = {k: v for k, v in ficha_alvo.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+                dados_alvo["salvaguardas_fim_condicoes"] = metadados_save
+                repo.atualizar_dados_ficha(jogador, campanha_id, alvo["character_id"], dados_alvo)
+        elif alvo["kind"] == "enemy":
+            estado_bruto_alvo = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+            for token_bruto_alvo in estado_bruto_alvo.get("tokens", []):
+                if token_bruto_alvo.get("id") != alvo["id"]:
+                    continue
+                condicoes_alvo = token_bruto_alvo.setdefault("conditions", [])
+                if condicao_magia not in {normalizar_condicao(x) for x in condicoes_alvo}:
+                    condicoes_alvo.append(condicao_magia)
+                if duracao_magia:
+                    token_bruto_alvo.setdefault("condition_durations", {})[condicao_magia] = duracao_magia
+                if isinstance(config_save, dict):
+                    dc_config = config_save.get("cd", "conjurador")
+                    dc_final = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get("inteligencia", 0)) if dc_config == "conjurador" else dc_config
+                    atributo_save = config_save.get("atributo")
+                    if isinstance(dc_final, int) and atributo_save in {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"}:
+                        token_bruto_alvo.setdefault("condition_save_to_end", {})[condicao_magia] = {"cd": dc_final, "atributo": atributo_save}
+                else:
+                    token_bruto_alvo.setdefault("condition_save_to_end", {}).pop(condicao_magia, None)
+            repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto_alvo)
     dados_ficha_conjurador = {k: v for k, v in ficha.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
     # Conjurar uma magia com concentração substitui a concentração anterior; magias sem concentração não a encerram.
     if bool(magia.get("concentracao", magia.get("concentration", False))):
