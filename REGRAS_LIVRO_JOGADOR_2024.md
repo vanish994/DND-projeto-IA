@@ -133,6 +133,12 @@ Ampliado o módulo `ability_checks.py` com `saving_throw_check` e `initiative_ch
 
 Testes de integração foram adicionados. A execução automatizada continua sem confirmação; o lote não é considerado validado até que a suíte seja executada.
 
+## Correção de condições — sem efeitos inferidos incorretamente
+
+Ajustado `conditions.py` para não conceder vantagem a um atacante Cego, bloquear ataques de criaturas Incapacitadas, exigir distância em metros para declarar crítico automático contra Paralisado/Inconsciente e não aplicar desvantagem genérica a salvaguardas por Amedrontado/Envenenado. Incapacitado, por si só, não impede a fala; Paralisado, Petrificado e Inconsciente impedem. Foram adicionados testes de regressão para esses casos.
+
+Os testes foram adicionados, mas a suíte ainda não foi executada/confirmada por CI.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
