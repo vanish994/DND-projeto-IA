@@ -1373,10 +1373,24 @@ def atacar_com_monstro_tatico(
             }
             if not sucesso_save:
                 condicoes_aplicar = []
-                if "knocked prone" in efeito_texto:
-                    condicoes_aplicar.append("prone")
-                if "poisoned" in efeito_texto:
-                    condicoes_aplicar.append("poisoned")
+                # Só aplicar condições citadas explicitamente no efeito da ação.
+                # Condições com limiar especial mantêm a verificação descrita no texto.
+                mapa_condicoes = {
+                    "knocked prone": "prone",
+                    "prone": "prone",
+                    "poisoned": "poisoned",
+                    "grappled": "grappled",
+                    "restrained": "restrained",
+                    "blinded": "blinded",
+                    "deafened": "deafened",
+                    "frightened": "frightened",
+                    "charmed": "charmed",
+                    "paralyzed": "paralyzed",
+                    "stunned": "stunned",
+                }
+                for termo, condicao in mapa_condicoes.items():
+                    if termo in efeito_texto and condicao not in condicoes_aplicar:
+                        condicoes_aplicar.append(condicao)
                 if "unconscious" in efeito_texto and resultado_save.get("total", 0) <= dc_efeito - 5:
                     condicoes_aplicar.append("unconscious")
                     efeito["falhou_por_5_ou_mais"] = True
