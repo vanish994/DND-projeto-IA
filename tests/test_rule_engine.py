@@ -525,7 +525,7 @@ class RuleEngineTests(unittest.TestCase):
         })
         self.assertEqual(result.outcome["resultado"], "disadvantage")
 
-    def test_frightened_charmed_prone_slowed_and_exhaustion_have_effects(self):
+    def test_frightened_charmed_prone_and_exhaustion_have_effects(self):
         result = self.engine.evaluate({
             "type": "condition_effect", "action": "move",
             "target_conditions": ["frightened", "charmed", "prone", "exhaustion"],
