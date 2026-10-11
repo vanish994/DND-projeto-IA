@@ -111,6 +111,20 @@
     mais.addEventListener('click', () => ajustar(1));
     const fato = (rotulo, valor) => [el('dt', {textContent: rotulo}), el('dd', {textContent: valor})];
     const equip = p.equipamento_antecedente ? `A: ${p.equipamento_antecedente.A} · ou B: ${p.equipamento_antecedente.B}` : '—';
+    const modificador = (atributo) => Number(p.modificadores?.[atributo] ?? mod(p.atributos[atributo]));
+    const salvaguardasPorClasse = {
+      barbaro: ['forca', 'constituicao'], bardo: ['destreza', 'carisma'],
+      clerigo: ['sabedoria', 'carisma'], druida: ['inteligencia', 'sabedoria'],
+      guerreiro: ['forca', 'constituicao'], monge: ['forca', 'destreza'],
+      paladino: ['sabedoria', 'carisma'], guardiao: ['forca', 'destreza'],
+      ladino: ['destreza', 'inteligencia'], feiticeiro: ['constituicao', 'carisma'],
+      bruxo: ['sabedoria', 'carisma'], mago: ['inteligencia', 'sabedoria'],
+      artifice: ['constituicao', 'inteligencia'],
+    };
+    const salvaguardas = (salvaguardasPorClasse[p.classe] || []).map(a => `${nome(a)} ${modificador(a) >= 0 ? '+' : ''}${modificador(a) + p.bonus_proficiencia}`).join(', ') || '—';
+    const atributoMagia = ({bardo:'carisma', clerigo:'sabedoria', druida:'sabedoria', paladino:'carisma', guardiao:'sabedoria', feiticeiro:'carisma', bruxo:'carisma', mago:'inteligencia', artifice:'inteligencia'})[p.classe];
+    const cdMagia = atributoMagia ? 8 + p.bonus_proficiencia + modificador(atributoMagia) : null;
+    const ataqueMagia = atributoMagia ? p.bonus_proficiencia + modificador(atributoMagia) : null;
     const apagar = el('button', {type: 'button', className: 'danger-button', textContent: 'Apagar personagem'});
     apagar.addEventListener('click', async () => {
       if (!window.confirm(`Apagar ${p.nome}? Esta ação não pode ser desfeita.`)) return;
@@ -126,6 +140,11 @@
       el('h3', {textContent: 'Detalhes'}),
       el('dl', {className: 'facts'},
         ...fato('Bônus de Proficiência', `+${p.bonus_proficiencia}`),
+        ...fato('Iniciativa', `${modificador('destreza') >= 0 ? '+' : ''}${modificador('destreza')}`),
+        ...fato('CA sem armadura (referência)', String(10 + modificador('destreza'))),
+        ...fato('Salvaguardas proficientes', salvaguardas),
+        ...(cdMagia == null ? [] : fato('CD para evitar suas magias', String(cdMagia))),
+        ...(ataqueMagia == null ? [] : fato('Bônus de ataque mágico', `${ataqueMagia >= 0 ? '+' : ''}${ataqueMagia}`)),
         ...fato('Dado de Vida', `d${p.dado_vida}`),
         ...fato('Tamanho', nome(p.tamanho)),
         ...fato('Deslocamento', `${String(p.deslocamento).replace('.', ',')} m`),
