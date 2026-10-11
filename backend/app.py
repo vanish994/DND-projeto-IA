@@ -1305,15 +1305,28 @@ def conjurar_no_mapa_tatico(
         fichas_alvos = {}
         for token_area in alvos_area:
             if token_area["kind"] == "enemy":
-                raise HTTPException(status_code=422, detail={
-                    "motivo": "salvaguarda_monstro_indisponivel",
-                    "alvo": token_area["name"],
-                    "detalhe": "O catálogo tático atual contém CA e PV, mas não os modificadores de salvaguarda deste monstro. A área foi rejeitada sem gastar espaço.",
-                })
-            ficha_alvo = repo.obter_personagem(jogador, campanha_id, token_area["character_id"])
-            if not ficha_alvo:
-                raise HTTPException(status_code=404, detail="Ficha de alvo da área não encontrada")
-            fichas_alvos[token_area["id"]] = ficha_alvo
+                from rule_engine.bestiary import consultar_monstro
+                ficha_monstro = consultar_monstro(token_area.get("monster_name") or token_area["name"])
+                if not ficha_monstro or not ficha_monstro.get("salvaguardas") or not ficha_monstro.get("modificadores"):
+                    raise HTTPException(status_code=422, detail={
+                        "motivo": "salvaguarda_monstro_indisponivel",
+                        "alvo": token_area["name"],
+                        "detalhe": "O bloco não contém modificadores e salvaguardas estruturados. A área foi rejeitada sem gastar espaço.",
+                    })
+                fichas_alvos[token_area["id"]] = {
+                    "modificadores": ficha_monstro["modificadores"],
+                    "salvaguardas": ficha_monstro["salvaguardas"],
+                    "proficiencias_salvaguarda": [
+                        atributo for atributo, bonus in ficha_monstro["salvaguardas"].items()
+                        if int(bonus) != int(ficha_monstro["modificadores"].get(atributo, 0))
+                    ],
+                    "bonus_proficiencia": int(ficha_monstro.get("bonus_proficiencia", 2)),
+                }
+            else:
+                ficha_alvo = repo.obter_personagem(jogador, campanha_id, token_area["character_id"])
+                if not ficha_alvo:
+                    raise HTTPException(status_code=404, detail="Ficha de alvo da área não encontrada")
+                fichas_alvos[token_area["id"]] = ficha_alvo
         expressao = str(mecanica.get("dados_dano") or mecanica.get("dados_dano_base") or "2d8")
         quantidade, lados = map(int, expressao.lower().split("d"))
         dc = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get("inteligencia", 0))
@@ -1323,13 +1336,20 @@ def conjurar_no_mapa_tatico(
             atributo = str(mecanica.get("salvaguarda", "destreza")).lower()
             mods_alvo = ficha_alvo.get("modificadores") or {}
             bonus_atributo = int(mods_alvo.get(atributo, 0))
-            profs_salva = ficha_alvo.get("proficiencias_salvaguarda") or []
-            proficiente = atributo in {str(p).casefold() for p in profs_salva}
+            profs_salva = ficha_alvo.get("proficiencias_salvaguarda") or ficha_alvo.get("salvaguardas") or []
+            profs_norm = {str(p).casefold() for p in profs_salva} if not isinstance(profs_salva, dict) else set(profs_salva.keys())
+            proficiente = atributo in profs_norm
+            bonus_salva = int(ficha_alvo.get("salvaguardas", {}).get(atributo, bonus_atributo)) if isinstance(ficha_alvo.get("salvaguardas"), dict) else bonus_atributo
             rolagem_salva = secrets.randbelow(20) + 1
             salvaguarda = resolver_salvaguarda({
                 "atributo": atributo, "roll": rolagem_salva, "modifier": bonus_atributo,
                 "dc": dc, "proficiente": proficiente, "bonus_proficiencia": int(ficha_alvo.get("bonus_proficiencia", 2)),
             })
+            if isinstance(ficha_alvo.get("salvaguardas"), dict):
+                salvaguarda["bonus_oficial_bloco"] = bonus_salva
+                salvaguarda["total"] = int(salvaguarda.get("dado", rolagem_salva)) + bonus_salva
+                salvaguarda["sucesso"] = salvaguarda["total"] >= dc and int(salvaguarda.get("dado", rolagem_salva)) != 1 or int(salvaguarda.get("dado", rolagem_salva)) == 20
+                salvaguarda["resultado"] = "sucesso" if salvaguarda["sucesso"] else "falha"
             if salvaguarda.get("resultado") == "bloqueado":
                 raise HTTPException(status_code=422, detail={"motivo": "salvaguarda_nao_resolvida", "resultado": salvaguarda})
             dados_area = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
@@ -1337,6 +1357,12 @@ def conjurar_no_mapa_tatico(
             dano_alvo = (dano_base // 2) if salvaguarda.get("sucesso") and mecanica.get("sucesso_metade") else (0 if salvaguarda.get("sucesso") else dano_base)
             if token_area["kind"] == "hero" and dano_alvo:
                 repo.ajustar_pv_personagem(jogador, campanha_id, token_area["character_id"], -dano_alvo)
+            elif token_area["kind"] == "enemy" and dano_alvo:
+                estado_bruto_area = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+                for bruto_area in estado_bruto_area.get("tokens", []):
+                    if bruto_area.get("id") == token_area["id"]:
+                        bruto_area["hp"] = max(0, int(bruto_area.get("hp", token_area["maxHp"])) - dano_alvo)
+                repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto_area)
             resultados_area.append({"alvo_id": token_area["id"], "nome": token_area["name"], "salvaguarda": salvaguarda, "dados_dano": dados_area, "dano": dano_alvo})
         dano = sum(x["dano"] for x in resultados_area)
     else:
