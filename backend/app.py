@@ -993,6 +993,25 @@ def atacar_token_tatico(
     ficha_atacante = repo.obter_personagem(jogador, campanha_id, atacante["character_id"])
     if not ficha_atacante:
         raise HTTPException(status_code=404, detail="Ficha do atacante não encontrada")
+    estado_atacante = _condicoes_da_ficha(ficha_atacante)
+    ficha_alvo_condicoes = repo.obter_personagem(jogador, campanha_id, alvo["character_id"]) if alvo["kind"] == "hero" else {}
+    estado_alvo = _condicoes_da_ficha(ficha_alvo_condicoes or {})
+    efeitos_ataque = resolver_efeitos_condicao({
+        "action": "attack",
+        "attacker_conditions": sorted(estado_atacante.ativas),
+        "target_conditions": sorted(estado_alvo.ativas),
+        "distance_m": distancia_pes * 0.3,
+        "distance": "corpo_a_corpo" if not ataque_a_distancia else "a_distancia",
+    })
+    if efeitos_ataque.get("resultado") == "bloqueado":
+        raise HTTPException(status_code=422, detail={"motivo": efeitos_ataque.get("motivo", "atacante_impedido_por_condicao"), "efeitos_condicao": efeitos_ataque})
+    estado_geometria = geometria.get("estado_jogada", "normal")
+    vantagem_condicao = efeitos_ataque.get("resultado") == "vantagem"
+    desvantagem_condicao = efeitos_ataque.get("resultado") == "desvantagem"
+    vantagem_total = estado_geometria == "vantagem" or vantagem_condicao
+    desvantagem_total = estado_geometria == "desvantagem" or desvantagem_condicao
+    geometria["estado_jogada"] = "normal" if vantagem_total == desvantagem_total else "vantagem" if vantagem_total else "desvantagem"
+    geometria["efeitos_condicao"] = efeitos_ataque
     equipamento = ficha_atacante.get("equipamento") or {}
     nome_arma = pedido.arma or equipamento.get("arma")
     modificadores = int(atacante.get("str_mod", 0))
@@ -1100,6 +1119,7 @@ def atacar_token_tatico(
         else:
             fortitude = None
             repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
+            concentracao = _resolver_concentracao_apos_dano(repo, jogador, campanha_id, alvo["character_id"], dano) if dano > 0 else None
     return {
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "ataque": ataque, "dano": dano, "rolagem": rolagem, "bonus_ataque": bonus,
@@ -1110,6 +1130,8 @@ def atacar_token_tatico(
         "fortitude": fortitude,
         "dano_bruto": dano_bruto if ataque.get("result") == "hit" else 0,
         "defesas_dano": defesas_dano,
+        "concentracao": concentracao if "concentracao" in locals() else None,
+        "efeitos_condicao": geometria.get("efeitos_condicao"),
         "alcance_pes": alcance_tatico,
         "ataque_a_distancia": ataque_a_distancia,
         "nota": "Armas corpo a corpo e à distância usam o catálogo, alcance e estado de vantagem/desvantagem do motor. Munição não é rastreada no inventário nesta versão.",
@@ -1413,6 +1435,20 @@ def atacar_com_monstro_tatico(
     })
     if geometria.get("resultado") != "permitido":
         raise HTTPException(status_code=422, detail={"motivo": geometria.get("motivo", "ataque_bloqueado"), "geometria": geometria})
+    ficha_alvo_condicoes = repo.obter_personagem(jogador, campanha_id, alvo["character_id"]) or {}
+    estado_alvo_condicoes = _condicoes_da_ficha(ficha_alvo_condicoes)
+    efeitos_condicao_monstro = resolver_efeitos_condicao({
+        "action": "attack", "target_conditions": sorted(estado_alvo_condicoes.ativas),
+        "distance_m": distancia * 0.3,
+        "distance": "corpo_a_corpo" if selecionado["alcance_corpo_a_corpo"] > 0 else "a_distancia",
+    })
+    estado_geometria_monstro = geometria.get("estado_jogada", "normal")
+    vantagem_condicao_monstro = efeitos_condicao_monstro.get("resultado") == "vantagem"
+    desvantagem_condicao_monstro = efeitos_condicao_monstro.get("resultado") == "desvantagem"
+    vantagem_total_monstro = estado_geometria_monstro == "vantagem" or vantagem_condicao_monstro
+    desvantagem_total_monstro = estado_geometria_monstro == "desvantagem" or desvantagem_condicao_monstro
+    geometria["estado_jogada"] = "normal" if vantagem_total_monstro == desvantagem_total_monstro else "vantagem" if vantagem_total_monstro else "desvantagem"
+    geometria["efeitos_condicao"] = efeitos_condicao_monstro
     rolagem = secrets.randbelow(20) + 1
     rolagens_extra = []
     if geometria.get("estado_jogada") == "desvantagem":
@@ -1541,6 +1577,8 @@ def atacar_com_monstro_tatico(
         "bonus_ataque": selecionado["bonus_ataque"],
         "dados_dano": dados_dano if ataque.get("result") == "hit" else [],
         "dano": dano, "dano_bruto": dano_bruto,
+        "concentracao": concentracao if "concentracao" in locals() else None,
+        "efeitos_condicao": efeitos_condicao_monstro,
         "defesas_dano": defesas_aplicadas,
         "tipo_dano": selecionado["tipo_dano"], "geometria": geometria,
         "efeitos": efeitos,
