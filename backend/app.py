@@ -160,6 +160,12 @@ class AtualizarProficienciasPersonagem(BaseModel):
     ferramenta_artesao: str | None = Field(default=None, max_length=80)
 
 
+class AtualizarEquipamentoPersonagem(BaseModel):
+    arma: str | None = Field(default=None, max_length=80)
+    armadura: str | None = Field(default=None, max_length=80)
+    escudo: bool = False
+
+
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
     """Toda ficha passa pelo Rule Engine; nada é calculado no cliente."""
     try:
@@ -514,6 +520,39 @@ def atualizar_proficiencias_personagem(
     atualizado = repo.atualizar_personagem(
         jogador, campanha_id, personagem_id, entrada=nova_entrada, ficha=nova_ficha
     )
+    if atualizado is None:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return atualizado
+
+
+@app.patch("/v1/campanhas/{campanha_id}/personagens/{personagem_id}/equipamento")
+def atualizar_equipamento_personagem(
+    campanha_id: str,
+    personagem_id: str,
+    dados: AtualizarEquipamentoPersonagem,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    personagem = _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+    if dados.arma is not None and dados.arma not in CATALOGO_ARMAS:
+        raise HTTPException(status_code=422, detail="Arma não encontrada no catálogo")
+    if dados.armadura is not None and dados.armadura not in CATALOGO_ARMADURAS:
+        raise HTTPException(status_code=422, detail="Armadura não encontrada no catálogo")
+    profs = personagem.get("proficiencias_classe") or {}
+    armaduras = set(profs.get("armaduras", [])) if isinstance(profs, dict) else set()
+    if dados.armadura:
+        categoria = CATALOGO_ARMADURAS[dados.armadura]["categoria"]
+        categoria_normalizada = {"media": "medias", "leve": "leves", "pesada": "pesadas"}.get(categoria, categoria)
+        if categoria == "escudo":
+            if "escudos" not in armaduras:
+                raise HTTPException(status_code=422, detail="A ficha não registra proficiência com escudos")
+        elif categoria_normalizada not in armaduras and categoria not in armaduras:
+            raise HTTPException(status_code=422, detail="A ficha não registra proficiência nesta categoria de armadura")
+    if dados.escudo and "escudos" not in armaduras:
+        raise HTTPException(status_code=422, detail="A ficha não registra proficiência com escudos")
+    ficha = {k: v for k, v in personagem.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+    ficha["equipamento"] = {"arma": dados.arma, "armadura": dados.armadura, "escudo": dados.escudo}
+    atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem_id, ficha)
     if atualizado is None:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
     return atualizado
