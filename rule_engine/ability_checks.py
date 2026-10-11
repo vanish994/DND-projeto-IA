@@ -128,7 +128,7 @@ def resolver_teste_habilidade(fatos: Mapping[str, Any]) -> dict[str, Any]:
 def resolver_teste_passivo(fatos: Mapping[str, Any]) -> dict[str, Any]:
     """Calcula um teste passivo: 10 + modificadores, com +5/-5 por vantagem/desvantagem."""
     pericia_raw = fatos.get("pericia", fatos.get("skill"))
-    pericia = str(pericia_raw).strip().lower().replace(" ", "_") if pericia_raw else None
+    pericia = _normalizar_pericia(pericia_raw) if pericia_raw else None
     if pericia and pericia not in PERICIAS:
         return {"resultado": "bloqueado", "motivo": "pericia_desconhecida", "pericia": pericia}
     cd = _cd(fatos)
