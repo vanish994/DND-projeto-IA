@@ -730,6 +730,27 @@ def _expirar_duracoes_textuais_ficha(repo: RepositorioCampanhas, jogador: str, c
     return encerradas
 
 
+def _reduzir_duracoes_numericas_token(token: dict) -> list[str]:
+    """Reduz no fim do turno as durações numéricas das condições de um monstro."""
+    duracoes = token.get("condition_durations") or {}
+    condicoes = token.get("conditions") or []
+    encerradas = []
+    for condicao, duracao in list(duracoes.items()):
+        if not isinstance(duracao, int) or isinstance(duracao, bool):
+            continue
+        restante = duracao - 1
+        chave = normalizar_condicao(condicao)
+        if restante <= 0:
+            token["conditions"] = [c for c in condicoes if normalizar_condicao(c) != chave]
+            condicoes = token["conditions"]
+            duracoes.pop(condicao, None)
+            encerradas.append(chave)
+        else:
+            duracoes[condicao] = restante
+    token["condition_durations"] = duracoes
+    return encerradas
+
+
 def _expirar_duracoes_textuais_token(token: dict, momento: str) -> list[str]:
     duracoes = token.get("condition_durations") or {}
     condicoes = token.get("conditions") or []
@@ -1027,6 +1048,7 @@ def avancar_turno_tatico(
         token_bruto_atual = next((t for t in bruto.get("tokens", []) if t.get("id") == token_atual["id"]), None)
         if token_bruto_atual:
             duracoes_encerradas.extend(_expirar_duracoes_textuais_token(token_bruto_atual, "fim"))
+            duracoes_encerradas.extend(_reduzir_duracoes_numericas_token(token_bruto_atual))
     vivos = {t["id"] for t in estado["tokens"] if int(t.get("hp", 0)) > 0}
     iniciativa_viva = [item for item in iniciativa if item["token_id"] in vivos]
     bruto["iniciativa"] = iniciativa_viva
