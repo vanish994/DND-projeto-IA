@@ -47,6 +47,10 @@ class AbilityCheckTests(unittest.TestCase):
         self.assertEqual(result["dado_usado"], 17)
         self.assertTrue(result["inspiracao_heroica_consumida"])
 
+    def test_missing_character_modifiers_are_blocked_instead_of_assumed_zero(self):
+        result = resolver_teste_habilidade({"pericia": "atletismo", "roll": 12, "cd": 15})
+        self.assertEqual(result["resultado"], "bloqueado")
+        self.assertEqual(result["motivo"], "modificador_de_atributo_ausente")
     def test_engine_registers_new_rule_types(self):
         engine = build_default_engine()
         result = engine.evaluate({"type": "skill_check", "pericia": "atletismo", "modificador_atributo": 3, "roll": 12, "cd": 15})
