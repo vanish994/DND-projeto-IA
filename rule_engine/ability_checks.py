@@ -150,7 +150,7 @@ def resolver_teste_passivo(fatos: Mapping[str, Any]) -> dict[str, Any]:
     mod = _modificadores(fatos, pericia)
     ajuste = 5 if mod["vantagem"] and not mod["desvantagem"] else -5 if mod["desvantagem"] and not mod["vantagem"] else 0
     score = 10 + mod["modificador_total"] + ajuste
-    return {"resultado": "sucesso" if cd is None or score >= cd else "falha", "pericia": pericia, "atributo": mod["atributo"], "valor_passivo": score, "cd": cd, "ajuste_vantagem_desvantagem": ajuste, **mod}
+    return {"resultado": "calculado" if cd is None else "sucesso" if score >= cd else "falha", "pericia": pericia, "atributo": mod["atributo"], "valor_passivo": score, "cd": cd, "ajuste_vantagem_desvantagem": ajuste, **mod}
 
 def resolver_teste_grupo(fatos: Mapping[str, Any]) -> dict[str, Any]:
     """Um teste em grupo é bem-sucedido quando pelo menos metade do grupo obtém sucesso."""
@@ -195,6 +195,8 @@ def resolver_salvaguarda(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if not any(k in fatos for k in ("roll", "dado", "dados", "rolls")):
         return {"resultado": "bloqueado", "motivo": "resultado_de_d20_ausente"}
     profs = fatos.get("proficiencias_salvaguarda", fatos.get("saving_throw_proficiencies", [])) or []
+    if isinstance(profs, str):
+        profs = [profs]
     profs_norm = {_ATRIBUTOS.get(str(x).strip().lower(), str(x).strip().lower()) for x in profs}
     dados = dict(fatos)
     dados["atributo"] = atributo
