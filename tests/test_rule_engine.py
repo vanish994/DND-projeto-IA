@@ -179,14 +179,16 @@ class RuleEngineTests(unittest.TestCase):
         rastreador.mover(15)
         self.assertEqual(turno.movimento_restante, 0)
 
-    def test_surprised_participant_cannot_act_on_first_turn(self):
+    def test_surprised_participant_keeps_actions_in_2024(self):
         rastreador = RastreadorCombate([
             Participante("A", 10, surpreendido=True),
         ], deslocamentos={"A": 9})
         turno = rastreador.iniciar_proximo_turno()
         self.assertTrue(turno.surpreendido)
-        self.assertFalse(turno.acao_disponivel)
-        self.assertEqual(turno.movimento_restante, 0)
+        self.assertTrue(turno.acao_disponivel)
+        self.assertTrue(turno.acao_bonus_disponivel)
+        self.assertTrue(turno.reacao_disponivel)
+        self.assertEqual(turno.movimento_restante, 9)
 
     def test_disengage_blocks_opportunity_attacks(self):
         rastreador = RastreadorCombate([Participante("A", 10)])
@@ -472,9 +474,9 @@ class RuleEngineTests(unittest.TestCase):
 
     def test_all_player_handbook_conditions_are_available(self):
         from rule_engine import CONDICOES
-        self.assertEqual(len(CONDICOES), 16)
+        self.assertEqual(len(CONDICOES), 15)
         self.assertIn("cego", CONDICOES)
-        self.assertIn("lento", CONDICOES)
+        self.assertNotIn("lento", CONDICOES)
         self.assertIn("inconsciente", CONDICOES)
 
     def test_condition_state_applies_immunity_and_expires_duration(self):
@@ -499,7 +501,7 @@ class RuleEngineTests(unittest.TestCase):
     def test_condition_effects_block_actions_movement_and_speech(self):
         result = self.engine.evaluate({
             "type": "condition_effect", "action": "move",
-            "target_conditions": ["incapacitated", "grappled", "deafened"],
+            "target_conditions": ["unconscious", "grappled", "deafened"],
         })
         self.assertFalse(result.outcome["pode_mover"])
         self.assertFalse(result.outcome["pode_realizar_acoes"])
@@ -509,7 +511,7 @@ class RuleEngineTests(unittest.TestCase):
     def test_paralyzed_target_fails_strength_and_dexterity_saves_and_is_critically_hit(self):
         result = self.engine.evaluate({
             "type": "condition_effect", "action": "attack",
-            "target_conditions": ["paralyzed"], "distance": "corpo_a_corpo",
+            "target_conditions": ["paralyzed"], "distance": "corpo_a_corpo", "distancia_m": 1.5,
         })
         self.assertTrue(result.outcome["acerto_critico_automatico"])
         saves = self.engine.evaluate({
@@ -523,18 +525,18 @@ class RuleEngineTests(unittest.TestCase):
             "type": "condition_effect", "action": "attack",
             "attacker_conditions": ["blinded"], "target_conditions": ["invisible"],
         })
-        self.assertEqual(result.outcome["resultado"], "normal")
+        self.assertEqual(result.outcome["resultado"], "desvantagem")
 
-    def test_frightened_charmed_prone_slowed_and_exhaustion_have_effects(self):
+    def test_frightened_charmed_prone_and_exhaustion_have_effects(self):
         result = self.engine.evaluate({
             "type": "condition_effect", "action": "move",
-            "target_conditions": ["frightened", "charmed", "prone", "slowed", "exhaustion"],
+            "target_conditions": ["frightened", "charmed", "prone", "exhaustion"],
             "exhaustion_niveis": 2,
         })
         self.assertTrue(result.outcome["não_pode_se_aproximar_da_fonte"])
         self.assertTrue(result.outcome["não_pode_atacar_o_enfeiticador"])
         self.assertEqual(result.outcome["movimento_para_levantar"], "metade_do_deslocamento")
-        self.assertTrue(result.outcome["deslocamento_reduzido"])
+        self.assertEqual(result.outcome["deslocamento_reduzido_m"], 3)
         self.assertEqual(result.outcome["modificador_d20"], -4)
 
     def test_armor_class_uses_dexterity_cap_and_shield(self):
@@ -942,6 +944,144 @@ class RuleEngineTests(unittest.TestCase):
         self.assertFalse(result.outcome["pode_realizar_reacoes"])
         self.assertTrue(result.outcome["falha_salvaguardas_forca_destreza"])
 
+    def test_incapacitated_creature_cannot_speak_or_attack(self):
+        from rule_engine import resolver_efeitos_condicao
+        move = resolver_efeitos_condicao({"action": "move", "target_conditions": ["incapacitated"]})
+        attack = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["incapacitated"], "target_conditions": []})
+        self.assertFalse(move["pode_falar"])
+        self.assertEqual(attack["resultado"], "bloqueado")
+
+    def test_frightened_and_poisoned_do_not_impose_saving_throw_disadvantage(self):
+        from rule_engine import resolver_efeitos_condicao
+        result = resolver_efeitos_condicao({"action": "save", "target_conditions": ["frightened", "poisoned"]})
+        self.assertFalse(result["desvantagem_salvaguardas"])
+        self.assertTrue(result["desvantagem_testes_habilidade"])
+    def test_invisibility_advantage_respects_special_senses(self):
+        from rule_engine import resolver_efeitos_condicao
+        unseen = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["invisible"], "target_conditions": []})
+        seen = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["invisible"], "target_conditions": [], "alvo_pode_ver_atacante": True})
+        invisible_target_seen = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": [], "target_conditions": ["invisible"], "atacante_pode_ver_alvo": True})
+        self.assertEqual(unseen["resultado"], "vantagem")
+        self.assertEqual(seen["resultado"], "normal")
+        self.assertEqual(invisible_target_seen["resultado"], "normal")
+
+    def test_charmed_attacker_cannot_harm_the_charmer(self):
+        from rule_engine import resolver_efeitos_condicao
+        result = resolver_efeitos_condicao({"action": "attack", "attacker_conditions": ["charmed"], "target_conditions": [], "alvo_e_enfeiticador": True})
+        self.assertEqual(result["resultado"], "bloqueado")
+    def test_condition_sensory_failures_and_charmed_effects(self):
+        from rule_engine import resolver_efeitos_condicao
+        blinded = resolver_efeitos_condicao({"action": "study", "target_conditions": ["blinded"]})
+        deafened = resolver_efeitos_condicao({"action": "search", "target_conditions": ["deafened"]})
+        charmed = resolver_efeitos_condicao({"action": "social", "target_conditions": ["charmed"], "atacante_e_enfeiticador": True})
+        self.assertTrue(blinded["falha_automaticamente_teste_que_exige_visao"])
+        self.assertTrue(deafened["falha_automaticamente_teste_que_exige_audicao"])
+        self.assertTrue(charmed["não_pode_afetar_o_enfeiticador_com_efeito_nocivo"])
+
+    def test_petrified_and_grappled_conditions_expose_derived_effects(self):
+        from rule_engine import resolver_efeitos_condicao
+        petrified = resolver_efeitos_condicao({"action": "move", "target_conditions": ["petrified"]})
+        grappled = resolver_efeitos_condicao({"action": "move", "target_conditions": ["grappled"], "agarrador_incapacitado": True})
+        self.assertEqual(petrified["peso_multiplicado"], 10)
+        self.assertTrue(petrified["resistencia_todos_danos"])
+        self.assertTrue(grappled["agarrado_termina"])
+    def test_exhaustion_reduces_speed_and_does_not_mislabel_other_conditions(self):
+        from rule_engine import resolver_efeitos_condicao
+        result = resolver_efeitos_condicao({"action": "move", "target_conditions": ["exhaustion"], "exhaustion_niveis": 3})
+        self.assertEqual(result["modificador_d20"], -6)
+        self.assertEqual(result["deslocamento_reduzido_m"], 4.5)
+        self.assertFalse(result["morre_no_nivel_6"])
+
+    def test_death_saves_reject_invalid_rolls_and_stable_creatures(self):
+        from rule_engine import salvaguarda_contra_morte
+        estado = EstadoVital(10, 0, inconsciente=True)
+        with self.assertRaises(ValueError):
+            salvaguarda_contra_morte(estado, 21)
+        estado.estavel = True
+        with self.assertRaises(ValueError):
+            salvaguarda_contra_morte(estado, 10)
+
+    def test_interrupted_long_rest_after_one_hour_grants_short_rest_benefits(self):
+        estado = EstadoVital(20, 5, dados_vida_maximos=3)
+        result = self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 2, "interrupted": True, "hit_dice_rolls": [6]})
+        self.assertEqual(result.outcome["resultado"], "beneficios_de_descanso_curto_antes_da_interrupcao")
+        self.assertEqual(estado.dados_vida_disponiveis, 2)
+    def test_hide_action_requires_cover_and_line_of_sight_conditions(self):
+        blocked = self.engine.evaluate({"type": "hide_action", "modificador_atributo": 4, "roll": 12})
+        self.assertEqual(blocked.outcome["resultado"], "bloqueado")
+        hidden = self.engine.evaluate({"type": "hide_action", "muito_obscurecido": True, "fora_da_linha_de_visao": True, "modificador_atributo": 4, "proficiente": True, "bonus_proficiencia": 3, "roll": 10})
+        self.assertEqual(hidden.outcome["resultado"], "escondido")
+        self.assertEqual(hidden.outcome["dc_para_encontrar"], 17)
+
+    def test_dodge_action_requires_movement_and_grants_defensive_effects(self):
+        blocked = self.engine.evaluate({"type": "dodge_action", "deslocamento": 0})
+        ready = self.engine.evaluate({"type": "dodge_action", "deslocamento": 9})
+        self.assertEqual(blocked.outcome["resultado"], "bloqueado")
+        self.assertTrue(ready.outcome["vantagem_salvaguardas_destreza"])
+
+    def test_dodge_grants_dexterity_save_advantage_and_attack_disadvantage(self):
+        from rule_engine import resolver_salvaguarda, resolver_efeitos_condicao
+        save = resolver_salvaguarda({"atributo": "destreza", "modificador_atributo": 2, "dados": [4, 15], "cd": 15, "esquivando": True})
+        attack = resolver_efeitos_condicao({"action": "attack", "target_conditions": [], "alvo_esquivando": True, "atacante_visivel_para_alvo": True})
+        self.assertEqual(save["dado"], 15)
+        self.assertEqual(attack["resultado"], "desvantagem")
+    def test_study_action_maps_knowledge_areas_to_intelligence_skills(self):
+        result = self.engine.evaluate({"type": "study_action", "area_conhecimento": "armadilhas", "valor_atributo": 16, "roll": 12, "cd": 15})
+        self.assertEqual(result.outcome["pericia"], "investigacao")
+        self.assertEqual(result.outcome["resultado"], "informacao_encontrada")
+    def test_search_action_maps_the_four_phb_search_skills(self):
+        result = self.engine.evaluate({"type": "search_action", "tipo_busca": "criatura_ou_objeto_escondido", "valor_atributo": 14, "roll": 12, "cd": 13})
+        self.assertEqual(result.outcome["pericia"], "percepcao")
+        self.assertEqual(result.outcome["resultado"], "encontrado")
+
+    def test_help_action_requires_proficiency_or_close_enemy(self):
+        blocked = self.engine.evaluate({"type": "help_action", "tipo_ajuda": "habilidade", "aliado_proximo": True, "pericia": "furtividade", "proficiente_ajudante": False})
+        ready = self.engine.evaluate({"type": "help_action", "tipo_ajuda": "ataque", "aliado_proximo": True, "distancia_m": 1.5, "alvo": "goblin"})
+        self.assertEqual(blocked.outcome["resultado"], "bloqueado")
+        self.assertTrue(ready.outcome["vantagem_no_proximo_ataque"])
+    def test_hide_event_ends_hidden_state_for_required_events(self):
+        ended = self.engine.evaluate({"type": "hide_event", "escondido": True, "evento": "som_alto"})
+        still = self.engine.evaluate({"type": "hide_event", "escondido": True, "evento": "mover"})
+        self.assertFalse(ended.outcome["escondido"])
+        self.assertTrue(still.outcome["escondido"])
+
+    def test_influence_applies_friendly_advantage_and_hostile_disadvantage(self):
+        friendly = self.engine.evaluate({"type": "influence_action", "disposicao": "hesitante", "atitude_monstro": "amigavel", "interacao": "persuasao", "valor_atributo": 16, "dados": [3, 15], "inteligencia_monstro": 10})
+        hostile = self.engine.evaluate({"type": "influence_action", "disposicao": "hesitante", "atitude_monstro": "hostil", "interacao": "persuasao", "valor_atributo": 16, "dados": [15, 3], "inteligencia_monstro": 10})
+        self.assertTrue(friendly.outcome["monstro_atende"])
+        self.assertFalse(hostile.outcome["monstro_atende"])
+    def test_influence_action_handles_willing_unwilling_and_hesitant(self):
+        willing = self.engine.evaluate({"type": "influence_action", "disposicao": "disposto"})
+        unwilling = self.engine.evaluate({"type": "influence_action", "disposicao": "indisposto"})
+        hesitant = self.engine.evaluate({"type": "influence_action", "disposicao": "hesitante", "interacao": "persuasao", "valor_atributo": 16, "roll": 12, "inteligencia_monstro": 12})
+        self.assertFalse(willing.outcome["teste_realizado"])
+        self.assertFalse(unwilling.outcome["monstro_atende"])
+        self.assertEqual(hesitant.outcome["cd"], 15)
+        self.assertTrue(hesitant.outcome["monstro_atende"])
+    def test_short_rest_tracks_spent_hit_dice_and_long_rest_restores_them(self):
+        estado = EstadoVital(20, 5, dados_vida_maximos=4)
+        self.engine.evaluate({"type": "short_rest", "estado": estado, "hit_dice_rolls": [4, 6], "constitution_modifier": 2, "duration_hours": 1})
+        self.assertEqual(estado.dados_vida_disponiveis, 2)
+        self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 8})
+        self.assertEqual(estado.dados_vida_disponiveis, 4)
+
+    def test_stabilization_requires_medicine_check_or_healers_kit(self):
+        from rule_engine import estabilizar
+        estado = EstadoVital(10, 0, inconsciente=True)
+        self.assertEqual(estabilizar(estado)["resultado"], "bloqueado")
+        self.assertEqual(estabilizar(estado, teste_medicina=9)["resultado"], "falha")
+        self.assertEqual(estabilizar(estado, kit_medico=True)["resultado"], "sucesso")
+    def test_long_rest_does_not_erase_temporary_hit_points_by_default(self):
+        estado = EstadoVital(20, 10, pv_temporarios=5)
+        self.engine.evaluate({"type": "long_rest", "estado": estado, "duration_hours": 8})
+        self.assertEqual(estado.pv_atuais, 20)
+        self.assertEqual(estado.pv_temporarios, 5)
+
+    def test_damage_to_already_unconscious_target_is_not_instant_death_by_overflow_rule(self):
+        estado = EstadoVital(10, 0, inconsciente=True)
+        result = self.engine.evaluate({"type": "damage_application", "estado": estado, "damage": 10})
+        self.assertNotEqual(result.outcome.get("estado"), "morto")
+        self.assertEqual(estado.salvaguardas_falha, 1)
     def test_condition_aliases_and_exhaustion_levels_are_normalized(self):
         estado = __import__("rule_engine", fromlist=["EstadoCondicoes"]).EstadoCondicoes()
         result = self.engine.evaluate({"type": "condition_state", "estado": estado, "operation": "apply", "condition": "Poisoned", "duration": 2})
