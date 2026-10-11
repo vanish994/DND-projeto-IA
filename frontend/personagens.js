@@ -264,6 +264,13 @@
       const slotsContainer = el("div", {className: "spell-field"});
       const slotInputs = {};
       const slotsEsperados = progresso?.espacos_totais || conj.espacos_totais || {"1": 0};
+      const restantesStatus = el("p", {className: "choice-meta"});
+      const atualizarRestantes = (estado = {}) => {
+        const totais = estado.espacos_totais || slotsEsperados;
+        const restantes = estado.espacos_restantes || totais;
+        restantesStatus.textContent = `Espaços restantes: ${Object.entries(totais).filter(([, total]) => Number(total) > 0).map(([circulo, total]) => `${circulo}º círculo ${restantes[circulo] ?? total}/${total}`).join(' · ') || 'nenhum'}`;
+      };
+      atualizarRestantes(conj);
       for (const [circulo, total] of Object.entries(slotsEsperados)) {
         const id = `sheet-level-${circulo}-slots`;
         const campo = el("input", {id, type: "number", min: "0", max: "20",
@@ -272,11 +279,24 @@
         slotInputs[circulo] = campo;
         slotsContainer.append(el("label", {htmlFor: id, textContent: `Espaços de magia de ${circulo}º círculo (total)`}), campo);
       }
+      slotsContainer.append(restantesStatus);
       if (progresso) {
         slotsContainer.append(el("p", {className: "choice-meta", textContent: `Limite do motor: ${progresso.truques} truques e ${progresso.magias_preparadas} magias preparadas. Espaços calculados automaticamente.`}));
       }
       const salvar = el("button", {type: "button", className: "primary-button", textContent: "Salvar conjuração"});
+      const descanso = el("button", {type: "button", className: "text-button", textContent: "Recuperar espaços após descanso longo"});
       const feedback = el("p", {className: "choice-meta", role: "status"});
+      descanso.addEventListener("click", async () => {
+        descanso.disabled = true;
+        feedback.textContent = "Recuperando espaços…";
+        try {
+          const atualizado = await api(url(`/${encodeURIComponent(p.id)}/descanso-longo`), {method: "POST"});
+          Object.assign(p, atualizado);
+          atualizarRestantes(p.conjuracao || {});
+          feedback.textContent = "Espaços restaurados após descanso longo.";
+        } catch (erro) { feedback.textContent = `Não foi possível recuperar espaços: ${erro.message}`; }
+        finally { descanso.disabled = false; }
+      });
       salvar.addEventListener("click", async () => {
         salvar.disabled = true;
         feedback.textContent = "Salvando…";
@@ -289,11 +309,12 @@
             ])),
           })});
           Object.assign(p, resultado);
+          atualizarRestantes(p.conjuracao || {});
           feedback.textContent = "Conjuração salva na ficha da campanha.";
         } catch (erro) { feedback.textContent = `Não foi possível salvar: ${erro.message}`; }
         finally { salvar.disabled = false; }
       });
-      secao.append(truques.bloco, preparadas.bloco, slotsContainer, salvar, feedback);
+      secao.append(truques.bloco, preparadas.bloco, slotsContainer, salvar, descanso, feedback);
     } catch (erro) {
       status.textContent = `Não foi possível carregar a conjuração. ${erro.message}`;
     }
