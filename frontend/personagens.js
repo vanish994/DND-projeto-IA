@@ -1076,6 +1076,7 @@
     }
     const bg = catalogo.antecedentes[dados.antecedente];
     const talento = dados.talento_antecedente || bg.talento;
+    const heranca = catalogo.escolhas_especie?.[dados.especie]?.opcoes.find((o) => o.chave === dados.heranca_draconica);
     return [
       el('div', {className: 'cabecalho-ficha'},
         el('h3', {className: 'nameplate', textContent: dados.nome.trim()}),
@@ -1091,7 +1092,10 @@
         el('dt', {textContent: 'Perícias de classe'}), el('dd', {textContent: (dados.pericias_classe || []).map(nome).join(', ')}),
         ...(dados.classe === 'artifice' ? [el('dt', {textContent: 'Ferramenta de artesão'}), el('dd', {textContent: dados.ferramenta_artesao || 'pendente'})] : []),
         el('dt', {textContent: 'Ferramenta do antecedente'}), el('dd', {textContent: dados.ferramenta_antecedente || bg.ferramenta}),
-        el('dt', {textContent: 'Equipamento inicial'}), el('dd', {textContent: dados.equipamento_antecedente ? `${dados.equipamento_antecedente}: ${bg.equipamento[dados.equipamento_antecedente]}` : `Escolha A: ${bg.equipamento.A} · ou B: ${bg.equipamento.B}`})),
+        el('dt', {textContent: 'Equipamento inicial'}), el('dd', {textContent: dados.equipamento_antecedente ? `${dados.equipamento_antecedente}: ${bg.equipamento[dados.equipamento_antecedente]}` : `Escolha A: ${bg.equipamento.A} · ou B: ${bg.equipamento.B}`}),
+        ...(heranca ? [el('dt', {textContent: 'Herança Dracônica'}), el('dd', {textContent: `${heranca.nome} · dano ${heranca.dano}`})] : []),
+        ...(dados.magias.truques.length ? [el('dt', {textContent: 'Truques iniciais'}), el('dd', {textContent: dados.magias.truques.join(', ')})] : []),
+        ...(dados.magias.magias_preparadas.length ? [el('dt', {textContent: 'Magias iniciais'}), el('dd', {textContent: dados.magias.magias_preparadas.join(', ')})] : [])),
       meta('PV, bônus de proficiência, CA e salvaguardas são calculados pelo motor de regras ao criar o personagem.')];
   }
 
