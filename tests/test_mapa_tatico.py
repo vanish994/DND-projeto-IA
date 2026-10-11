@@ -294,7 +294,7 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
         self.assertTrue(body["fortitude"]["sucesso"])
-        self.assertEqual(body["fortitude"]["cd"], 8)
+        self.assertEqual(body["fortitude"]["cd"], 5 + body["dano"])
         zumbi = next(t for t in body["mapa"]["tokens"] if t["id"] == "inimigo-zumbi")
         self.assertEqual(zumbi["hp"], 1)
 
