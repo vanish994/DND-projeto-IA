@@ -30,6 +30,11 @@ from .martial import (
     resolver_furia, resolver_maestria_arma, resolver_recuperar_folego,
 )
 from .martial_subclasses import resolver_subclasse_marcial
+from .spellcasters import (
+    resolver_canalizar_divindade, resolver_forma_selvagem,
+    resolver_inspiracao_bardo, resolver_livro_de_magias,
+    resolver_progressao_conjuracao,
+)
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -736,5 +741,35 @@ def build_default_engine() -> RuleEngine:
         description="Resolve características e efeitos centrais das subclasses marciais.",
         priority=65, when=lambda f: f["type"] == "martial_subclass_feature",
         resolve=resolver_subclasse_marcial, source="D&D 2024 — subclasses marciais",
+    ))
+    engine.register(Rule(
+        rule_id="spellcaster.progression",
+        description="Resolve atributo, espaços, foco e magias preparadas das classes conjuradoras.",
+        priority=60, when=lambda f: f["type"] == "spellcaster_feature" and f.get("feature") == "progressao_conjuracao",
+        resolve=resolver_progressao_conjuracao, source="D&D 2024 — conjuração por classe",
+    ))
+    engine.register(Rule(
+        rule_id="bard.bardic-inspiration",
+        description="Resolve Inspiração de Bardo, dado, usos e recuperação.",
+        priority=60, when=lambda f: f["type"] == "spellcaster_feature" and f.get("feature") == "inspiracao_bardo",
+        resolve=resolver_inspiracao_bardo, source="D&D 2024 — Bardo",
+    ))
+    engine.register(Rule(
+        rule_id="cleric.channel-divinity",
+        description="Resolve Canalizar Divindade, Centelha Divina e Expulsar Mortos-Vivos.",
+        priority=60, when=lambda f: f["type"] == "spellcaster_feature" and f.get("feature") == "canalizar_divindade",
+        resolve=resolver_canalizar_divindade, source="D&D 2024 — Clérigo",
+    ))
+    engine.register(Rule(
+        rule_id="druid.wild-shape",
+        description="Resolve usos, duração e limitações da Forma Selvagem.",
+        priority=60, when=lambda f: f["type"] == "spellcaster_feature" and f.get("feature") == "forma_selvagem",
+        resolve=resolver_forma_selvagem, source="D&D 2024 — Druida",
+    ))
+    engine.register(Rule(
+        rule_id="wizard.spellbook",
+        description="Resolve Livro de Magias, Recuperação Arcana e Memorizar Magia.",
+        priority=60, when=lambda f: f["type"] == "spellcaster_feature" and f.get("feature") == "livro_de_magias",
+        resolve=resolver_livro_de_magias, source="D&D 2024 — Mago",
     ))
     return engine

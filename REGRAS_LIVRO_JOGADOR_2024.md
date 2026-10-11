@@ -46,6 +46,10 @@ Implementados no `martial.py` e registrados no motor: Ataque Extra (incluindo os
 
 Foi criado o catálogo executável das subclasses de Guerreiro (Campeão, Cavaleiro Místico, Combatente Psíquico e Mestre da Batalha), Bárbaro (Árvore do Mundo, Berserker, Coração Selvagem/Caminho do Guerreiro Espiritual e Fanático), Monge (Mão Espalmada, Misericórdia, Sombras e Elementos) e Ladino (Adaga Espiritual, Assassino, Ladrão e Trapaceiro Arcano). O resolvedor já aplica efeitos centrais como Crítico Aprimorado, Frenesi, Fúria Irracional, Fúria Divina, Passo da Sombra, Mão de Cura/Dolo, Assassinar, Poder Psiônico e Maestrias da Árvore do Mundo. As características restantes de cada subclasse serão detalhadas em lotes seguintes.
 
+## Bloco conjurador — lote 1
+
+Iniciado o núcleo de Mago, Clérigo, Druida e Bardo. O motor agora resolve a progressão de espaços de magia, atributo de conjuração, magias preparadas e foco; Inspiração de Bardo com progressão do dado e recuperação; Canalizar Divindade com Centelha Divina e Expulsar Mortos-Vivos; Forma Selvagem com usos, duração, PV temporários e conjuração em níveis altos; e Livro de Magias com adição de magias, Recuperação Arcana e Memorizar Magia. Ainda faltam as características de subclasses, listas completas de magias por classe e os recursos avançados de cada classe.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

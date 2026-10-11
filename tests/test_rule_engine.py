@@ -767,6 +767,32 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "martial_subclass_feature", "subclasse": "campeao", "nivel": 3, "caracteristica": "sobrevivente"})
         self.assertEqual(result.outcome["resultado"], "bloqueado")
 
+    def test_full_caster_progression_uses_correct_ability_and_slots(self):
+        result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "progressao_conjuracao", "classe": "mago", "nivel": 5, "inteligencia": 16})
+        self.assertEqual(result.outcome["atributo_conjuracao"], "inteligencia")
+        self.assertEqual(result.outcome["espacos"], [4, 3, 2])
+        self.assertEqual(result.outcome["magias_preparadas"], 9)
+
+    def test_bardic_inspiration_scales_and_recovers(self):
+        result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "inspiracao_bardo", "nivel": 10, "carisma": 16})
+        self.assertEqual(result.outcome["dado"], "d10")
+        recovered = self.engine.evaluate({"type": "spellcaster_feature", "feature": "inspiracao_bardo", "nivel": 5, "carisma": 14, "acao": "recuperar"})
+        self.assertEqual(recovered.outcome["recupera_em"], "descanso_curto_ou_longo")
+
+    def test_cleric_channel_divinity_and_druid_wild_shape(self):
+        result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "canalizar_divindade", "nivel": 7, "acao": "centelha_divina"})
+        self.assertEqual(result.outcome["usos_maximos"], 3)
+        self.assertIn("3d8", result.outcome["escalonamento"].values())
+        result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "forma_selvagem", "nivel": 18, "forma": "fera"})
+        self.assertTrue(result.outcome["pode_conjurar"])
+        self.assertEqual(result.outcome["pontos_de_vida_temporarios"], 18)
+
+    def test_wizard_spellbook_features(self):
+        result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "livro_de_magias", "nivel": 1, "acao": "consultar"})
+        self.assertEqual(result.outcome["magias_iniciais"], 6)
+        result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "livro_de_magias", "nivel": 9, "acao": "recuperacao_arcana"})
+        self.assertEqual(result.outcome["limite_circulos"], 5)
+
 
 if __name__ == "__main__":
     unittest.main()
