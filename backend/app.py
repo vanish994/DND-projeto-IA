@@ -1006,10 +1006,10 @@ def _extrair_ataques_monstro(monstro: dict) -> list[dict]:
     for texto in _acoes_monstro_como_lista(monstro):
         if not texto:
             continue
-        nome_match = re.match(r"^([^.:\\n]{2,90})[.:]", texto.strip())
-        bonus_match = re.search(r"(?:Melee|Ranged|Melee or Ranged) Attack Roll:\\s*([+-]\\d+)", texto, re.I)
-        dano_match = re.search(r"Hit:\\s*\\d+\\s*\\((\\d+d\\d+(?:\\s*[+-]\\s*\\d+)?)\\)\\s*([A-Za-z]+)?\\s*damage", texto, re.I)
-        alcance_match = re.search(r"reach\\s+(\\d+)\\s*ft\\.|range\\s+(\\d+)/(\\d+)\\s*ft\\.|range\\s+(\\d+)\\s*ft\\.", texto, re.I)
+        nome_match = re.match(r"^([^.:\n]{2,90})[.:]", texto.strip())
+        bonus_match = re.search(r"(?:Melee|Ranged|Melee or Ranged) Attack Roll:\s*([+-]\d+)", texto, re.I)
+        dano_match = re.search(r"Hit:\s*\d+\s*\((\d+d\d+(?:\s*[+-]\s*\d+)?)\)\s*([A-Za-z]+)?\s*damage", texto, re.I)
+        alcance_match = re.search(r"reach\s+(\d+)\s*ft\.|range\s+(\d+)/(\d+)\s*ft\.|range\s+(\d+)\s*ft\.", texto, re.I)
         if not (nome_match and bonus_match and dano_match and alcance_match):
             continue
         reach = int(alcance_match.group(1)) if alcance_match.group(1) else 0
@@ -1102,7 +1102,7 @@ def atacar_com_monstro_tatico(
         ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
     dados_expr = selecionado["dano"]
     import re
-    m = re.fullmatch(r"(\\d+)d(\\d+)(?:([+-])(\\d+))?", dados_expr)
+    m = re.fullmatch(r"(\d+)d(\d+)(?:([+-])(\d+))?", dados_expr)
     if not m:
         raise HTTPException(status_code=422, detail={"motivo": "expressao_de_dano_nao_suportada", "expressao": dados_expr})
     quantidade, lados = int(m.group(1)), int(m.group(2))
