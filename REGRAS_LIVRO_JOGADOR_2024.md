@@ -66,6 +66,10 @@ Implementado o catálogo do Livro do Jogador 2024 em `feats.py`, separado em Tal
 
 Criado `spells.py` com consulta por escola e círculo, componentes Verbais/Somáticos/Materiais, duração, Ritual, Concentração, troca da concentração anterior e uso de espaços de círculo superior. O sistema reaproveita o catálogo extraído do Livro do Jogador e acrescenta resolução detalhada para magias representativas de dano, cura, proteção, teleporte, invocação e controle, incluindo upcasting de Bola de Fogo, Relâmpago, Mísseis Mágicos, Cura, Benção e Armadura de Agathys. A API oferece listagem, consulta e conjuração; as regras legadas continuam compatíveis quando a entrada antiga é usada sem o campo `magia`.
 
+## Equipamentos, economia e itens mágicos
+
+Implementado `economy.py` com conversão entre PC, PP, PE, PO e PL; compra e venda; consulta unificada de armas, armaduras, equipamentos e itens mágicos; inventário com capacidade de carga; consumíveis; cargas; e sintonização. O sistema aplica o limite de três itens mágicos sintonizados, exige sintonização quando necessário, permite encerrar a sintonização após descanso curto e bloqueia o uso de itens com cargas esgotadas. Foram adicionados itens mágicos representativos com efeitos, raridade, cargas e requisitos de sintonização.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

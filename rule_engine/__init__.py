@@ -34,6 +34,7 @@ from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guar
 from .warlock_invocations import INVOCATIONS, resolver_invocacao, validar_invocacao
 from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_talento, validar_talento
 from .spells import ESCOLAS, MAGIAS, listar_magias, obter_magia, resolver_magia
+from .economy import ITENS_MAGICOS, converter_de_po, converter_para_po, comprar_item, consultar_item, resolver_inventario, resolver_sintonizacao, usar_item_magico, vender_item
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -70,6 +71,7 @@ __all__ = [
     "INVOCATIONS", "resolver_invocacao", "validar_invocacao",
     "EPIC_FEATS", "FEATS", "GENERAL_FEATS", "ORIGIN_FEATS", "resolver_talento", "validar_talento",
     "ESCOLAS", "MAGIAS", "listar_magias", "obter_magia", "resolver_magia",
+    "ITENS_MAGICOS", "converter_de_po", "converter_para_po", "comprar_item", "consultar_item", "resolver_inventario", "resolver_sintonizacao", "usar_item_magico", "vender_item",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
     "resolver_descanso",

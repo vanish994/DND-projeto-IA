@@ -39,6 +39,7 @@ from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guar
 from .warlock_invocations import resolver_invocacao, validar_invocacao
 from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_talento, validar_talento
 from .spells import listar_magias, obter_magia, resolver_magia
+from .economy import comprar_item, consultar_item, resolver_inventario, resolver_sintonizacao, usar_item_magico, vender_item
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -835,5 +836,41 @@ def build_default_engine() -> RuleEngine:
         description="Resolve componentes, concentração, círculo usado e upcasting.",
         priority=110, when=lambda f: f["type"] in {"spell", "spell_cast"} and "magia" in f,
         resolve=resolver_magia, source="D&D 2024 — Magias",
+    ))
+    engine.register(Rule(
+        rule_id="equipment.lookup",
+        description="Consulta armas, armaduras, equipamentos e itens mágicos.",
+        priority=70, when=lambda f: f["type"] == "equipment" and f.get("operation") == "lookup",
+        resolve=lambda f: {"resultado": "encontrado", "item": consultar_item(f["item"], f.get("categoria"))} if consultar_item(f["item"], f.get("categoria")) else {"resultado": "bloqueado", "motivo": "item_desconhecido"}, source="D&D 2024 — Equipamento",
+    ))
+    engine.register(Rule(
+        rule_id="equipment.inventory",
+        description="Calcula carga, capacidade e inventário carregado.",
+        priority=70, when=lambda f: f["type"] == "equipment" and f.get("operation") == "inventory",
+        resolve=resolver_inventario, source="D&D 2024 — Capacidade de Carga",
+    ))
+    engine.register(Rule(
+        rule_id="economy.buy",
+        description="Compra equipamentos usando moedas e verifica saldo.",
+        priority=70, when=lambda f: f["type"] == "economy" and f.get("operation") == "buy",
+        resolve=comprar_item, source="D&D 2024 — Economia",
+    ))
+    engine.register(Rule(
+        rule_id="economy.sell",
+        description="Vende equipamentos pela fração de venda informada.",
+        priority=70, when=lambda f: f["type"] == "economy" and f.get("operation") == "sell",
+        resolve=vender_item, source="D&D 2024 — Economia",
+    ))
+    engine.register(Rule(
+        rule_id="magic-item.attunement",
+        description="Controla sintonização, limite de três itens e descanso curto.",
+        priority=70, when=lambda f: f["type"] == "magic_item" and f.get("operation") == "attune",
+        resolve=resolver_sintonizacao, source="D&D 2024 — Itens Mágicos",
+    ))
+    engine.register(Rule(
+        rule_id="magic-item.use",
+        description="Usa item mágico, valida sintonização e consome cargas.",
+        priority=70, when=lambda f: f["type"] == "magic_item" and f.get("operation") == "use",
+        resolve=usar_item_magico, source="D&D 2024 — Itens Mágicos",
     ))
     return engine

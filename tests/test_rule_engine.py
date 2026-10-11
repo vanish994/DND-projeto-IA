@@ -907,6 +907,29 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result.outcome["magia"]["circulo"], 1)
         self.assertIn("M", result.outcome["magia"]["componentes"])
 
+    def test_coin_conversion_and_equipment_purchase(self):
+        from rule_engine import converter_de_po, converter_para_po
+        self.assertEqual(converter_para_po({"po": 1, "pp": 10}), 2.0)
+        self.assertEqual(converter_de_po(2), {"po": 2})
+        result = self.engine.evaluate({"type": "economy", "operation": "buy", "item": "Corda", "moedas": {"po": 2}})
+        self.assertEqual(result.outcome["resultado"], "comprado")
+        blocked = self.engine.evaluate({"type": "economy", "operation": "buy", "item": "Placas", "categoria": "armaduras", "moedas": {"po": 10}})
+        self.assertEqual(blocked.outcome["motivo"], "saldo_insuficiente")
+
+    def test_equipment_inventory_and_sale(self):
+        result = self.engine.evaluate({"type": "equipment", "operation": "inventory", "forca": 10, "peso_atual": 70, "peso_adicionado": 10})
+        self.assertEqual(result.outcome["resultado"], "sobrecarregado")
+        result = self.engine.evaluate({"type": "economy", "operation": "sell", "item": "Corda", "moedas": {"po": 0}})
+        self.assertEqual(result.outcome["recebe_po"], 0.5)
+
+    def test_magic_item_attunement_limit_and_charges(self):
+        result = self.engine.evaluate({"type": "magic_item", "operation": "attune", "item": "anel_de_protecao", "sintonizados": []})
+        self.assertEqual(result.outcome["resultado"], "sintonizado")
+        blocked = self.engine.evaluate({"type": "magic_item", "operation": "attune", "item": "amuleto_de_saude", "sintonizados": ["anel_de_protecao", "manto_de_protecao", "botas_de_velocidade"]})
+        self.assertEqual(blocked.outcome["motivo"], "limite_de_tres_itens")
+        result = self.engine.evaluate({"type": "magic_item", "operation": "use", "item": "varinha_de_misseis", "cargas": 2})
+        self.assertEqual(result.outcome["cargas_restantes"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
