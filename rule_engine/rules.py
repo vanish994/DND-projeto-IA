@@ -38,6 +38,7 @@ from .spellcasters import (
 from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guardiao
 from .warlock_invocations import resolver_invocacao, validar_invocacao
 from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_talento, validar_talento
+from .spells import listar_magias, obter_magia, resolver_magia
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -816,5 +817,23 @@ def build_default_engine() -> RuleEngine:
         description="Resolve os efeitos determinísticos de talentos de Origem, Gerais e Épicos.",
         priority=70, when=lambda f: f["type"] == "feat" and f.get("operation", "resolve") != "validate",
         resolve=resolver_talento, source="D&D 2024 — Talentos",
+    ))
+    engine.register(Rule(
+        rule_id="spell.list",
+        description="Lista magias por escola e círculo.",
+        priority=70, when=lambda f: f["type"] == "spell_catalog" and f.get("operation") == "list",
+        resolve=lambda f: {"resultado": "listado", "magias": listar_magias(f.get("escola"), f.get("circulo"))}, source="D&D 2024 — Magias",
+    ))
+    engine.register(Rule(
+        rule_id="spell.lookup",
+        description="Consulta escola, círculo, componentes e duração de uma magia.",
+        priority=70, when=lambda f: f["type"] == "spell_catalog" and f.get("operation") == "lookup",
+        resolve=lambda f: {"resultado": "encontrada", "magia": obter_magia(f["magia"])} if obter_magia(f["magia"]) else {"resultado": "bloqueado", "motivo": "magia_desconhecida"}, source="D&D 2024 — Magias",
+    ))
+    engine.register(Rule(
+        rule_id="spell.cast-complete",
+        description="Resolve componentes, concentração, círculo usado e upcasting.",
+        priority=110, when=lambda f: f["type"] in {"spell", "spell_cast"} and "magia" in f,
+        resolve=resolver_magia, source="D&D 2024 — Magias",
     ))
     return engine

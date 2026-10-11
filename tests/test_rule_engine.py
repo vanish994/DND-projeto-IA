@@ -882,6 +882,31 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "feat", "talento": "dadiva_da_visao_verdadeira", "nivel": 19})
         self.assertEqual(result.outcome["visao_verdadeira_m"], 18)
 
+    def test_spell_catalog_is_queryable_by_school_and_circle(self):
+        from rule_engine import ESCOLAS, listar_magias, obter_magia
+        self.assertEqual(len(ESCOLAS), 8)
+        self.assertEqual(obter_magia("Bola de Fogo")["escola"], "evocação")
+        self.assertTrue(all(m["escola"] == "evocação" for m in listar_magias("evocação", 3)))
+
+    def test_spell_cast_validates_components_concentration_and_upcasting(self):
+        result = self.engine.evaluate({"type": "spell_cast", "magia": "bola de fogo", "espaco": 5})
+        self.assertEqual(result.outcome["circulo_usado"], 5)
+        self.assertEqual(result.outcome["upcasting"], 2)
+        self.assertIn("+1d6", result.outcome["escalonamento"]["dano"])
+        result = self.engine.evaluate({"type": "spell_cast", "magia": "benção", "espaco": 1, "concentrando": "invisibilidade"})
+        self.assertEqual(result.outcome["encerra_concentracao"], "invisibilidade")
+
+    def test_spell_cast_blocks_missing_material_component_and_bad_slot(self):
+        result = self.engine.evaluate({"type": "spell_cast", "magia": "bola de fogo", "espaco": 3, "componentes_disponiveis": ["V", "S"]})
+        self.assertEqual(result.outcome["motivo"], "componentes_ausentes")
+        result = self.engine.evaluate({"type": "spell_cast", "magia": "bola de fogo", "espaco": 2})
+        self.assertEqual(result.outcome["motivo"], "circulo_invalido")
+
+    def test_spell_lookup_rule_exposes_components(self):
+        result = self.engine.evaluate({"type": "spell_catalog", "operation": "lookup", "magia": "armadura de agathys"})
+        self.assertEqual(result.outcome["magia"]["circulo"], 1)
+        self.assertIn("M", result.outcome["magia"]["componentes"])
+
 
 if __name__ == "__main__":
     unittest.main()
