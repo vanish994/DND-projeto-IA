@@ -102,6 +102,7 @@ class DeepSeekMJ:
 
     def __init__(self, client: Any | None = None, *, model: str | None = None):
         _carregar_env_local()
+        self.uses_tokenharbor = bool(os.getenv("TOKENHARBOR_API_KEY"))
         default_model = "deepseek-v4.1-flash:free" if os.getenv("TOKENHARBOR_API_KEY") else "deepseek-flash"
         if client is None:
             from openai import OpenAI
@@ -154,14 +155,16 @@ class DeepSeekMJ:
         mensagens.append({"role": "user", "content": texto})
 
         for _ in range(8):
-            resposta = self.client.chat.completions.create(
-                model=self.model,
-                messages=mensagens,
-                tools=TOOLS,
-                tool_choice="auto",
-                extra_body={"thinking": {"type": "disabled"}},
-                max_tokens=4096,
-            )
+            parametros = {
+                "model": self.model,
+                "messages": mensagens,
+                "tools": TOOLS,
+                "tool_choice": "auto",
+                "max_tokens": 4096,
+            }
+            if not self.uses_tokenharbor:
+                parametros["extra_body"] = {"thinking": {"type": "disabled"}}
+            resposta = self.client.chat.completions.create(**parametros)
             mensagem = resposta.choices[0].message
             mensagens.append(self._message_dict(mensagem))
             chamadas = getattr(mensagem, "tool_calls", None) or []
