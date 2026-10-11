@@ -384,6 +384,22 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertTrue(mapa["combate_ativo"])
         self.assertEqual(mapa["rodada"], 1)
 
+    def test_alvo_inconsciente_adjacente_sofre_critico_automatico(self):
+        self.save_encounter()
+        bruto = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
+        for token in bruto["tokens"]:
+            if token["id"] == "inimigo-bandido":
+                token["conditions"] = ["unconscious"]
+        self.repo.salvar_mapa_tatico("jogador-mapa", self.cid, bruto)
+        with patch.object(backend_app.secrets, "randbelow", return_value=9):
+            response = self.client.post(self.url + "/atacar", headers=self.headers, json={
+                "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandido",
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["ataque"]["result"], "hit")
+        self.assertTrue(response.json()["ataque"]["critical"])
+        self.assertEqual(response.json()["ataque"]["reason"], "critical_due_to_condition")
+
     def test_condicao_do_monstro_persiste_e_da_vantagem_ao_heroi(self):
         self.save_encounter()
         bruto = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
