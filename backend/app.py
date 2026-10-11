@@ -543,11 +543,10 @@ def atualizar_equipamento_personagem(
     armaduras = set(profs.get("armaduras", [])) if isinstance(profs, dict) else set()
     if dados.armadura:
         categoria = CATALOGO_ARMADURAS[dados.armadura]["categoria"]
-        categoria_normalizada = {"media": "medias", "leve": "leves", "pesada": "pesadas"}.get(categoria, categoria)
         if categoria == "escudo":
-            if "escudos" not in armaduras:
-                raise HTTPException(status_code=422, detail="A ficha não registra proficiência com escudos")
-        elif categoria_normalizada not in armaduras and categoria not in armaduras:
+            raise HTTPException(status_code=422, detail="Registre escudos no campo escudo, não como armadura")
+        categoria_normalizada = {"media": "medias", "leve": "leves", "pesada": "pesadas"}.get(categoria, categoria)
+        if categoria_normalizada not in armaduras and categoria not in armaduras:
             raise HTTPException(status_code=422, detail="A ficha não registra proficiência nesta categoria de armadura")
     if dados.escudo and "escudos" not in armaduras:
         raise HTTPException(status_code=422, detail="A ficha não registra proficiência com escudos")
