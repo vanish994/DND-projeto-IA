@@ -112,6 +112,84 @@ class BackendMapaTaticoTests(unittest.TestCase):
         if body["ataque"]["result"] == "hit":
             self.assertGreaterEqual(body["dano"], 1)
 
+    def test_ataque_com_arco_a_distancia_valida(self):
+        equip = self.client.patch(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/equipamento",
+            headers=self.headers, json={"arma": "Arco Curto"},
+        )
+        self.assertEqual(equip.status_code, 200, equip.text)
+        self.save_encounter(hero_x=1, hero_y=1, enemy_x=10, enemy_y=1)
+        response = self.client.post(self.url + "/atacar", headers=self.headers, json={
+            "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandido",
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body["ataque_a_distancia"])
+        self.assertEqual(body["alcance_pes"], 79)
+        self.assertIn(body["ataque"]["result"], {"hit", "miss"})
+
+    def _criar_artifice_com_magias(self):
+        payload = {
+            "nome": "Tessa", "especie": "humano", "classe": "artifice", "nivel": 1,
+            "metodo_atributos": "matriz_padrao",
+            "atributos": {"forca": 8, "destreza": 14, "constituicao": 13, "inteligencia": 15, "sabedoria": 12, "carisma": 10},
+            "antecedente": "soldado", "aumentos_antecedente": {"forca": 2, "constituicao": 1},
+        }
+        response = self.client.post(f"/v1/campanhas/{self.cid}/personagens", json=payload, headers=self.headers)
+        self.assertEqual(response.status_code, 201, response.text)
+        original = self.hero
+        self.hero = response.json()
+        magias = self.client.patch(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/magias",
+            headers=self.headers,
+            json={"truques": ["Raio de Fogo", "Consertar"],
+                  "magias_preparadas": ["Curar Ferimentos", "Onda Trovejante"],
+                  "espacos_totais": {"1": 2}},
+        )
+        self.assertEqual(magias.status_code, 200, magias.text)
+        return original
+
+    def test_raio_de_fogo_conjura_e_nao_gasta_espaco(self):
+        original = self._criar_artifice_com_magias()
+        try:
+            self.save_encounter(hero_x=1, hero_y=1, enemy_x=5, enemy_y=1)
+            response = self.client.post(self.url + "/conjurar", headers=self.headers, json={
+                "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandido", "magia": "Raio de Fogo",
+            })
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            self.assertEqual(body["resolucao_motor"]["resultado"], "conjurada")
+            self.assertIn(body["ataque"]["result"], {"hit", "miss"})
+            self.assertIsNone(body["espaco_usado"])
+            self.assertEqual(body["espacos_restantes"].get("1"), 2)
+        finally:
+            self.hero = original
+
+    def test_curar_ferimentos_gasta_espaco_de_magia(self):
+        original = self._criar_artifice_com_magias()
+        try:
+            self.save_encounter()
+            response = self.client.post(self.url + "/conjurar", headers=self.headers, json={
+                "atacante_id": "heroi-vex", "alvo_id": "heroi-vex", "magia": "Curar Ferimentos",
+            })
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            self.assertGreater(body["cura"], 0)
+            self.assertEqual(body["espacos_restantes"]["1"], 1)
+        finally:
+            self.hero = original
+
+    def test_magia_nao_preparada_e_rejeitada(self):
+        original = self._criar_artifice_com_magias()
+        try:
+            self.save_encounter()
+            response = self.client.post(self.url + "/conjurar", headers=self.headers, json={
+                "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandido", "magia": "Graxa",
+            })
+            self.assertEqual(response.status_code, 422, response.text)
+        finally:
+            self.hero = original
+
     def test_ataque_fora_de_alcance_e_rejeitado(self):
         self.save_encounter(hero_x=1, hero_y=1, enemy_x=5, enemy_y=1)
         response = self.client.post(self.url + "/atacar", headers=self.headers, json={
