@@ -85,15 +85,25 @@ class DeepSeekMJ:
     """Orquestra conversa do MJ e chamadas normativas ao Rule Engine."""
 
     def __init__(self, client: Any | None = None, *, model: str | None = None):
+        default_model = "deepseek-v4.1-flash:free" if os.getenv("TOKENHARBOR_API_KEY") else "deepseek-flash"
         if client is None:
             from openai import OpenAI
 
+            tokenharbor_key = os.getenv("TOKENHARBOR_API_KEY")
+            deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+            api_key = tokenharbor_key or deepseek_key
+            if not api_key:
+                raise RuntimeError("Defina TOKENHARBOR_API_KEY ou DEEPSEEK_API_KEY")
+            if tokenharbor_key:
+                base_url = os.getenv("TOKENHARBOR_BASE_URL", "https://tokenharbor.ai/v1")
+            else:
+                base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
             client = OpenAI(
-                api_key=os.environ["DEEPSEEK_API_KEY"],
-                base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+                api_key=api_key,
+                base_url=base_url,
             )
         self.client = client
-        self.model = model or os.getenv("DEEPSEEK_MODEL", "deepseek-flash")
+        self.model = model or os.getenv("DEEPSEEK_MODEL", default_model)
         self.engine = build_default_engine()
 
     def _tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:

@@ -59,6 +59,16 @@ export DEEPSEEK_BASE_URL="https://api.deepseek.com"
 export DEEPSEEK_MODEL="deepseek-flash"
 ```
 
+Para usar o modelo indicado no TokenHarbor:
+
+```bash
+export TOKENHARBOR_API_KEY="sua-chave-do-tokenharbor"
+export TOKENHARBOR_BASE_URL="https://tokenharbor.ai/v1"
+export DEEPSEEK_MODEL="deepseek-v4.1-flash:free"
+```
+
+Quando `TOKENHARBOR_API_KEY` estiver definida, o adaptador seleciona automaticamente `https://tokenharbor.ai/v1` e `deepseek-v4.1-flash:free`. A chave deve ser criada na conta do TokenHarbor e nunca deve ser publicada no repositório.
+
 Uso:
 
 ```python
