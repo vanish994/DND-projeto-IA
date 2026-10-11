@@ -2,7 +2,6 @@ name: Python tests
 on:
   pull_request:
   push:
-    branches: [main]
 jobs:
   unittest:
     runs-on: ubuntu-latest
