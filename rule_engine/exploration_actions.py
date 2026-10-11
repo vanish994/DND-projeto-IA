@@ -91,4 +91,44 @@ def resolver_fim_esconderijo(fatos: Mapping[str, Any]) -> dict[str, Any]:
     encerra = evento in {"som_alto", "inimigo_encontra", "rolagem_de_ataque", "ataque", "magia_com_componente_verbal", "magia_verbal"}
     return {"resultado": "esconderijo_encerrado" if escondido and encerra else "continua_escondido" if escondido else "nao_escondido", "escondido": escondido and not encerra, "evento": evento}
 
-__all__ = ["resolver_acao_esconder", "resolver_acao_influenciar", "resolver_fim_esconderijo"]
+def resolver_acao_procurar(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Resolve Search com os pares Sabedoria (perícia) definidos no PHB 2024."""
+    tipo = str(fatos.get("tipo_busca", fatos.get("search_for", ""))).strip().lower().replace(" ", "_")
+    mapa = {
+        "estado_mental": "intuicao", "mood": "intuicao", "intencoes": "intuicao",
+        "doenca": "medicina", "ferimento": "medicina", "causa_da_morte": "medicina", "ailment": "medicina",
+        "criatura_ou_objeto_escondido": "percepcao", "escondido": "percepcao", "concealed": "percepcao",
+        "rastros": "sobrevivencia", "comida": "sobrevivencia", "tracks": "sobrevivencia", "food": "sobrevivencia",
+    }
+    pericia = mapa.get(tipo)
+    if pericia is None:
+        return {"resultado": "bloqueado", "motivo": "tipo_de_busca_desconhecido"}
+    dados = dict(fatos)
+    dados["pericia"] = pericia
+    teste = resolver_teste_habilidade(dados)
+    if teste.get("resultado") == "bloqueado":
+        return teste
+    sucesso = teste["resultado"] == "sucesso"
+    return {"resultado": "encontrado" if sucesso else "nao_encontrado", "sucesso": sucesso, "pericia": pericia, "teste": teste}
+
+def resolver_acao_ajudar(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Cria o efeito de Ajuda para um teste de perícia/ferramenta ou ataque."""
+    tipo = str(fatos.get("tipo_ajuda", fatos.get("help_type", "habilidade"))).strip().lower()
+    aliado_proximo = bool(fatos.get("aliado_proximo", fatos.get("ally_nearby", False)))
+    if not aliado_proximo:
+        return {"resultado": "bloqueado", "motivo": "aliado_fora_do_alcance_de_ajuda"}
+    if tipo in {"habilidade", "ability_check", "pericia", "ferramenta", "tool"}:
+        proficiente = bool(fatos.get("proficiente_ajudante", fatos.get("helper_proficient", False)))
+        pericia = str(fatos.get("pericia", fatos.get("skill", ""))).strip().lower().replace(" ", "_")
+        ferramenta = str(fatos.get("ferramenta", fatos.get("tool", ""))).strip()
+        if not proficiente or not (pericia or ferramenta):
+            return {"resultado": "bloqueado", "motivo": "ajudante_deve_escolher_pericia_ou_ferramenta_em_que_e_proficiente"}
+        return {"resultado": "ajuda_preparada", "tipo_ajuda": "teste_habilidade", "pericia": pericia or None, "ferramenta": ferramenta or None, "vantagem_no_proximo_teste": True, "expira": "inicio_do_proximo_turno_do_ajudante"}
+    if tipo in {"ataque", "attack_roll", "ataque_de_aliado"}:
+        distancia = float(fatos.get("distancia_m", fatos.get("distance_m", 99)))
+        if distancia > 1.5:
+            return {"resultado": "bloqueado", "motivo": "inimigo_deve_estar_a_1_5_metros"}
+        return {"resultado": "ajuda_preparada", "tipo_ajuda": "ataque", "alvo": fatos.get("alvo", fatos.get("target")), "vantagem_no_proximo_ataque": True, "expira": "inicio_do_proximo_turno_do_ajudante"}
+    return {"resultado": "bloqueado", "motivo": "tipo_ajuda_desconhecido"}
+
+__all__ = ["resolver_acao_esconder", "resolver_acao_influenciar", "resolver_fim_esconderijo", "resolver_acao_procurar", "resolver_acao_ajudar"]
