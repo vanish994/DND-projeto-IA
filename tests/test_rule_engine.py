@@ -1026,6 +1026,17 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result.outcome["resultado"], "encontrado")
         self.assertIn("Thunderous Slam", result.outcome["texto"])
 
+    def test_bestiary_suggests_candidates_without_selecting_or_inventing(self):
+        result = self.engine.evaluate({
+            "type": "bestiary", "operacao": "sugerir", "tipos": ["beast"],
+            "nd_min": "1/4", "nd_max": "1", "limite": 5,
+        })
+        self.assertEqual(result.outcome["resultado"], "candidatos_encontrados")
+        self.assertEqual(result.outcome["escolha"], "MJ")
+        self.assertLessEqual(result.outcome["quantidade"], 5)
+        self.assertTrue(all(monster["tipo"] == "beast" for monster in result.outcome["candidatos"]))
+        self.assertNotIn("monstro_escolhido", result.outcome)
+
     def test_second_batch_bard_cleric_and_druid_features(self):
         bard = self.engine.evaluate({"type": "class_feature", "classe": "bardo", "recurso": "inspiracao_de_bardo", "nivel": 10, "carisma": 18})
         self.assertEqual(bard.outcome["dado"], "d10")

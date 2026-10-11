@@ -94,6 +94,8 @@ Cada recurso aceita fatos estruturados em português, retorna um resultado audit
 
 O bestiário agora contém os **232 blocos completos** identificados no SRD compartilhado, não apenas os dados resumidos. Cada registro preserva o texto integral e separa as seções de cabeçalho, traços, ações, ações bônus, reações e ações lendárias. A API oferece `consultar_bloco_completo`, `secao_monstro` e as operações do motor `bloco_completo` e `secao`. A quantidade é a da fonte SRD 5.2.1 efetivamente disponível no projeto; não foram adicionados monstros de livros fora do SRD nem entradas inventadas.
 
+O fluxo de seleção foi separado do MJ: a operação `bestiary/sugerir` recebe filtros explícitos do momento da campanha e retorna candidatos do catálogo em ordem determinística. O resultado informa `escolha: "MJ"`; o motor não escolhe, não cria variantes e bloqueia nomes desconhecidos. Depois da escolha, `bloco_completo` entrega o registro integral oficial.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

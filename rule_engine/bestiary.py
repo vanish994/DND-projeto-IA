@@ -2150,6 +2150,41 @@ def xp_encontro(nomes: list[str]) -> int:
     return total
 
 
+def _valor_nd(nd: str) -> float:
+    return float(nd) if "/" not in str(nd) else float(str(nd).split("/", 1)[0]) / float(str(nd).split("/", 1)[1])
+
+
+def sugerir_monstros(fatos: dict) -> list[dict]:
+    """Retorna candidatos do catálogo para o MJ escolher, sem criar um encontro."""
+    tipos = {str(x).casefold() for x in fatos.get("tipos", ([fatos["tipo"]] if fatos.get("tipo") else []))}
+    tamanhos = {str(x).casefold() for x in fatos.get("tamanhos", ([fatos["tamanho"]] if fatos.get("tamanho") else []))}
+    alinhamentos = {str(x).casefold() for x in fatos.get("alinhamentos", [])}
+    nds = {str(x) for x in fatos.get("nds", [])}
+    nd_min = fatos.get("nd_min")
+    nd_max = fatos.get("nd_max")
+    excluir = {str(x).casefold() for x in fatos.get("excluir", [])}
+    candidatos = []
+    for monstro in BESTIARIO:
+        if tipos and monstro["tipo"] not in tipos:
+            continue
+        if tamanhos and monstro["tamanho"].casefold() not in tamanhos:
+            continue
+        if alinhamentos and monstro["alinhamento"] not in alinhamentos:
+            continue
+        if nds and monstro["nd"] not in nds:
+            continue
+        if nd_min is not None and _valor_nd(monstro["nd"]) < _valor_nd(str(nd_min)):
+            continue
+        if nd_max is not None and _valor_nd(monstro["nd"]) > _valor_nd(str(nd_max)):
+            continue
+        if monstro["nome"].casefold() in excluir:
+            continue
+        candidatos.append({k: monstro[k] for k in ("nome", "tamanho", "tipo", "alinhamento", "ca", "pv", "nd", "xp")})
+    candidatos.sort(key=lambda m: (_valor_nd(m["nd"]), m["nome"].casefold()))
+    limite = fatos.get("limite")
+    return candidatos[:int(limite)] if limite is not None else candidatos
+
+
 def resolver_bestiario(fatos: dict) -> dict:
     """Resolve operações auditáveis sobre o catálogo do bestiário."""
     operacao = str(fatos.get("operacao", "consultar")).lower()
@@ -2169,6 +2204,15 @@ def resolver_bestiario(fatos: dict) -> dict:
     if operacao == "listar":
         monstros = listar_monstros(tipo=fatos.get("tipo"), nd=fatos.get("nd"))
         return {"resultado": "listado", "quantidade": len(monstros), "monstros": monstros}
+    if operacao == "sugerir":
+        candidatos = sugerir_monstros(fatos)
+        return {
+            "resultado": "candidatos_encontrados" if candidatos else "nenhum_candidato",
+            "quantidade": len(candidatos),
+            "candidatos": candidatos,
+            "escolha": "MJ",
+            "origem": "SRD 5.2.1",
+        }
     if operacao == "xp_nd":
         return {"resultado": "resolvido", "nd": str(fatos["nd"]), "xp": xp_por_nd(fatos["nd"])}
     if operacao == "xp_encontro":
