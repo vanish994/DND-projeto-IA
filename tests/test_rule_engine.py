@@ -973,7 +973,7 @@ class RuleEngineTests(unittest.TestCase):
         from rule_engine import resolver_efeitos_condicao
         blinded = resolver_efeitos_condicao({"action": "study", "target_conditions": ["blinded"]})
         deafened = resolver_efeitos_condicao({"action": "search", "target_conditions": ["deafened"]})
-        charmed = resolver_efeitos_condicao({"action": "attack", "target_conditions": ["charmed"], "atacante_e_enfeiticador": True})
+        charmed = resolver_efeitos_condicao({"action": "social", "target_conditions": ["charmed"], "atacante_e_enfeiticador": True})
         self.assertTrue(blinded["falha_automaticamente_teste_que_exige_visao"])
         self.assertTrue(deafened["falha_automaticamente_teste_que_exige_audicao"])
         self.assertTrue(charmed["não_pode_afetar_o_enfeiticador_com_efeito_nocivo"])
