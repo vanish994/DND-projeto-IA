@@ -163,6 +163,10 @@ Adicionado `exploration_actions.py` para Esconder-se (requisitos de obscurecimen
 
 Testes de integração adicionados; aguardando execução da suíte.
 
+## Ações Search e Help
+
+Adicionadas regras para Search (Sabedoria com Intuição, Medicina, Percepção ou Sobrevivência conforme o alvo da busca) e Help (vantagem no próximo teste de perícia/ferramenta, exigindo proficiência do ajudante, ou no próximo ataque contra inimigo a até 1,5 m).
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
