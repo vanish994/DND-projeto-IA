@@ -907,7 +907,7 @@ def salvar_mapa_tatico(
             anterior = tokens_anteriores.get(token.id, {})
             hp_maximo = int(m["pv"])
             hp_atual = max(0, min(hp_maximo, int(anterior.get("hp", hp_maximo)))) if anterior.get("monster_name") == m["nome"] else hp_maximo
-            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": hp_atual, "maxHp": hp_maximo})
+            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": hp_atual, "maxHp": hp_maximo, "conditions": list(anterior.get("conditions") or [])})
         else:
             raise HTTPException(status_code=422, detail="Use um personagem ou monstro do catálogo")
     estado = {"title": pedido.title, "terrain": pedido.terrain, "tokens": tokens, "bloqueados": [], "terreno_dificil": []}
@@ -1075,7 +1075,7 @@ def mover_token_tatico(
     mapa_atualizado = {
         **{k: bruto_mapa[k] for k in ("iniciativa", "turno_indice", "rodada", "combate_ativo") if k in bruto_mapa},
         "title": estado["title"], "terrain": estado["terrain"],
-        "tokens": [{k: t[k] for k in ("id", "kind", "character_id", "monster_name", "x", "y", "hp", "maxHp") if k in t} for t in tokens],
+        "tokens": [{k: t[k] for k in ("id", "kind", "character_id", "monster_name", "x", "y", "hp", "maxHp", "conditions") if k in t} for t in tokens],
         "bloqueados": bruto_mapa.get("bloqueados", []), "terreno_dificil": bruto_mapa.get("terreno_dificil", []),
     }
     repo.salvar_mapa_tatico(jogador, campanha_id, mapa_atualizado)
@@ -1139,7 +1139,7 @@ def atacar_token_tatico(
     efeitos_ataque = resolver_efeitos_condicao({
         "action": "attack",
         "attacker_conditions": sorted(estado_atacante.ativas),
-        "target_conditions": sorted(estado_alvo.ativas),
+        "target_conditions": sorted(estado_alvo.ativas) if alvo["kind"] == "hero" else list(alvo.get("conditions") or []),
         "distance_m": distancia_pes * 0.3,
         "distance": "corpo_a_corpo" if not ataque_a_distancia else "a_distancia",
     })
@@ -1579,10 +1579,14 @@ def atacar_com_monstro_tatico(
     ficha_alvo_condicoes = repo.obter_personagem(jogador, campanha_id, alvo["character_id"]) or {}
     estado_alvo_condicoes = _condicoes_da_ficha(ficha_alvo_condicoes)
     efeitos_condicao_monstro = resolver_efeitos_condicao({
-        "action": "attack", "target_conditions": sorted(estado_alvo_condicoes.ativas),
+        "action": "attack",
+        "attacker_conditions": list(atacante.get("conditions") or []),
+        "target_conditions": sorted(estado_alvo_condicoes.ativas),
         "distance_m": distancia * 0.3,
         "distance": "corpo_a_corpo" if selecionado["alcance_corpo_a_corpo"] > 0 else "a_distancia",
     })
+    if efeitos_condicao_monstro.get("resultado") == "bloqueado":
+        raise HTTPException(status_code=422, detail={"motivo": efeitos_condicao_monstro.get("motivo", "ataque_impedido_por_condicao"), "efeitos_condicao": efeitos_condicao_monstro})
     estado_geometria_monstro = geometria.get("estado_jogada", "normal")
     vantagem_condicao_monstro = efeitos_condicao_monstro.get("resultado") == "vantagem"
     desvantagem_condicao_monstro = efeitos_condicao_monstro.get("resultado") == "desvantagem"
