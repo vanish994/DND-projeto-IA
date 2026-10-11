@@ -953,6 +953,9 @@ def atacar_token_tatico(
     if rolagem == 1:
         ataque = {**ataque, "result": "miss", "critical": False, "reason": "natural_1"}
     dano = 0
+    dano_bruto = 0
+    defesas_dano = None
+    tipo_dano_ataque = str((CATALOGO_ARMAS.get(nome_arma or "") or {}).get("tipo", "contundente"))
     fortitude = None
     if ataque.get("result") == "hit":
         dados_dano = list(dados_arma)
@@ -965,8 +968,6 @@ def atacar_token_tatico(
         }).outcome
         dano = max(0, int(dano_resolvido.get("total", 0)))
         dano_bruto = dano
-        defesas_dano = None
-        tipo_dano_ataque = str((CATALOGO_ARMAS.get(nome_arma or "") or {}).get("tipo", "contundente"))
         if alvo["kind"] == "enemy":
             estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
             from rule_engine.bestiary import consultar_monstro
