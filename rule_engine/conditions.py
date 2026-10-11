@@ -45,8 +45,12 @@ class EstadoCondicoes:
         validar_condicao(c)
         if c in self.imunidades:
             return {"resultado": "não_aplicada", "motivo": "imune", "condicao": c}
-        if isinstance(duracao, int) and duracao < 1:
+        if isinstance(duracao, int) and not isinstance(duracao, bool) and duracao < 1:
             raise ValueError("A duração deve ser positiva")
+        if isinstance(duracao, str) and not duracao.strip():
+            raise ValueError("A duração textual não pode ser vazia")
+        if duracao is not None and not isinstance(duracao, (int, str)):
+            raise TypeError("A duração deve ser um número de unidades ou uma descrição textual")
         if c == "exaustao":
             self.exaustao = min(6, self.exaustao + max(1, int(duracao or 1)))
             self.ativas.add(c)
@@ -77,10 +81,12 @@ class EstadoCondicoes:
         return {"resultado": "removida", "condicao": c}
 
     def reduzir_duracoes(self, unidades: int = 1) -> list[str]:
+        if isinstance(unidades, bool) or not isinstance(unidades, int) or unidades < 1:
+            raise ValueError("As unidades de duração devem ser um inteiro positivo")
         encerradas = []
         for c, duracao in list(self.duracoes.items()):
-            if isinstance(duracao, int):
-                nova = duracao - max(1, int(unidades))
+            if isinstance(duracao, int) and not isinstance(duracao, bool):
+                nova = duracao - unidades
                 if nova <= 0:
                     encerradas.append(c)
                     self.remover(c)
