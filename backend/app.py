@@ -286,7 +286,17 @@ def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanh
     try:
         personagens = repo.listar_personagens(jogador, campanha_id) or []
         if isinstance(mj, DeepSeekMJ):
-            resposta = mj.responder(texto, historico, personagens=personagens)
+            def salvar_estado_personagem(personagem: dict) -> None:
+                ficha = {
+                    k: v for k, v in personagem.items()
+                    if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}
+                }
+                repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], ficha)
+
+            resposta = mj.responder(
+                texto, historico, personagens=personagens,
+                on_character_update=salvar_estado_personagem,
+            )
         else:
             resposta = mj.responder(texto, historico)
     except Exception as exc:
