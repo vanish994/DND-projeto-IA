@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from rule_engine import PERICIAS, build_default_engine
+from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS, normalizar_nome_magia, progresso_artifice
 
 
 PROMPT_NORMATIVO = """Você é o Mestre de Jogo (MJ) da campanha.
@@ -156,7 +157,15 @@ class DeepSeekMJ:
         self.system_prompt = carregar_prompt_mj()
         self.engine = build_default_engine()
 
-    def _tool(self, name: str, args: dict[str, Any], personagens: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    def _tool(
+        self,
+        name: str,
+        args: dict[str, Any],
+        personagens: list[dict[str, Any]] | None = None,
+        on_character_update: Any | None = None,
+    ) -> dict[str, Any]:
+        personagem_magia: dict[str, Any] | None = None
+        slot_a_consumir: str | None = None
         if name == "sugerir_monstros":
             facts = {"type": "bestiary", "operacao": "sugerir", **args}
         elif name == "consultar_monstro":
@@ -234,10 +243,61 @@ class DeepSeekMJ:
                 facts["character_id"] = personagem.get("id")
                 facts["proficiency_applied"] = bonus_proficiencia
                 facts["modifier_source"] = "ficha_autoritativa"
+            if facts.get("type") in {"spell", "spell_cast"} and facts.get("magia"):
+                grupo = personagens or []
+                personagem_id = facts.get("character_id")
+                personagem_magia = next((p for p in grupo if p.get("id") == personagem_id), None)
+                if personagem_magia is None and not personagem_id and len(grupo) == 1:
+                    personagem_magia = grupo[0]
+                if personagem_magia is None:
+                    return {"resultado": "bloqueado", "motivo": "personagem_ausente_ou_nao_identificado"}
+                if personagem_magia.get("classe") == "artifice":
+                    nome_magia = normalizar_nome_magia(facts.get("magia"))
+                    circulo = next(
+                        (nivel for nome, nivel in ARTIFICER_SPELL_LEVELS.items()
+                         if normalizar_nome_magia(nome) == nome_magia),
+                        None,
+                    )
+                    if circulo is None:
+                        return {"resultado": "bloqueado", "motivo": "magia_nao_disponivel_para_artifice", "magia": facts.get("magia")}
+                    conjuracao = personagem_magia.get("conjuracao") or {}
+                    escolhidas = conjuracao.get("truques", []) if circulo == 0 else conjuracao.get("magias_preparadas", [])
+                    if nome_magia not in {normalizar_nome_magia(x) for x in escolhidas}:
+                        return {"resultado": "bloqueado", "motivo": "magia_nao_escolhida_na_ficha", "magia": facts.get("magia")}
+                    progresso = progresso_artifice(
+                        int(personagem_magia.get("nivel", 1)),
+                        int((personagem_magia.get("atributos") or {}).get("inteligencia", 10)),
+                    )
+                    if circulo > progresso["circulo_maximo"]:
+                        return {"resultado": "bloqueado", "motivo": "circulo_indisponivel_para_nivel", "circulo": circulo}
+                    facts["character_id"] = personagem_magia.get("id")
+                    if circulo > 0:
+                        try:
+                            slot = int(facts.get("espaco", facts.get("slot_level", circulo)))
+                        except (TypeError, ValueError):
+                            return {"resultado": "bloqueado", "motivo": "espaco_de_magia_invalido"}
+                        if slot < circulo or slot > progresso["circulo_maximo"]:
+                            return {"resultado": "bloqueado", "motivo": "espaco_incompativel_com_magia", "circulo_magia": circulo, "espaco_solicitado": slot}
+                        totais = conjuracao.get("espacos_totais") or progresso["espacos_totais"]
+                        restantes = conjuracao.get("espacos_restantes") or totais
+                        if int(restantes.get(str(slot), 0)) < 1:
+                            return {"resultado": "bloqueado", "motivo": "sem_espacos_restantes", "espaco": slot}
+                        facts["espaco"] = slot
+                        slot_a_consumir = str(slot)
         else:
             return {"resultado": "bloqueado", "motivo": "ferramenta_desconhecida"}
         resolution = self.engine.evaluate(facts)
         resultado = {"status": resolution.status, **dict(resolution.outcome)}
+        if name == "resolver_regra" and personagem_magia is not None and slot_a_consumir is not None and resultado.get("resultado") == "conjurada":
+            conjuracao = dict(personagem_magia.get("conjuracao") or {})
+            totais = dict(conjuracao.get("espacos_totais") or {})
+            restantes = dict(conjuracao.get("espacos_restantes") or totais)
+            restantes[slot_a_consumir] = max(0, int(restantes.get(slot_a_consumir, 0)) - 1)
+            conjuracao["espacos_restantes"] = restantes
+            personagem_magia["conjuracao"] = conjuracao
+            resultado["espacos_restantes"] = restantes
+            if on_character_update is not None:
+                on_character_update(personagem_magia)
         for chave in ("character_id", "proficiency_applied", "modifier_source"):
             if chave in facts:
                 resultado[chave] = facts[chave]
@@ -256,7 +316,13 @@ class DeepSeekMJ:
             "tool_calls": getattr(message, "tool_calls", None),
         }
 
-    def responder(self, texto: str, historico: list[dict[str, Any]] | None = None, personagens: list[dict[str, Any]] | None = None) -> str:
+    def responder(
+        self,
+        texto: str,
+        historico: list[dict[str, Any]] | None = None,
+        personagens: list[dict[str, Any]] | None = None,
+        on_character_update: Any | None = None,
+    ) -> str:
         mensagens: list[dict[str, Any]] = [{"role": "system", "content": self.system_prompt}]
         mensagens.extend(historico or [])
         mensagens.append({"role": "user", "content": texto})
@@ -279,7 +345,7 @@ class DeepSeekMJ:
                 return getattr(mensagem, "content", "") or ""
             for chamada in chamadas:
                 funcao = chamada.function
-                resultado = self._tool(funcao.name, json.loads(funcao.arguments), personagens)
+                resultado = self._tool(funcao.name, json.loads(funcao.arguments), personagens, on_character_update)
                 mensagens.append({
                     "role": "tool",
                     "tool_call_id": chamada.id,
