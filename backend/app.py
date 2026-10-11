@@ -1262,6 +1262,72 @@ def atacar_com_monstro_tatico(
     dano = max(0, sum(dados_dano) + modificador) if ataque.get("result") == "hit" else 0
     if dano:
         repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
+
+    efeitos = []
+    if ataque.get("result") == "hit" and selecionado.get("texto"):
+        texto_acao = str(selecionado["texto"])
+        import re
+        save_match = re.search(
+            r"must succeed on a DC (\\d+) (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw or (.*?)(?:\\.|$)",
+            texto_acao, re.I,
+        )
+        if save_match:
+            dc_efeito = int(save_match.group(1))
+            atributo_en = save_match.group(2).casefold()
+            efeito_texto = save_match.group(3).casefold()
+            atributos_pt = {
+                "strength": "forca", "dexterity": "destreza", "constitution": "constituicao",
+                "intelligence": "inteligencia", "wisdom": "sabedoria", "charisma": "carisma",
+            }
+            atributo_pt = atributos_pt[atributo_en]
+            ficha_alvo = repo.obter_personagem(jogador, campanha_id, alvo["character_id"]) or {}
+            attrs = ficha_alvo.get("atributos") or {}
+            mods = ficha_alvo.get("modificadores") or {}
+            score = int(attrs.get(atributo_pt, 10))
+            profs = ficha_alvo.get("proficiencias_salvaguarda") or ficha_alvo.get("proficiencias_salvacao") or []
+            if isinstance(profs, str):
+                profs = [profs]
+            proficiente = atributo_pt in {str(p).casefold() for p in profs}
+            rolagem_save = secrets.randbelow(20) + 1
+            resultado_save = resolver_salvaguarda({
+                "atributo": atributo_pt,
+                "roll": rolagem_save,
+                "valor_atributo": score,
+                "proficiente": proficiente,
+                "bonus_proficiencia": int(ficha_alvo.get("bonus_proficiencia", 2)),
+                "nivel": int(ficha_alvo.get("nivel", 1)),
+                "cd": dc_efeito,
+            })
+            sucesso_save = bool(resultado_save.get("sucesso"))
+            efeito = {
+                "tipo": "salvaguarda_apos_ataque",
+                "atributo": atributo_pt,
+                "rolagem": rolagem_save,
+                "total": resultado_save.get("total"),
+                "cd": dc_efeito,
+                "sucesso": sucesso_save,
+            }
+            if not sucesso_save:
+                condicoes_aplicar = []
+                if "knocked prone" in efeito_texto:
+                    condicoes_aplicar.append("prone")
+                if "poisoned" in efeito_texto:
+                    condicoes_aplicar.append("poisoned")
+                if "unconscious" in efeito_texto and resultado_save.get("total", 0) <= dc_efeito - 5:
+                    condicoes_aplicar.append("unconscious")
+                    efeito["falhou_por_5_ou_mais"] = True
+                if condicoes_aplicar:
+                    estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
+                    for token_bruto in estado_bruto.get("tokens", []):
+                        if token_bruto.get("id") == alvo["id"]:
+                            condicoes_atuais = token_bruto.setdefault("conditions", [])
+                            for condicao in condicoes_aplicar:
+                                if condicao not in condicoes_atuais:
+                                    condicoes_atuais.append(condicao)
+                    repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
+                    efeito["condicoes_aplicadas"] = condicoes_aplicar
+                    efeito["duracao_texto"] = "Consultar a descrição da ação; o mapa não avança turnos automaticamente nesta versão."
+            efeitos.append(efeito)
     return {
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "monstro": monstro["nome"], "acao": selecionado["nome"], "ataque": ataque,
@@ -1269,7 +1335,8 @@ def atacar_com_monstro_tatico(
         "bonus_ataque": selecionado["bonus_ataque"],
         "dados_dano": dados_dano if ataque.get("result") == "hit" else [],
         "dano": dano, "tipo_dano": selecionado["tipo_dano"], "geometria": geometria,
-        "nota": "Ação extraída do bloco de estatísticas do bestiário; ações múltiplas e efeitos especiais ainda precisam de resolução própria.",
+        "efeitos": efeitos,
+        "nota": "Ataques e salvaguardas dos efeitos secundários são resolvidos quando a descrição é reconhecida; duração e fim de condições dependem do controle de turnos, ainda não automatizado.",
     }
 
 
