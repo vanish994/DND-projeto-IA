@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
+from .class_progression import caracteristicas_no_nivel, subclasses_da_classe
+
 
 ESPECIES = {
     "aasimar": {"tamanho": "pequeno_ou_medio", "deslocamento": 9},
@@ -117,6 +119,9 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         if nivel < SUBCLASSES[classe]["nivel"]:
             raise ValueError("A subclasse só pode ser escolhida no nível adequado")
         conhecida = subclasse in SUBCLASSES[classe]["nomes"]
+        catalogadas = subclasses_da_classe(classe)
+        if catalogadas and subclasse not in catalogadas:
+            raise ValueError("Subclasse inválida para a classe escolhida")
         # Subclasses não detalhadas ainda permanecem aceitas para permitir a expansão
         # progressiva do catálogo das classes do Livro do Jogador.
         if subclasse in SUBCLASSES_RAVENLOFT and SUBCLASSES_RAVENLOFT[subclasse]["classe"] != classe:
@@ -138,11 +143,13 @@ def resolver_progressao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if classe not in CLASSES or not 1 <= nivel_atual < 20:
         raise ValueError("Progressão de nível inválida")
     resultado: dict[str, Any] = {"resultado": "nivel_adquirido", "nivel": novo_nivel}
-    if novo_nivel in {4, 8, 12, 16, 19}:
+    asi_niveis = {"guerreiro": {4, 6, 8, 12, 14, 16, 19}, "ladino": {4, 8, 10, 12, 16, 19}}
+    if novo_nivel in asi_niveis.get(classe, {4, 8, 12, 16, 19}):
         resultado["escolha"] = "aumento_de_atributo_ou_talento"
     if novo_nivel == 3:
         resultado["escolha_subclasse"] = True
     resultado["bonus_proficiencia"] = 2 + (novo_nivel - 1) // 4
+    resultado["caracteristicas"] = caracteristicas_no_nivel(classe, novo_nivel)
     return resultado
 
 

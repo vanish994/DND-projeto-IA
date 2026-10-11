@@ -34,6 +34,10 @@ O núcleo foi iniciado com nove espécies, doze classes, subclasses a partir do 
 
 Correção de cobertura: Artífice foi adicionado como décima terceira classe, com Dado de Vida d8, Inteligência como atributo principal e requisito de Inteligência 13 para multiclasse. Também foram catalogadas as sete subclasses apresentadas em *Ravenloft*: Reanimador (Artífice), Colégio dos Espíritos (Bardo), Domínio da Sepultura (Clérigo), Guardião Oculto (Guardião), Fantasma (Ladino), Feitiçaria das Sombras (Feiticeiro) e Patrono Morto-Vivo (Bruxo), todas disponíveis a partir do nível 3.
 
+## Auditoria para 100% de cobertura
+
+Foi concluída uma auditoria modular das 13 classes contra os livros locais. A matriz `class_progression.py` agora registra as características por nível e todas as subclasses principais do Livro do Jogador 2024, além das opções de Ravenloft e Artífice. A progressão passou a expor as características do nível, e os níveis adicionais de Aumento de Atributo do Guerreiro e do Ladino foram corrigidos. Essa matriz é o inventário executável da próxima fase: cada característica ainda precisa receber sua resolução de efeitos, recursos, recargas, testes e integração com combate/conjuração.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

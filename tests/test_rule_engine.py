@@ -695,6 +695,18 @@ class RuleEngineTests(unittest.TestCase):
             })
             self.assertEqual(result.outcome["resultado"], "criado")
 
+    def test_class_progression_exposes_features_and_extra_asi_levels(self):
+        from rule_engine import caracteristicas_no_nivel, subclasses_da_classe
+        self.assertIn("Fúria", caracteristicas_no_nivel("barbaro", 1))
+        self.assertIn("Flash of Genius", caracteristicas_no_nivel("artifice", 7))
+        self.assertIn("mestre_da_batalha", subclasses_da_classe("guerreiro"))
+        fighter = self.engine.evaluate({"type": "level_up", "class": "guerreiro", "current_level": 5})
+        self.assertEqual(fighter.outcome["nivel"], 6)
+        self.assertIn("escolha", fighter.outcome)
+        rogue = self.engine.evaluate({"type": "level_up", "class": "ladino", "current_level": 9})
+        self.assertEqual(rogue.outcome["nivel"], 10)
+        self.assertIn("escolha", rogue.outcome)
+
 
 if __name__ == "__main__":
     unittest.main()
