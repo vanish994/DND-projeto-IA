@@ -167,6 +167,10 @@ Testes de integração adicionados; aguardando execução da suíte.
 
 Adicionadas regras para Search (Sabedoria com Intuição, Medicina, Percepção ou Sobrevivência conforme o alvo da busca) e Help (vantagem no próximo teste de perícia/ferramenta, exigindo proficiência do ajudante, ou no próximo ataque contra inimigo a até 1,5 m).
 
+## Ação Study
+
+Adicionada a ação Study com associação das áreas de conhecimento às perícias de Inteligência (Arcanismo, História, Investigação, Natureza e Religião).
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
