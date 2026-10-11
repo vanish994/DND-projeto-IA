@@ -2020,9 +2020,12 @@ def conjurar_no_mapa_tatico(
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "magia": nome, "resolucao_motor": resolucao_magia,
         "ataque": resultado_ataque, "rolagem": rolagem, "bonus_ataque": bonus_ataque,
-        "dano": dano, "cura": cura, "resultados_area": resultados_area if mecanica.get("tipo") == "dano_em_area" else [],
+        "dano": dano, "cura": cura,
+        "concentracao_alvo": concentracao_alvo if "concentracao_alvo" in locals() else None,
+        "resultados_area": resultados_area if mecanica.get("tipo") == "dano_em_area" else [],
         "espaco_usado": espaco_usado if circulo > 0 else None,
-        "espacos_restantes": restantes, "nota": "Magias sem efeito tático implementado são rejeitadas sem gastar espaço. Área, salvaguardas e condições exigem integração própria.",
+        "espacos_restantes": restantes,
+        "nota": "Efeitos sem resolução tática específica são rejeitados sem gastar espaço; as respostas incluem salvaguardas, dano e testes de concentração quando aplicáveis.",
     }
 
 
