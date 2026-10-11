@@ -128,6 +128,7 @@
 .chip-dado { border-color: var(--color-line-strong); color: var(--color-accent-hover); font-variant-numeric: tabular-nums; }
 .chip-magia { border-color: color-mix(in srgb, var(--color-arcane) 55%, transparent); color: var(--color-arcane); }
 .chip-dano { border-color: color-mix(in srgb, var(--color-danger) 55%, transparent); color: var(--color-danger); }
+.chip-aviso { border-color: color-mix(in srgb, var(--color-accent) 60%, transparent); color: var(--color-accent-hover); }
 .chip .chip-rotulo { color: var(--color-text-muted); font-size: var(--text-xs); letter-spacing: .1em; text-transform: uppercase; }
 .dado-icone {
   width: .875rem;
