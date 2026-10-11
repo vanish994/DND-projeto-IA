@@ -198,6 +198,28 @@ class RuleEngineTests(unittest.TestCase):
         })
         self.assertEqual(result.outcome["result"], "normal")
 
+    def test_incapacitated_condition_does_not_prevent_speech(self):
+        result = self.engine.evaluate({
+            "type": "condition_effect", "target_conditions": ["incapacitated"],
+        })
+        self.assertTrue(result.outcome["pode_falar"])
+        self.assertFalse(result.outcome["pode_realizar_acoes"])
+        self.assertTrue(result.outcome["encerra_concentracao"])
+
+    def test_stunned_condition_allows_only_faltering_speech(self):
+        result = self.engine.evaluate({
+            "type": "condition_effect", "target_conditions": ["stunned"],
+        })
+        self.assertTrue(result.outcome["fala_vacilante"])
+        self.assertTrue(result.outcome["pode_falar"])
+
+    def test_paralyzed_and_unconscious_conditions_prevent_speech(self):
+        for condition in ("paralyzed", "unconscious", "petrified"):
+            result = self.engine.evaluate({
+                "type": "condition_effect", "target_conditions": [condition],
+            })
+            self.assertFalse(result.outcome["pode_falar"])
+
     def test_attribute_modifier_uses_floor_for_odd_values(self):
         self.assertEqual(modificador_atributo(1), -5)
         self.assertEqual(modificador_atributo(9), -1)
