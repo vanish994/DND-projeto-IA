@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from rule_engine import build_default_engine
+from rule_engine import PERICIAS, build_default_engine
 
 
 PROMPT_NORMATIVO = """Você é o Mestre de Jogo (MJ) da campanha.
@@ -156,13 +156,81 @@ class DeepSeekMJ:
         self.system_prompt = carregar_prompt_mj()
         self.engine = build_default_engine()
 
-    def _tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+    def _tool(self, name: str, args: dict[str, Any], personagens: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         if name == "sugerir_monstros":
             facts = {"type": "bestiary", "operacao": "sugerir", **args}
         elif name == "consultar_monstro":
             facts = {"type": "bestiary", "operacao": "bloco_completo", **args}
         elif name == "resolver_regra":
-            facts = args["fatos"]
+            facts = dict(args["fatos"])
+            if facts.get("type") == "ability_check":
+                grupo = personagens or []
+                personagem_id = facts.get("character_id")
+                personagem = next((p for p in grupo if p.get("id") == personagem_id), None)
+                if personagem is None and not personagem_id and len(grupo) == 1:
+                    personagem = grupo[0]
+                if personagem is None:
+                    return {"resultado": "bloqueado", "motivo": "personagem_ausente_ou_nao_identificado"}
+                pericia_bruta = facts.get("skill", facts.get("pericia"))
+                if pericia_bruta:
+                    pericia = str(pericia_bruta).strip().lower().replace(" ", "_")
+                    aliases = {
+                        "athletics": "atletismo", "acrobatics": "acrobacia", "animal_handling": "adestrar_animais",
+                        "sleight_of_hand": "prestidigitacao", "stealth": "furtividade", "arcana": "arcanismo",
+                        "history": "historia", "insight": "intuicao", "intimidation": "intimidacao",
+                        "investigation": "investigacao", "medicine": "medicina", "nature": "natureza",
+                        "perception": "percepcao", "performance": "atuacao", "persuasion": "persuasao",
+                        "religion": "religiao", "survival": "sobrevivencia", "deception": "enganacao",
+                    }
+                    pericia = aliases.get(pericia, pericia)
+                    if pericia not in PERICIAS:
+                        return {"resultado": "bloqueado", "motivo": "pericia_desconhecida", "pericia": pericia}
+                    atributo = PERICIAS[pericia]
+                    atributo_informado = facts.get("ability", facts.get("atributo"))
+                    if atributo_informado:
+                        normalizados = {
+                            "str": "forca", "strength": "forca", "for": "forca",
+                            "dex": "destreza", "dexterity": "destreza", "des": "destreza",
+                            "con": "constituicao", "constitution": "constituicao",
+                            "int": "inteligencia", "intelligence": "inteligencia",
+                            "wis": "sabedoria", "wisdom": "sabedoria", "sab": "sabedoria",
+                            "cha": "carisma", "charisma": "carisma", "car": "carisma",
+                        }
+                        informado = normalizados.get(str(atributo_informado).strip().lower(), str(atributo_informado).strip().lower())
+                        if informado != atributo:
+                            return {"resultado": "bloqueado", "motivo": "atributo_incompativel_com_pericia", "pericia": pericia, "atributo_correto": atributo}
+                    facts["skill"] = pericia
+                    facts["ability"] = atributo
+                    proficiencias = {str(p).strip().lower().replace(" ", "_") for p in (personagem.get("pericias") or [])}
+                    proficiente = pericia in proficiencias
+                else:
+                    atributo_bruto = facts.get("ability", facts.get("atributo"))
+                    aliases_atributo = {
+                        "str": "forca", "strength": "forca", "for": "forca",
+                        "dex": "destreza", "dexterity": "destreza", "des": "destreza",
+                        "con": "constituicao", "constitution": "constituicao",
+                        "int": "inteligencia", "intelligence": "inteligencia",
+                        "wis": "sabedoria", "wisdom": "sabedoria", "sab": "sabedoria",
+                        "cha": "carisma", "charisma": "carisma", "car": "carisma",
+                    }
+                    atributo = aliases_atributo.get(str(atributo_bruto).strip().lower(), str(atributo_bruto).strip().lower()) if atributo_bruto else ""
+                    if atributo not in {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"}:
+                        return {"resultado": "bloqueado", "motivo": "atributo_ausente_ou_invalido"}
+                    facts["ability"] = atributo
+                    proficiente = False
+                modificadores = personagem.get("modificadores") or {}
+                atributos = personagem.get("atributos") or {}
+                if atributo in modificadores:
+                    modificador_atributo = int(modificadores[atributo])
+                elif atributo in atributos:
+                    modificador_atributo = (int(atributos[atributo]) - 10) // 2
+                else:
+                    return {"resultado": "bloqueado", "motivo": "atributo_ausente_na_ficha", "atributo": atributo}
+                bonus_proficiencia = int(personagem.get("bonus_proficiencia", 2)) if proficiente else 0
+                facts["modifier"] = modificador_atributo + bonus_proficiencia
+                facts["character_id"] = personagem.get("id")
+                facts["proficiency_applied"] = bonus_proficiencia
+                facts["modifier_source"] = "ficha_autoritativa"
         else:
             return {"resultado": "bloqueado", "motivo": "ferramenta_desconhecida"}
         resolution = self.engine.evaluate(facts)
@@ -181,7 +249,7 @@ class DeepSeekMJ:
             "tool_calls": getattr(message, "tool_calls", None),
         }
 
-    def responder(self, texto: str, historico: list[dict[str, Any]] | None = None) -> str:
+    def responder(self, texto: str, historico: list[dict[str, Any]] | None = None, personagens: list[dict[str, Any]] | None = None) -> str:
         mensagens: list[dict[str, Any]] = [{"role": "system", "content": self.system_prompt}]
         mensagens.extend(historico or [])
         mensagens.append({"role": "user", "content": texto})
@@ -204,7 +272,7 @@ class DeepSeekMJ:
                 return getattr(mensagem, "content", "") or ""
             for chamada in chamadas:
                 funcao = chamada.function
-                resultado = self._tool(funcao.name, json.loads(funcao.arguments))
+                resultado = self._tool(funcao.name, json.loads(funcao.arguments), personagens)
                 mensagens.append({
                     "role": "tool",
                     "tool_call_id": chamada.id,
