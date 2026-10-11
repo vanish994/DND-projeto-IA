@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 try:
     from fastapi.testclient import TestClient
@@ -225,6 +226,33 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertIn(body["ataque"]["result"], {"hit", "miss"})
         self.assertGreaterEqual(body["dano"], 0)
         self.assertEqual(body["bonus_ataque"], 3)
+
+    def test_zumbi_usa_undead_fortitude_ao_chegar_a_zero_pv(self):
+        response = self.client.put(self.url, headers=self.headers, json={
+            "title": "Teste de fortitude", "terrain": "dungeon",
+            "tokens": [
+                {"id": "heroi-vex", "kind": "hero", "character_id": self.hero["id"], "x": 1, "y": 1},
+                {"id": "inimigo-zumbi", "kind": "enemy", "monster_name": "Zombie", "x": 2, "y": 1},
+            ],
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        estado = self.repo.obter_mapa_tatico("jogador-mapa", self.cid)
+        for token in estado["tokens"]:
+            if token["id"] == "inimigo-zumbi":
+                token["hp"] = 1
+        self.repo.salvar_mapa_tatico("jogador-mapa", self.cid, estado)
+
+        # Ataque não crítico (d20=10) e salvaguarda de Constituição (d20=19).
+        with patch.object(backend_app.secrets, "randbelow", side_effect=[9, 18]):
+            response = self.client.post(self.url + "/atacar", headers=self.headers, json={
+                "atacante_id": "heroi-vex", "alvo_id": "inimigo-zumbi",
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body["fortitude"]["sucesso"])
+        self.assertEqual(body["fortitude"]["cd"], 8)
+        zumbi = next(t for t in body["mapa"]["tokens"] if t["id"] == "inimigo-zumbi")
+        self.assertEqual(zumbi["hp"], 1)
 
     def test_parser_ignora_acao_sem_mecanica_de_ataque(self):
         ataques = backend_app._extrair_ataques_monstro({"acoes": [
