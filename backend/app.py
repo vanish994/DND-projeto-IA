@@ -15,6 +15,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend.persistencia import RepositorioCampanhas
+from rule_engine import (
+    ANTECEDENTES,
+    CLASSES,
+    ESPECIES,
+    criar_personagem,
+    ficha_personagem,
+    gerar_atributos_compra_pontos,
+    gerar_atributos_matriz_padrao,
+)
+from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
 
 logger = logging.getLogger(__name__)
@@ -84,6 +94,67 @@ class RespostaCampanha(BaseModel):
     narrativa_fora_do_motor: bool = True
 
 
+class NovoPersonagem(BaseModel):
+    nome: str = Field(min_length=1, max_length=80)
+    especie: str
+    classe: str
+    nivel: int = Field(default=1, ge=1, le=20)
+    subclasse: str | None = None
+    metodo_atributos: str = Field(default="matriz_padrao", pattern="^(matriz_padrao|compra_pontos)$")
+    atributos: dict[str, int]
+    antecedente: str
+    aumentos_antecedente: dict[str, int]
+    talento_antecedente: str | None = None
+
+
+class AtualizarPersonagem(BaseModel):
+    pv_atual: int = Field(ge=0)
+
+
+def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
+    """Toda ficha passa pelo Rule Engine; nada é calculado no cliente."""
+    try:
+        if dados.metodo_atributos == "compra_pontos":
+            base = gerar_atributos_compra_pontos(dados.atributos)
+        else:
+            base = dict(dados.atributos)
+            if sorted(base.values()) != sorted(gerar_atributos_matriz_padrao().values()):
+                raise ValueError("A matriz padrão usa exatamente 15, 14, 13, 12, 10 e 8")
+        personagem = criar_personagem({
+            "name": dados.nome,
+            "species": dados.especie,
+            "class": dados.classe,
+            "level": dados.nivel,
+            "subclass": dados.subclasse,
+            "ability_scores": base,
+            "background": dados.antecedente,
+            "background_increases": dados.aumentos_antecedente,
+            "background_feat": dados.talento_antecedente,
+        })
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc).strip("'\"")) from exc
+    if personagem.antecedente not in ANTECEDENTES:
+        raise HTTPException(status_code=422, detail="Antecedente inválido")
+    return dados.model_dump(), ficha_personagem(personagem)
+
+
+def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) -> str | None:
+    grupo = repo.listar_personagens(jogador, campanha_id) or []
+    if not grupo:
+        return None
+    linhas = []
+    for p in grupo:
+        atributos = ", ".join(f"{nome[:3].upper()} {valor}" for nome, valor in p["atributos"].items())
+        linhas.append(
+            f"- {p['nome']}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
+            f"PV {p['pv_atual']}/{p['pv_maximo']}, BP +{p['bonus_proficiencia']}, {atributos}"
+        )
+    return (
+        "Fichas do grupo registradas pelo Rule Engine (estado autoritativo; não altere valores "
+        "sem resolução mecânica):\n" + "\n".join(linhas)
+    )
+
+
 def obter_mj() -> DeepSeekMJ:
     global _mj
     if _mj is None:
@@ -116,6 +187,9 @@ def _campanha_ou_404(repo: RepositorioCampanhas, jogador: str, campanha_id: str)
 
 def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str) -> str:
     historico = repo.historico_llm(jogador, campanha_id, HISTORICO_MAX)
+    grupo = _resumo_grupo(repo, jogador, campanha_id)
+    if grupo:
+        historico = [{"role": "system", "content": grupo}, *historico]
     try:
         resposta = mj.responder(texto, historico)
     except Exception as exc:
@@ -196,6 +270,97 @@ def enviar_mensagem_campanha(
     _campanha_ou_404(repo, jogador, campanha_id)
     resposta = _responder(mj, repo, jogador, campanha_id, pedido.mensagem)
     return {"campanha": repo.obter(jogador, campanha_id), "resposta": resposta}
+
+
+@app.get("/v1/catalogo/personagens")
+def catalogo_personagens() -> dict:
+    return {
+        "especies": ESPECIES,
+        "classes": CLASSES,
+        "antecedentes": ANTECEDENTES,
+        "talentos_origem": sorted(ORIGIN_FEATS),
+        "dadivas_sombrias": sorted(DARK_GIFT_FEATS),
+        "matriz_padrao": sorted(gerar_atributos_matriz_padrao().values(), reverse=True),
+        "compra_pontos": {"total": 27, "custos": {8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}},
+    }
+
+
+@app.get("/v1/campanhas/{campanha_id}/personagens")
+def listar_personagens(
+    campanha_id: str,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> list[dict]:
+    grupo = repo.listar_personagens(jogador, campanha_id)
+    if grupo is None:
+        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+    return grupo
+
+
+@app.post("/v1/campanhas/{campanha_id}/personagens", status_code=201)
+def criar_personagem_campanha(
+    campanha_id: str,
+    dados: NovoPersonagem,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    _campanha_ou_404(repo, jogador, campanha_id)
+    entrada, ficha = _resolver_ficha(dados)
+    return repo.criar_personagem(jogador, campanha_id, entrada, ficha)
+
+
+def _personagem_ou_404(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str) -> dict:
+    personagem = repo.obter_personagem(jogador, campanha_id, personagem_id)
+    if personagem is None:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return personagem
+
+
+@app.get("/v1/campanhas/{campanha_id}/personagens/{personagem_id}")
+def obter_personagem(
+    campanha_id: str,
+    personagem_id: str,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    return _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+
+
+@app.put("/v1/campanhas/{campanha_id}/personagens/{personagem_id}")
+def substituir_personagem(
+    campanha_id: str,
+    personagem_id: str,
+    dados: NovoPersonagem,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+    entrada, ficha = _resolver_ficha(dados)
+    return repo.atualizar_personagem(jogador, campanha_id, personagem_id, entrada=entrada, ficha=ficha)
+
+
+@app.patch("/v1/campanhas/{campanha_id}/personagens/{personagem_id}")
+def atualizar_pv_personagem(
+    campanha_id: str,
+    personagem_id: str,
+    dados: AtualizarPersonagem,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+    return repo.atualizar_personagem(jogador, campanha_id, personagem_id, pv_atual=dados.pv_atual)
+
+
+@app.delete("/v1/campanhas/{campanha_id}/personagens/{personagem_id}", status_code=204)
+def apagar_personagem(
+    campanha_id: str,
+    personagem_id: str,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> Response:
+    if not repo.apagar_personagem(jogador, campanha_id, personagem_id):
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return Response(status_code=204)
 
 
 @app.post("/v1/mj/mensagem", response_model=RespostaMJ)

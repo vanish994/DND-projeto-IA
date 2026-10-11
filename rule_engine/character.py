@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
 from .class_progression import caracteristicas_no_nivel, subclasses_da_classe
-from .feats import FEATS
+from .backgrounds import ANTECEDENTES, aplicar_aumentos_antecedente
+from .feats import DARK_GIFT_FEATS, FEATS, ORIGIN_FEATS
 
 
 ESPECIES = {
@@ -127,11 +128,71 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
     talentos = set(fatos.get("feats", ()))
     if not talentos <= TALENTOS:
         raise ValueError("Talento inválido")
+    antecedente = str(fatos.get("background", "")).strip().lower()
+    if antecedente in ANTECEDENTES:
+        if fatos.get("background_increases"):
+            atributos = aplicar_aumentos_antecedente(antecedente, atributos, fatos["background_increases"])
+        talento_origem = _talento_do_antecedente(antecedente, fatos.get("background_feat"))
+        if talento_origem:
+            talentos.add(talento_origem)
+    elif fatos.get("background_increases") or fatos.get("background_feat"):
+        raise ValueError("Antecedente inválido")
+    if not str(fatos.get("name", "")).strip():
+        raise ValueError("O personagem precisa de um nome")
     return Personagem(
-        nome=str(fatos["name"]), especie=especie, classe=classe, nivel=nivel,
-        atributos=atributos, antecedente=str(fatos.get("background", "")),
+        nome=str(fatos["name"]).strip(), especie=especie, classe=classe, nivel=nivel,
+        atributos=atributos, antecedente=antecedente,
         subclasse=subclasse, talentos=talentos,
     )
+
+
+def _talento_do_antecedente(antecedente: str, escolha: Any = None) -> str | None:
+    """Talento concedido pelo antecedente; Dádivas Sombrias exigem escolha explícita."""
+    dados = ANTECEDENTES[antecedente]
+    padrao = dados["talento"].split(":")[0]
+    escolha = str(escolha).strip().lower() if escolha else None
+    aceita_dadiva = padrao == "dadiva_sombria" or "dadiva_sombria" in dados["talentos_alternativos"]
+    if escolha in (None, padrao):
+        if padrao == "dadiva_sombria":
+            raise ValueError("Escolha uma Dádiva Sombria para este antecedente")
+        return padrao
+    if aceita_dadiva and escolha in DARK_GIFT_FEATS:
+        return escolha
+    raise ValueError("Talento incompatível com o antecedente")
+
+
+def modificador(valor: int) -> int:
+    return (valor - 10) // 2
+
+
+def ficha_personagem(personagem: Personagem) -> dict[str, Any]:
+    """Valores derivados pelo motor para exibir e persistir a ficha."""
+    antecedente = ANTECEDENTES.get(personagem.antecedente)
+    pv = personagem.pontos_de_vida_iniciais
+    if personagem.nivel > 1:
+        dado = CLASSES[personagem.classe]["dado_vida"]
+        pv += (personagem.nivel - 1) * (dado // 2 + 1 + modificador(personagem.atributos["constituicao"]))
+    if "vigoroso" in personagem.talentos:
+        pv += 2 * personagem.nivel
+    return {
+        "nome": personagem.nome,
+        "especie": personagem.especie,
+        "classe": personagem.classe,
+        "subclasse": personagem.subclasse,
+        "nivel": personagem.nivel,
+        "antecedente": personagem.antecedente or None,
+        "atributos": dict(personagem.atributos),
+        "modificadores": {nome: modificador(valor) for nome, valor in personagem.atributos.items()},
+        "bonus_proficiencia": personagem.bonus_proficiencia,
+        "pv_maximo": max(1, pv),
+        "dado_vida": CLASSES[personagem.classe]["dado_vida"],
+        "tamanho": ESPECIES[personagem.especie]["tamanho"],
+        "deslocamento": ESPECIES[personagem.especie]["deslocamento"],
+        "talentos": sorted(personagem.talentos),
+        "pericias": list(antecedente["pericias"]) if antecedente else [],
+        "ferramenta": antecedente["ferramenta"] if antecedente else None,
+        "equipamento_antecedente": antecedente["equipamento"] if antecedente else None,
+    }
 
 
 def resolver_progressao(fatos: Mapping[str, Any]) -> dict[str, Any]:

@@ -6,6 +6,7 @@ no navegador até que exista login.
 """
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from datetime import datetime, timezone
@@ -54,6 +55,18 @@ mensagens = Table(
     Column("criada_em", DateTime(timezone=True), nullable=False),
 )
 
+
+personagens = Table(
+    "personagens",
+    metadata,
+    Column("id", String(64), primary_key=True),
+    Column("campanha_id", String(64), ForeignKey("campanhas.id", ondelete="CASCADE"), nullable=False, index=True),
+    Column("entrada", Text, nullable=False),
+    Column("ficha", Text, nullable=False),
+    Column("pv_atual", Integer, nullable=False),
+    Column("criado_em", DateTime(timezone=True), nullable=False),
+    Column("atualizado_em", DateTime(timezone=True), nullable=False),
+)
 
 def _agora() -> datetime:
     return datetime.now(timezone.utc)
@@ -181,6 +194,7 @@ class RepositorioCampanhas:
             if self._linha(conn, jogador_id, campanha_id) is None:
                 return False
             conn.execute(delete(mensagens).where(mensagens.c.campanha_id == campanha_id))
+            conn.execute(delete(personagens).where(personagens.c.campanha_id == campanha_id))
             conn.execute(delete(campanhas).where(campanhas.c.id == campanha_id))
         return True
 
@@ -220,3 +234,86 @@ class RepositorioCampanhas:
                 .where(campanhas.c.id == campanha_id, campanhas.c.jogador_id == jogador_id)
                 .values(atualizada_em=agora)
             )
+
+    def _personagem(self, linha: Any) -> dict[str, Any]:
+        ficha = json.loads(linha.ficha)
+        return {
+            "id": linha.id,
+            "campanha_id": linha.campanha_id,
+            **ficha,
+            "pv_atual": linha.pv_atual,
+            "entrada": json.loads(linha.entrada),
+            "criado_em": _iso(linha.criado_em),
+            "atualizado_em": _iso(linha.atualizado_em),
+        }
+
+    def _da_campanha(self, conn: Any, jogador_id: str, campanha_id: str) -> bool:
+        return self._linha(conn, jogador_id, campanha_id) is not None
+
+    def criar_personagem(self, jogador_id: str, campanha_id: str, entrada: dict[str, Any], ficha: dict[str, Any]) -> dict[str, Any] | None:
+        agora = _agora()
+        registro = {
+            "id": f"personagem-{uuid.uuid4().hex[:12]}",
+            "campanha_id": campanha_id,
+            "entrada": json.dumps(entrada, ensure_ascii=False),
+            "ficha": json.dumps(ficha, ensure_ascii=False),
+            "pv_atual": ficha["pv_maximo"],
+            "criado_em": agora,
+            "atualizado_em": agora,
+        }
+        with self.engine.begin() as conn:
+            if not self._da_campanha(conn, jogador_id, campanha_id):
+                return None
+            conn.execute(insert(personagens).values(**registro))
+        return self.obter_personagem(jogador_id, campanha_id, registro["id"])
+
+    def listar_personagens(self, jogador_id: str, campanha_id: str) -> list[dict[str, Any]] | None:
+        with self.engine.connect() as conn:
+            if not self._da_campanha(conn, jogador_id, campanha_id):
+                return None
+            linhas = conn.execute(
+                select(personagens).where(personagens.c.campanha_id == campanha_id).order_by(personagens.c.criado_em, personagens.c.id)
+            ).all()
+        return [self._personagem(linha) for linha in linhas]
+
+    def obter_personagem(self, jogador_id: str, campanha_id: str, personagem_id: str) -> dict[str, Any] | None:
+        with self.engine.connect() as conn:
+            if not self._da_campanha(conn, jogador_id, campanha_id):
+                return None
+            linha = conn.execute(
+                select(personagens).where(personagens.c.id == personagem_id, personagens.c.campanha_id == campanha_id)
+            ).first()
+        return self._personagem(linha) if linha else None
+
+    def atualizar_personagem(
+        self,
+        jogador_id: str,
+        campanha_id: str,
+        personagem_id: str,
+        *,
+        entrada: dict[str, Any] | None = None,
+        ficha: dict[str, Any] | None = None,
+        pv_atual: int | None = None,
+    ) -> dict[str, Any] | None:
+        atual = self.obter_personagem(jogador_id, campanha_id, personagem_id)
+        if atual is None:
+            return None
+        valores: dict[str, Any] = {"atualizado_em": _agora()}
+        pv_maximo = atual["pv_maximo"]
+        if entrada is not None and ficha is not None:
+            valores["entrada"] = json.dumps(entrada, ensure_ascii=False)
+            valores["ficha"] = json.dumps(ficha, ensure_ascii=False)
+            pv_maximo = ficha["pv_maximo"]
+            valores["pv_atual"] = min(atual["pv_atual"], pv_maximo)
+        if pv_atual is not None:
+            valores["pv_atual"] = max(0, min(pv_atual, pv_maximo))
+        with self.engine.begin() as conn:
+            conn.execute(update(personagens).where(personagens.c.id == personagem_id).values(**valores))
+        return self.obter_personagem(jogador_id, campanha_id, personagem_id)
+
+    def apagar_personagem(self, jogador_id: str, campanha_id: str, personagem_id: str) -> bool:
+        if self.obter_personagem(jogador_id, campanha_id, personagem_id) is None:
+            return False
+        with self.engine.begin() as conn:
+            conn.execute(delete(personagens).where(personagens.c.id == personagem_id))
+        return True

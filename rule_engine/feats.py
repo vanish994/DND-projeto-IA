@@ -63,7 +63,31 @@ EPIC_FEATS = {
 }
 EPIC_FEATS = {name: {"categoria": "dadiva_epica", "nivel": 19, "efeitos": effects} for name, effects in EPIC_FEATS.items()}
 
-FEATS = {_normalizar_nome(nome): dados for nome, dados in {**ORIGIN_FEATS, **GENERAL_FEATS, **EPIC_FEATS}.items()}
+# Ravenloft: Horror Wilds. O texto da biblioteca lista os nomes dos talentos de
+# origem, mas não traz a descrição deles; os efeitos ficam sem catalogar.
+RAVENLOFT_ORIGIN_FEATS = {
+    "olho_agucado": {"categoria": "origem", "fonte": "ravenloft", "efeitos": []},
+    "sobrevivente": {"categoria": "origem", "fonte": "ravenloft", "efeitos": []},
+}
+ORIGIN_FEATS.update(RAVENLOFT_ORIGIN_FEATS)
+
+DARK_GIFT_FEATS = {
+    "anatomia_aberrante": [],
+    "sombra_viva": ["maos_magicas_sem_componentes", "alcance_corpo_a_corpo_mais_3m"],
+    "ser_simbiotico": ["proficiencia_1_pericia_da_lista", "idioma_adicional"],
+    "alma_ecoante": ["proficiencia_2_pericias", "especializacao_1_pericia_troca_no_descanso_longo", "idioma_adicional", "ecos_intrusivos_ao_rolar_1"],
+    "andarilho_das_brumas": ["viajante_de_dominios"],
+    "toque_da_morte": [],
+    "sussurros_reunidos": ["mensagem_sem_componentes_materiais", "augurio_sempre_preparado_1_por_descanso_longo"],
+    "segunda_pele": ["alterar_se_sempre_preparado_1_por_descanso_longo"],
+    "observadores": ["sentido_bestial_e_falar_com_animais_1_por_descanso_longo", "busca_mais_1d4"],
+}
+DARK_GIFT_FEATS = {
+    name: {"categoria": "dadiva_sombria", "requisito": "campanha_ravenloft", "fonte": "ravenloft", "efeitos": effects}
+    for name, effects in DARK_GIFT_FEATS.items()
+}
+
+FEATS = {_normalizar_nome(nome): dados for nome, dados in {**ORIGIN_FEATS, **GENERAL_FEATS, **EPIC_FEATS, **DARK_GIFT_FEATS}.items()}
 
 
 def validar_talento(fatos: dict) -> dict:
