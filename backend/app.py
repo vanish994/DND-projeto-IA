@@ -107,6 +107,13 @@ class RespostaCampanha(BaseModel):
     narrativa_fora_do_motor: bool = True
 
 
+class AtualizarMagiasPersonagem(BaseModel):
+    truques: list[str] = Field(default_factory=list, max_length=20)
+    magias_preparadas: list[str] = Field(default_factory=list, max_length=50)
+    espacos_totais: dict[str, int] = Field(default_factory=dict)
+
+
+
 class NovoPersonagem(BaseModel):
     nome: str = Field(min_length=1, max_length=80)
     especie: str
@@ -170,12 +177,6 @@ class AcaoMonstroTatico(BaseModel):
     alvo_id: str = Field(min_length=1, max_length=80)
     acao: str | None = Field(default=None, max_length=100)
     cobertura: str = Field(default="nenhuma", pattern="^(nenhuma|meia|tres_quartos|total)$")
-
-
-class AtualizarMagiasPersonagem(BaseModel):
-    truques: list[str] = Field(default_factory=list, max_length=20)
-    magias_preparadas: list[str] = Field(default_factory=list, max_length=50)
-    espacos_totais: dict[str, int] = Field(default_factory=dict)
 
 
 class AtualizarProficienciasPersonagem(BaseModel):
