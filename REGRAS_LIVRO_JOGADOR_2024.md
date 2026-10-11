@@ -4,7 +4,7 @@ Este documento é o inventário de implementação do **Rule Engine**. Os livros
 
 ## Situação geral
 
-O motor está **funcional, mas incompleto**. Uma regra só será considerada concluída quando houver implementação determinística e testes executados; a execução dos testes mais recentes ainda precisa ser confirmada.
+O motor está **funcional, mas incompleto**. A suíte automatizada está configurada para rodar nos branches do repositório. Uma regra só será considerada concluída quando houver implementação determinística e testes executados; a execução dos testes mais recentes ainda precisa ser confirmada.
 
 ## Bloco 1 — núcleo de sobrevivência
 
