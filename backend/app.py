@@ -948,6 +948,10 @@ def salvar_mapa_tatico(
         else:
             raise HTTPException(status_code=422, detail="Use um personagem ou monstro do catálogo")
     estado = {"title": pedido.title, "terrain": pedido.terrain, "tokens": tokens, "bloqueados": [], "terreno_dificil": []}
+    if estado_anterior.get("combate_ativo") and ids == set(tokens_anteriores):
+        for campo in ("iniciativa", "turno_indice", "rodada", "combate_ativo"):
+            if campo in estado_anterior:
+                estado[campo] = estado_anterior[campo]
     repo.salvar_mapa_tatico(jogador, campanha_id, estado)
     return {"mapa": _estado_mapa_normalizado(repo, jogador, campanha_id)}
 
