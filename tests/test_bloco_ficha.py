@@ -18,6 +18,7 @@ GUERREIRO = {
     "metodo_atributos": "matriz_padrao",
     "atributos": {"forca": 15, "destreza": 14, "constituicao": 13, "inteligencia": 12, "sabedoria": 10, "carisma": 8},
     "antecedente": "soldado", "aumentos_antecedente": {"forca": 2, "constituicao": 1},
+    "ferramenta_antecedente": "Dados", "equipamento_antecedente": "A",
 }
 
 MAGO = {
@@ -25,6 +26,7 @@ MAGO = {
     "metodo_atributos": "matriz_padrao",
     "atributos": {"forca": 8, "destreza": 14, "constituicao": 13, "inteligencia": 15, "sabedoria": 12, "carisma": 10},
     "antecedente": "sabio", "aumentos_antecedente": {"inteligencia": 2, "constituicao": 1},
+    "equipamento_antecedente": "A",
     "pericias_classe": ["arcanismo", "historia"],
 }
 
