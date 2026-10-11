@@ -37,7 +37,7 @@ from .spells import ESCOLAS, MAGIAS, listar_magias, obter_magia, resolver_magia
 from .economy import ITENS_MAGICOS, converter_de_po, converter_para_po, comprar_item, consultar_item, resolver_inventario, resolver_sintonizacao, usar_item_magico, vender_item
 from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
 from .class_features import resolver_caracteristica
-from .bestiary import BESTIARIO, XP_POR_ND, consultar_monstro, listar_monstros, resolver_bestiario, xp_encontro, xp_por_nd
+from .bestiary import BESTIARIO, XP_POR_ND, consultar_bloco_completo, consultar_monstro, listar_monstros, resolver_bestiario, secao_monstro, xp_encontro, xp_por_nd
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -77,7 +77,7 @@ __all__ = [
     "ITENS_MAGICOS", "converter_de_po", "converter_para_po", "comprar_item", "consultar_item", "resolver_inventario", "resolver_sintonizacao", "usar_item_magico", "vender_item",
     "caminho_grade", "resolver_ataque_tatico", "resolver_flanco", "resolver_linha_grade", "resolver_terreno",
     "resolver_caracteristica",
-    "BESTIARIO", "XP_POR_ND", "consultar_monstro", "listar_monstros", "resolver_bestiario", "xp_encontro", "xp_por_nd",
+    "BESTIARIO", "XP_POR_ND", "consultar_bloco_completo", "consultar_monstro", "listar_monstros", "resolver_bestiario", "secao_monstro", "xp_encontro", "xp_por_nd",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
     "resolver_descanso",

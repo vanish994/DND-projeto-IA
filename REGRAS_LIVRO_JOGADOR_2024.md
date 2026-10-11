@@ -90,6 +90,10 @@ O segundo lote expandiu `class_features.py` com resoluções determinísticas pa
 
 Cada recurso aceita fatos estruturados em português, retorna um resultado auditável e possui testes de comportamento. A nomenclatura da progressão do Artífice também foi traduzida para português do Brasil.
 
+## Bestiário completo do SRD 5.2.1
+
+O bestiário agora contém os **232 blocos completos** identificados no SRD compartilhado, não apenas os dados resumidos. Cada registro preserva o texto integral e separa as seções de cabeçalho, traços, ações, ações bônus, reações e ações lendárias. A API oferece `consultar_bloco_completo`, `secao_monstro` e as operações do motor `bloco_completo` e `secao`. A quantidade é a da fonte SRD 5.2.1 efetivamente disponível no projeto; não foram adicionados monstros de livros fora do SRD nem entradas inventadas.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

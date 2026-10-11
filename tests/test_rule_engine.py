@@ -1010,6 +1010,22 @@ class RuleEngineTests(unittest.TestCase):
         filtered = build_default_engine().evaluate({"type": "bestiary", "operacao": "listar", "tipo": "beast", "nd": "0"})
         self.assertGreater(filtered.outcome["quantidade"], 0)
 
+    def test_bestiary_blocks_include_full_traits_actions_and_raw_text(self):
+        from rule_engine import BESTIARIO, consultar_bloco_completo, secao_monstro
+        self.assertEqual(len(BESTIARIO), 232)
+        complete = consultar_bloco_completo("Aboleth")
+        self.assertIn("Traits", complete["texto_bloco"])
+        self.assertIn("Actions", complete["texto_bloco"])
+        self.assertIn("Tentacle", complete["acoes"])
+        self.assertIn("Legendary Actions", complete["texto_bloco"])
+        self.assertIn("Amphibious", secao_monstro("Aboleth", "tracos"))
+        self.assertTrue(all("texto_bloco" in monster and monster["texto_bloco"] for monster in BESTIARIO))
+
+    def test_bestiary_full_block_rule_operation(self):
+        result = self.engine.evaluate({"type": "bestiary", "operacao": "secao", "nome": "Air Elemental", "secao": "acoes"})
+        self.assertEqual(result.outcome["resultado"], "encontrado")
+        self.assertIn("Thunderous Slam", result.outcome["texto"])
+
     def test_second_batch_bard_cleric_and_druid_features(self):
         bard = self.engine.evaluate({"type": "class_feature", "classe": "bardo", "recurso": "inspiracao_de_bardo", "nivel": 10, "carisma": 18})
         self.assertEqual(bard.outcome["dado"], "d10")

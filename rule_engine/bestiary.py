@@ -5,6 +5,8 @@ O catálogo preserva nome, tamanho, tipo, alinhamento, CA, PV, dados de vida, ND
 """
 from __future__ import annotations
 
+from .bestiary_blocks import BLOCOS_COMPLETOS
+
 XP_POR_ND = {'0': 10, '1/8': 25, '1/4': 50, '1/2': 100, '1': 200, '2': 450, '3': 700, '4': 1100, '5': 1800, '6': 2300, '7': 2900, '8': 3900, '9': 5000, '10': 5900, '11': 7200, '12': 8400, '13': 10000, '14': 11500, '15': 13000, '16': 15000, '17': 18000, '18': 20000, '19': 22000, '20': 25000, '21': 33000, '22': 41000, '23': 50000, '24': 62000, '25': 75000, '26': 90000, '27': 105000, '28': 120000, '29': 135000, '30': 155000}
 
 BESTIARIO = [{'nome': 'Aboleth',
@@ -2097,6 +2099,10 @@ BESTIARIO = [{'nome': 'Aboleth',
   'xp': 50}]
 
 
+for _monstro in BESTIARIO:
+    _bloco = BLOCOS_COMPLETOS.get(_monstro["nome"], {})
+    _monstro.update(_bloco)
+
 POR_NOME = {m["nome"].casefold(): m for m in BESTIARIO}
 
 def listar_monstros(*, tipo: str | None = None, nd: str | None = None) -> list[dict]:
@@ -2109,6 +2115,22 @@ def consultar_monstro(nome: str) -> dict | None:
     """Consulta um monstro por nome, sem alterar o catálogo."""
     m = POR_NOME.get(str(nome).casefold())
     return m.copy() if m else None
+
+
+def consultar_bloco_completo(nome: str) -> dict | None:
+    """Consulta o registro estrutural junto com o bloco integral do monstro."""
+    return consultar_monstro(nome)
+
+
+def secao_monstro(nome: str, secao: str) -> str | None:
+    """Retorna uma seção textual: cabecalho, tracos, acoes, acoes_bonus, reacoes ou acoes_lendarias."""
+    monstro = consultar_monstro(nome)
+    if monstro is None:
+        return None
+    chave = str(secao).lower()
+    if chave not in {"cabecalho", "tracos", "acoes", "acoes_bonus", "reacoes", "acoes_lendarias", "texto_bloco"}:
+        raise ValueError("Seção de monstro desconhecida")
+    return monstro.get(chave, "")
 
 def xp_por_nd(nd: str | int) -> int:
     """Retorna o XP oficial associado ao ND; aceita ND inteiro ou fracionário."""
@@ -2136,6 +2158,14 @@ def resolver_bestiario(fatos: dict) -> dict:
         return {"resultado": "encontrado", "monstro": monstro} if monstro else {
             "resultado": "bloqueado", "motivo": "monstro_desconhecido"
         }
+    if operacao in {"bloco_completo", "secao"}:
+        nome = fatos.get("nome", "")
+        monstro = consultar_bloco_completo(nome)
+        if monstro is None:
+            return {"resultado": "bloqueado", "motivo": "monstro_desconhecido"}
+        if operacao == "bloco_completo":
+            return {"resultado": "encontrado", "monstro": monstro}
+        return {"resultado": "encontrado", "nome": monstro["nome"], "secao": fatos.get("secao", ""), "texto": secao_monstro(nome, fatos.get("secao", ""))}
     if operacao == "listar":
         monstros = listar_monstros(tipo=fatos.get("tipo"), nd=fatos.get("nd"))
         return {"resultado": "listado", "quantidade": len(monstros), "monstros": monstros}
