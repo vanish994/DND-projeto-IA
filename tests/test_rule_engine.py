@@ -984,6 +984,16 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(hidden.outcome["resultado"], "escondido")
         self.assertEqual(hidden.outcome["dc_para_encontrar"], 17)
 
+    def test_search_action_maps_the_four_phb_search_skills(self):
+        result = self.engine.evaluate({"type": "search_action", "tipo_busca": "criatura_ou_objeto_escondido", "valor_atributo": 14, "roll": 12, "cd": 13})
+        self.assertEqual(result.outcome["pericia"], "percepcao")
+        self.assertEqual(result.outcome["resultado"], "encontrado")
+
+    def test_help_action_requires_proficiency_or_close_enemy(self):
+        blocked = self.engine.evaluate({"type": "help_action", "tipo_ajuda": "habilidade", "aliado_proximo": True, "pericia": "furtividade", "proficiente_ajudante": False})
+        ready = self.engine.evaluate({"type": "help_action", "tipo_ajuda": "ataque", "aliado_proximo": True, "distancia_m": 1.5, "alvo": "goblin"})
+        self.assertEqual(blocked.outcome["resultado"], "bloqueado")
+        self.assertTrue(ready.outcome["vantagem_no_proximo_ataque"])
     def test_hide_event_ends_hidden_state_for_required_events(self):
         ended = self.engine.evaluate({"type": "hide_event", "escondido": True, "evento": "som_alto"})
         still = self.engine.evaluate({"type": "hide_event", "escondido": True, "evento": "mover"})
