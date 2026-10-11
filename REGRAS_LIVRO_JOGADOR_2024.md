@@ -62,6 +62,10 @@ O catálogo do PHB 2024 foi integrado em `warlock_invocations.py`, com 27 opçõ
 
 Implementado o catálogo do Livro do Jogador 2024 em `feats.py`, separado em Talentos de Origem, Talentos Gerais e Dádivas Épicas. O motor valida nível mínimo, necessidade de conjuração, atributos mínimos e categoria, além de resolver efeitos como proficiência em Iniciativa, Sorte, Vigoroso, Conjurador Bélico, Mestre em Escudos, Sentinela, Telecinético, Tocado pelas Fadas/Sombras e as Dádivas Épicas de Velocidade, Visão Verdadeira, Recuperação, Resistência à Energia, Destino e outras. A criação de personagens passou a aceitar o catálogo completo em vez da lista reduzida anterior.
 
+## Sistema completo de magias
+
+Criado `spells.py` com consulta por escola e círculo, componentes Verbais/Somáticos/Materiais, duração, Ritual, Concentração, troca da concentração anterior e uso de espaços de círculo superior. O sistema reaproveita o catálogo extraído do Livro do Jogador e acrescenta resolução detalhada para magias representativas de dano, cura, proteção, teleporte, invocação e controle, incluindo upcasting de Bola de Fogo, Relâmpago, Mísseis Mágicos, Cura, Benção e Armadura de Agathys. A API oferece listagem, consulta e conjuração; as regras legadas continuam compatíveis quando a entrada antiga é usada sem o campo `magia`.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.
