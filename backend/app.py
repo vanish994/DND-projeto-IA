@@ -966,8 +966,6 @@ def atacar_token_tatico(
         dano = max(0, int(dano_resolvido.get("total", 0)))
         if alvo["kind"] == "enemy":
             estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
-            monstro_alvo = next((m for m in BESTIARIO if m["nome"] == alvo.get("monster_name")), None)
-            bloco_alvo = (monstro_alvo or {})
             from rule_engine.bestiary import consultar_monstro
             bloco_completo_alvo = consultar_monstro(alvo.get("monster_name") or alvo.get("name")) or {}
             fortitude = None
@@ -986,9 +984,7 @@ def atacar_token_tatico(
                         bonus_constituicao = int(salvaguardas.get("constituicao", (bloco_completo_alvo.get("modificadores") or {}).get("constituicao", 0)))
                         rolagem_fortitude = secrets.randbelow(20) + 1
                         dc_fortitude = 5 + dano
-                        sucesso_fortitude = rolagem_fortitude != 1 and (
-                            rolagem_fortitude == 20 or rolagem_fortitude + bonus_constituicao >= dc_fortitude
-                        )
+                        sucesso_fortitude = rolagem_fortitude + bonus_constituicao >= dc_fortitude
                         if sucesso_fortitude:
                             hp_resultante = 1
                         fortitude = {
