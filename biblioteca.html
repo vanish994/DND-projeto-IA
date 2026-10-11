@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Biblioteca — DND Projeto IA</title>
+  <style>
+    :root { color-scheme: dark; --bg:#10131a; --panel:#191e29; --text:#f4f6fb; --muted:#aab3c5; --accent:#d8a84e; --line:#2b3445; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,sans-serif; background:linear-gradient(140deg,#0d1117,#171c27); color:var(--text); }
+    main { width:min(1100px,92%); margin:0 auto; padding:56px 0 72px; }
+    header { margin-bottom:34px; }
+    .eyebrow { color:var(--accent); text-transform:uppercase; letter-spacing:.14em; font-size:.75rem; font-weight:700; }
+    h1 { font-size:clamp(2.2rem,5vw,4.5rem); line-height:1; margin:12px 0 16px; }
+    .intro { color:var(--muted); max-width:680px; font-size:1.08rem; line-height:1.6; }
+    .books { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:18px; }
+    .card { background:rgba(25,30,41,.9); border:1px solid var(--line); border-radius:16px; padding:22px; display:flex; flex-direction:column; min-height:210px; box-shadow:0 10px 30px #0002; }
+    .tag { color:var(--accent); font-size:.78rem; font-weight:700; margin-bottom:12px; }
+    h2 { margin:0 0 10px; font-size:1.25rem; }
+    .card p { color:var(--muted); line-height:1.5; margin:0 0 20px; flex:1; }
+    a.button { display:inline-block; width:max-content; border-radius:10px; padding:10px 14px; background:var(--accent); color:#17130c; text-decoration:none; font-weight:750; }
+    a.button:hover { filter:brightness(1.12); }
+    footer { color:var(--muted); margin-top:34px; font-size:.9rem; border-top:1px solid var(--line); padding-top:18px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">DND Projeto IA</div>
+      <h1>Biblioteca</h1>
+      <p class="intro">Acervo de referência do projeto. Selecione um livro para abrir o arquivo correspondente no GitHub.</p>
+    </header>
+    <section class="books" aria-label="Livros disponíveis">
+      <article class="card"><div class="tag">GUIA DO MESTRE</div><h2>Dungeon Master's Guide 2024</h2><p>Regras, ferramentas e orientações para conduzir aventuras e campanhas.</p><a class="button" href="Dungeon_Masters_Guide_2024.txt">Abrir livro</a></article>
+      <article class="card"><div class="tag">JOGADOR</div><h2>Livro do Jogador 2024</h2><p>Regras essenciais para criação e desenvolvimento de personagens.</p><a class="button" href="dampd-5e---livro-do-jogador-2024.pdf">Abrir livro</a></article>
+      <article class="card"><div class="tag">CENÁRIO</div><h2>Eberron: Forge of the Artificer</h2><p>Material de referência e conteúdo do cenário de Eberron.</p><a class="button" href="Full%20text%20of%20_Eberron_%20Forge%20of%20the%20Artificer.txt">Abrir livro</a></article>
+      <article class="card"><div class="tag">CENÁRIO</div><h2>Ravenloft</h2><p>Conteúdo de horror gótico e domínios sombrios para aventuras.</p><a class="button" href="Ravenloft_by_J_merged.txt">Abrir livro</a></article>
+      <article class="card"><div class="tag">AVENTURAS</div><h2>Dragon Delves</h2><p>Antologia de aventuras centradas em dragões e seus covis.</p><a class="button" href="dragon-delves.txt">Abrir livro</a></article>
+    </section>
+    <footer>Biblioteca inicial do projeto DND-projeto-IA.</footer>
+  </main>
+</body>
+</html>
