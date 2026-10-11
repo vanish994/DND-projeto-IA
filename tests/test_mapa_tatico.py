@@ -25,6 +25,7 @@ class BackendMapaTaticoTests(unittest.TestCase):
             "nome": "Vex", "especie": "elfo", "classe": "guerreiro", "metodo_atributos": "matriz_padrao",
             "atributos": {"forca": 15, "destreza": 14, "constituicao": 13, "inteligencia": 12, "sabedoria": 10, "carisma": 8},
             "antecedente": "soldado", "aumentos_antecedente": {"forca": 2, "constituicao": 1},
+            "ferramenta_antecedente": "Dados", "equipamento_antecedente": "A",
         }
         response = self.client.post(f"/v1/campanhas/{self.cid}/personagens", json=payload, headers=self.headers)
         self.assertEqual(response.status_code, 201, response.text)
