@@ -53,13 +53,17 @@
   }
 
   // ---- Grupo ----
+  let requisicaoGrupo = 0;
   async function abrirGrupo() {
+    const token = ++requisicaoGrupo;
+    const campanhaId = state.atual;
     groupBack.hidden = true;
     newCharacter.hidden = false;
     groupBody.replaceChildren(el('p', {className: 'empty-inline', textContent: 'Carregando grupo…'}));
     if (!groupDialog.open) groupDialog.showModal();
     try {
-      const grupo = await api(url());
+      const grupo = await api(`/v1/campanhas/${encodeURIComponent(campanhaId)}/personagens`);
+      if (token !== requisicaoGrupo || state.atual !== campanhaId) return;
       groupBody.replaceChildren();
       if (!grupo.length) {
         groupBody.append(el('p', {textContent: 'Ainda não há personagens nesta campanha. Crie o primeiro para o MJ conhecer o grupo.'}));
@@ -76,6 +80,7 @@
       }
       groupBody.append(lista);
     } catch (erro) {
+      if (token !== requisicaoGrupo || state.atual !== campanhaId) return;
       groupBody.replaceChildren(el('p', {className: 'form-error', textContent: `Não foi possível carregar o grupo. ${erro.message}`}));
     }
   }
