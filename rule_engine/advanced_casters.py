@@ -4,7 +4,7 @@ HALF_CASTER_SLOTS = {
     1: [2], 2: [2], 3: [3], 4: [3], 5: [4, 2], 6: [4, 2], 7: [4, 3],
     8: [4, 3], 9: [4, 3, 2], 10: [4, 3, 2], 11: [4, 3, 3], 12: [4, 3, 3],
     13: [4, 3, 3, 1], 14: [4, 3, 3, 1], 15: [4, 3, 3, 2], 16: [4, 3, 3, 2],
-    17: [4, 3, 3, 3], 18: [4, 3, 3, 3], 19: [4, 3, 3, 3, 1], 20: [4, 3, 3, 3, 1],
+    17: [4, 3, 3, 3], 18: [4, 3, 3, 3], 19: [4, 3, 3, 3, 2], 20: [4, 3, 3, 3, 2],
 }
 PACT_SLOTS = {1: (1, 1), 2: (2, 1), 3: (2, 2), 4: (2, 2), 5: (2, 3), 6: (2, 3), 7: (2, 4), 8: (2, 4), 9: (2, 5), 10: (2, 5), 11: (3, 5), 12: (3, 5), 13: (3, 5), 14: (3, 5), 15: (3, 5), 16: (3, 5), 17: (4, 5), 18: (4, 5), 19: (4, 5), 20: (4, 5)}
 
@@ -106,5 +106,5 @@ def resolver_paladino(fatos: dict) -> dict:
         espaco = int(fatos.get("espaco", 0))
         if not 1 <= espaco <= 5:
             return {"resultado": "bloqueado", "motivo": "espaco_invalido"}
-        return {"resultado": "requer_resolucao_de_dano", "dado_adicional": f"{espaco}d8", "tipo": "radiante"}
+        return {"resultado": "requer_resolucao_de_dano", "dado_adicional": f"{espaco + 1}d8", "dano_extra_contra": ["morto_vivo", "imundo"], "dado_extra_contra": "1d8", "tipo": "radiante", "acao": "bonus"}
     return {"resultado": "bloqueado", "motivo": "acao_desconhecida", "acao": acao}
