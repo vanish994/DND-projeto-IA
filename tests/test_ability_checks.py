@@ -73,6 +73,15 @@ class AbilityCheckTests(unittest.TestCase):
         result = resolver_iniciativa({"modificador_destreza": 2, "dados": [14, 6], "surpreendido": True})
         self.assertEqual(result["dado"], 6)
         self.assertEqual(result["total"], 8)
+    def test_initiative_score_uses_ten_plus_dexterity_and_five_for_advantage(self):
+        normal = resolver_iniciativa({"modificador_destreza": 2, "usar_escore": True})
+        advantage = resolver_iniciativa({"modificador_destreza": 2, "usar_escore": True, "invisivel": True})
+        disadvantage = resolver_iniciativa({"modificador_destreza": 2, "usar_escore": True, "surpreendido": True})
+        both = resolver_iniciativa({"modificador_destreza": 2, "usar_escore": True, "invisivel": True, "surpreendido": True})
+        self.assertEqual(normal["total"], 12)
+        self.assertEqual(advantage["total"], 17)
+        self.assertEqual(disadvantage["total"], 7)
+        self.assertEqual(both["total"], 12)
     def test_engine_registers_saving_throw_and_initiative(self):
         engine = build_default_engine()
         save = engine.evaluate({"type": "saving_throw_check", "atributo": "forca", "modificador_atributo": 2, "roll": 12, "cd": 14})
