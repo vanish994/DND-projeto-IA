@@ -1,5 +1,7 @@
 # Bestiário SRD 5.2.1
-Catálogo resumido de 232 monstros extraídos do `SRD_CC_v5.2.1.pdf` compartilhado no projeto. A tabela abaixo contém os campos gerais de cada monstro; nem todos os blocos de combate (ações, atributos e salvaguardas) estão estruturados no motor ainda. Atualmente, os blocos táticos estruturados são Bandit, Bandit Captain, Skeleton, Wolf e Zombie.
+O catálogo resumido abaixo contém 232 entradas extraídas do `SRD_CC_v5.2.1.pdf` compartilhado no projeto. A camada de dados do motor foi ampliada com 322 blocos estruturados da fonte licenciada em CC BY 4.0 registrada em `rule_engine/srd_monsters_data.json`. Essa camada inclui atributos, ações, traços, salvaguardas, deslocamentos, sentidos e demais campos presentes em cada registro da fonte. A base adicional tem escopo próprio e não deve ser interpretada como 322 nomes distintos extraídos do PDF local. Atribuição completa e origem estão no campo `_license` do JSON.
+
+A importação de blocos não significa que todos os efeitos especiais já sejam executados pelo mapa tático. Multiataques, reações e efeitos como agarrar, engolir, resistências e conjuração de monstros ainda precisam de resolutores mecânicos específicos.
 
 ## Tabela de XP por Nível de Desafio
 | ND | XP |
