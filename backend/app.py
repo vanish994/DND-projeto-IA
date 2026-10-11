@@ -645,9 +645,6 @@ def atualizar_proficiencias_personagem(
         valor = getattr(dados, campo)
         if valor is not None:
             entrada[campo] = valor
-    entrada["heranca_draconica"] = dados.heranca_draconica
-    entrada["ferramenta_antecedente"] = dados.ferramenta_antecedente
-    entrada["equipamento_antecedente"] = dados.equipamento_antecedente
     try:
         novo = NovoPersonagem.model_validate(entrada)
         nova_entrada, nova_ficha = _resolver_ficha(novo)
