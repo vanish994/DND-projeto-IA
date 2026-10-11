@@ -33,6 +33,33 @@ class RuleEngineTests(unittest.TestCase):
         self.assertIn("ability-check.below-dc", instruction)
         self.assertIn("result=failure", instruction)
 
+    def test_attack_hits_and_is_not_critical(self):
+        result = self.engine.evaluate({"type": "attack", "roll": 12, "modifier": 5, "target_ac": 17})
+        self.assertEqual(result.outcome["result"], "hit")
+        self.assertFalse(result.outcome["critical"])
+        self.assertEqual(result.matched_rules, ["attack.meets-ac"])
+
+    def test_natural_twenty_attack_is_critical(self):
+        result = self.engine.evaluate({"type": "attack", "roll": 20, "modifier": -2, "target_ac": 25})
+        self.assertTrue(result.outcome["critical"])
+        self.assertEqual(result.outcome["reason"], "natural_20")
+
+    def test_critical_damage_doubles_dice_not_modifier(self):
+        result = self.engine.evaluate({
+            "type": "damage", "damage_dice": [5, 3], "damage_modifier": 4, "critical": True,
+        })
+        self.assertEqual(result.outcome["total"], 20)
+        self.assertEqual(result.outcome["dice_count"], 4)
+
+    def test_saving_throw_fails_below_dc(self):
+        result = self.engine.evaluate({"type": "saving_throw", "roll": 9, "modifier": 2, "dc": 15})
+        self.assertEqual(result.outcome["result"], "failure")
+        self.assertEqual(result.matched_rules, ["saving-throw.below-dc"])
+
+    def test_natural_one_saving_throw_overrides_total(self):
+        result = self.engine.evaluate({"type": "saving_throw", "roll": 1, "modifier": 20, "dc": 10})
+        self.assertEqual(result.outcome["reason"], "natural_1")
+
 
 if __name__ == "__main__":
     unittest.main()

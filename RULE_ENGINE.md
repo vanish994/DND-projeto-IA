@@ -26,9 +26,18 @@ print(result.outcome)
 print(result.to_ai_instruction())
 ```
 
+## Fatos suportados
+
+- `ability_check`: `roll`, `modifier`, `dc`;
+- `attack`: `roll`, `modifier`, `target_ac`;
+- `damage`: `damage_dice` (resultados individuais), `damage_modifier` e `critical`;
+- `saving_throw`: `roll`, `modifier`, `dc`.
+
+Acertos críticos duplicam os dados de dano e adicionam o modificador uma única vez. Cada resolução informa a regra e a fonte usada, permitindo que a camada de IA explique a decisão.
+
 ## Próximas extensões
 
-- regras de ataque, dano, salvaguardas, condições e descanso;
+- regras de condições, resistência, vulnerabilidade e descanso;
 - separação por edição (`2024`) e configuração da mesa;
 - carregamento de regras em JSON/YAML com versionamento e fonte;
 - camada de interpretação narrativa para converter texto em fatos;
