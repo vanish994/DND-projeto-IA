@@ -793,6 +793,29 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "spellcaster_feature", "feature": "livro_de_magias", "nivel": 9, "acao": "recuperacao_arcana"})
         self.assertEqual(result.outcome["limite_circulos"], 5)
 
+    def test_warlock_pact_magic_invocations_and_mystic_arcanum(self):
+        result = self.engine.evaluate({"type": "advanced_caster_feature", "classe": "bruxo", "nivel": 9})
+        self.assertEqual(result.outcome["espacos"], 2)
+        self.assertEqual(result.outcome["circulo"], 5)
+        self.assertEqual(result.outcome["invocacoes"], 6)
+        result = self.engine.evaluate({"type": "advanced_caster_feature", "classe": "bruxo", "nivel": 11, "acao": "arcana_mistica"})
+        self.assertEqual(result.outcome["circulo"], 6)
+
+    def test_sorcerer_metamagic_and_innate_sorcery(self):
+        result = self.engine.evaluate({"type": "advanced_caster_feature", "classe": "feiticeiro", "nivel": 10, "acao": "metamagia"})
+        self.assertEqual(result.outcome["opcoes_conhecidas"], 4)
+        self.assertEqual(result.outcome["pontos_disponiveis"], 10)
+        result = self.engine.evaluate({"type": "advanced_caster_feature", "classe": "feiticeiro", "nivel": 1, "acao": "feiticaria_inata"})
+        self.assertEqual(result.outcome["bonus_cd"], 1)
+
+    def test_ranger_progression_favored_enemy_and_nature_veil(self):
+        result = self.engine.evaluate({"type": "advanced_caster_feature", "classe": "guardiao", "nivel": 9, "acao": "progressao"})
+        self.assertEqual(result.outcome["atributo_conjuracao"], "sabedoria")
+        self.assertEqual(result.outcome["espacos"], [4, 3, 2])
+        result = self.engine.evaluate({"type": "advanced_caster_feature", "classe": "guardiao", "nivel": 14, "acao": "veu_da_natureza", "sabedoria": 16})
+        self.assertTrue(result.outcome["invisivel"])
+        self.assertEqual(result.outcome["usos"], 3)
+
 
 if __name__ == "__main__":
     unittest.main()

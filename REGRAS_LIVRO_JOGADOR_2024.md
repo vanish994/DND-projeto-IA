@@ -50,6 +50,10 @@ Foi criado o catálogo executável das subclasses de Guerreiro (Campeão, Cavale
 
 Iniciado o núcleo de Mago, Clérigo, Druida e Bardo. O motor agora resolve a progressão de espaços de magia, atributo de conjuração, magias preparadas e foco; Inspiração de Bardo com progressão do dado e recuperação; Canalizar Divindade com Centelha Divina e Expulsar Mortos-Vivos; Forma Selvagem com usos, duração, PV temporários e conjuração em níveis altos; e Livro de Magias com adição de magias, Recuperação Arcana e Memorizar Magia. Ainda faltam as características de subclasses, listas completas de magias por classe e os recursos avançados de cada classe.
 
+## Segundo lote conjurador
+
+Implementados Bruxo, Feiticeiro e Guardião. O Bruxo agora possui progressão de Magia de Pacto, quantidade de Invocações Místicas, Astúcia Mágica e Arcana Mística. O Feiticeiro possui Pontos de Feitiçaria, Metamagia, Feitiçaria Inata, Restauração Feiticeira, Feitiçaria Encarnada e Apoteose Arcana. O Guardião possui progressão de espaços, Inimigo Favorito, Explorador Hábil, Incansável, Predador Implacável e Véu da Natureza. Permanecem para lotes posteriores os efeitos individuais de invocações, opções de Metamagia, subclasses e listas detalhadas de magias.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

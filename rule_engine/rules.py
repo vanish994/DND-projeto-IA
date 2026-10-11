@@ -35,6 +35,7 @@ from .spellcasters import (
     resolver_inspiracao_bardo, resolver_livro_de_magias,
     resolver_progressao_conjuracao,
 )
+from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guardiao
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -771,5 +772,23 @@ def build_default_engine() -> RuleEngine:
         description="Resolve Livro de Magias, Recuperação Arcana e Memorizar Magia.",
         priority=60, when=lambda f: f["type"] == "spellcaster_feature" and f.get("feature") == "livro_de_magias",
         resolve=resolver_livro_de_magias, source="D&D 2024 — Mago",
+    ))
+    engine.register(Rule(
+        rule_id="warlock.features",
+        description="Resolve Magia de Pacto, Invocações, Astúcia Mágica e Arcana Mística.",
+        priority=60, when=lambda f: f["type"] == "advanced_caster_feature" and f.get("classe") == "bruxo",
+        resolve=resolver_bruxo, source="D&D 2024 — Bruxo",
+    ))
+    engine.register(Rule(
+        rule_id="sorcerer.features",
+        description="Resolve Fonte de Magia, Metamagia e Feitiçaria Inata.",
+        priority=60, when=lambda f: f["type"] == "advanced_caster_feature" and f.get("classe") == "feiticeiro",
+        resolve=resolver_feiticeiro, source="D&D 2024 — Feiticeiro",
+    ))
+    engine.register(Rule(
+        rule_id="ranger.features",
+        description="Resolve progressão de Guardião, Inimigo Favorito e recursos de exploração.",
+        priority=60, when=lambda f: f["type"] == "advanced_caster_feature" and f.get("classe") == "guardiao",
+        resolve=resolver_guardiao, source="D&D 2024 — Guardião",
     ))
     return engine
