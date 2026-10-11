@@ -34,6 +34,7 @@ from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine.spells import listar_magias, obter_magia
 from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
+from rule_engine.catalog import CATALOGO_ARMAS, CATALOGO_ARMADURAS
 
 logger = logging.getLogger(__name__)
 
@@ -665,10 +666,12 @@ def _estado_mapa_normalizado(repo: RepositorioCampanhas, jogador: str, campanha_
                 continue
             token.update({
                 "name": p["nome"], "hp": p["pv_atual"], "maxHp": p["pv_maximo"],
-                "ac": 10 + int((p.get("modificadores") or {}).get("destreza", 0)),
+                "ac": _calcular_ca_ficha(p),
                 "speed_ft": int(round(float(p.get("deslocamento", 9)) / 0.3)),
                 "str_mod": int((p.get("modificadores") or {}).get("forca", 0)),
+                "dex_mod": int((p.get("modificadores") or {}).get("destreza", 0)),
                 "proficiency": int(p.get("bonus_proficiencia", 2)),
+                "equipment": p.get("equipamento") or {},
                 "source": "character",
             })
         elif token.get("kind") == "enemy":
