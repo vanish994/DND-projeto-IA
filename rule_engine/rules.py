@@ -424,7 +424,7 @@ def build_default_engine() -> RuleEngine:
     ))
     engine.register(Rule(
         rule_id="unarmed.grapple",
-        description="Agarrar exige uma salvaguarda de Força ou Destreza e pode aplicar Imobilizado.",
+        description="Agarrar exige uma salvaguarda de Força ou Destreza e aplica a condição Agarrado se falhar.",
         priority=50,
         when=lambda f: f["type"] == "grapple",
         resolve=resolver_agarrar,
@@ -436,7 +436,7 @@ def build_default_engine() -> RuleEngine:
         priority=50,
         when=lambda f: f["type"] == "grapple_escape",
         resolve=resolver_escape_agarramento,
-        source="D&D 2024 — Imobilizado",
+        source="D&D 2024 — condição Agarrado",
     ))
     engine.register(Rule(
         rule_id="survival.damage",
