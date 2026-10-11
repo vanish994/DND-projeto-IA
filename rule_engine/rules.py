@@ -10,7 +10,7 @@ from .combat_special import (
 )
 from .engine import Rule, RuleEngine
 from .ability_checks import resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica, resolver_salvaguarda, resolver_iniciativa
-from .exploration_actions import resolver_acao_esconder, resolver_acao_influenciar
+from .exploration_actions import resolver_acao_esconder, resolver_acao_influenciar, resolver_fim_esconderijo
 from .combat_geometry import (
     resolver_ataque_geometria, resolver_alcance, resolver_cobertura,
     resolver_queda, resolver_linha_de_visao, espaco_por_tamanho,
@@ -961,5 +961,11 @@ def build_default_engine() -> RuleEngine:
         description="Resolve a ação Influenciar com disposição, perícia social e CD padrão.",
         priority=70, when=lambda f: f["type"] == "influence_action",
         resolve=resolver_acao_influenciar, source="D&D 2024 — Influenciar",
+    ))
+    engine.register(Rule(
+        rule_id="exploration.hide-event",
+        description="Encerra esconderijo quando ocorre som alto, descoberta, ataque ou magia verbal.",
+        priority=70, when=lambda f: f["type"] == "hide_event",
+        resolve=resolver_fim_esconderijo, source="D&D 2024 — Esconder-se",
     ))
     return engine
