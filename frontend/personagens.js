@@ -34,7 +34,8 @@
     contundente: 'contundente', cortante: 'cortante', perfurante: 'perfurante',
     leves: 'armaduras leves', medias: 'armaduras médias', pesadas: 'armaduras pesadas', escudos: 'escudos', simples: 'armas simples', marciais: 'armas marciais',
   };
-  const PASSOS = ['Nome', 'Espécie', 'Classe', 'Perícias', 'Antecedente', 'Atributos', 'Revisão'];
+  const PASSOS = ['Nome', 'Espécie', 'Classe', 'Perícias', 'Antecedente', 'Atributos', 'Magias', 'Revisão'];
+  const passosAtivos = () => PASSOS.filter((p) => p !== 'Magias' || Boolean(catalogo?.atributo_conjuracao?.[dados?.classe]));
 
   let catalogo = null;
   let catalogoEquipamento = null;
@@ -658,7 +659,7 @@
   function novoRascunho() {
     return {nome: '', especie: '', classe: '', antecedente: '', talento_antecedente: '', metodo_atributos: 'matriz_padrao',
       atributos: Object.fromEntries(ATRIBUTOS.map((a) => [a, ''])), compra: Object.fromEntries(ATRIBUTOS.map((a) => [a, 8])),
-      modo_aumento: '2-1', aumento2: '', aumento1: '', pericias_classe: [], ferramenta_artesao: '', heranca_draconica: '', ferramenta_antecedente: '', equipamento_antecedente: ''};
+      modo_aumento: '2-1', aumento2: '', aumento1: '', pericias_classe: [], ferramenta_artesao: '', heranca_draconica: '', ferramenta_antecedente: '', equipamento_antecedente: '', magias: {truques: [], magias_preparadas: [], espacos_totais: {}, limites: null}};
   }
 
   async function abrirCriacao() {
@@ -681,21 +682,25 @@
 
   function render() {
     charError.textContent = '';
-    charStep.textContent = `Passo ${passo + 1} de ${PASSOS.length} — ${PASSOS[passo]}`;
+    const ativos = passosAtivos();
+    const etapa = ativos[passo];
+    charStep.textContent = `Passo ${passo + 1} de ${ativos.length} — ${etapa}`;
     prevButton.disabled = passo === 0;
-    nextButton.textContent = passo === PASSOS.length - 1 ? 'Criar personagem' : 'Próximo';
+    nextButton.textContent = passo === ativos.length - 1 ? 'Criar personagem' : 'Próximo';
     desenharStepper();
-    charBody.replaceChildren(...[passoNome, passoEspecie, passoClasse, passoPericiasClasse, passoAntecedente, passoAtributos, passoRevisao][passo]());
+    const renderizadores = {'Nome': passoNome, 'Espécie': passoEspecie, 'Classe': passoClasse, 'Perícias': passoPericiasClasse, 'Antecedente': passoAntecedente, 'Atributos': passoAtributos, 'Magias': passoMagias, 'Revisão': passoRevisao};
+    charBody.replaceChildren(...renderizadores[etapa]());
     charBody.scrollTop = 0;
   }
 
   function desenharStepper() {
     charStepper.replaceChildren();
-    for (let i = 0; i < PASSOS.length; i += 1) {
+    const ativos = passosAtivos();
+    for (let i = 0; i < ativos.length; i += 1) {
       const estado = i === passo ? 'atual' : i < passo ? 'feito' : 'pendente';
       charStepper.append(el('li', {className: 'passo', 'data-estado': estado},
         el('span', {className: 'passo-marca', textContent: i < passo ? '✓' : String(i + 1)}),
-        el('span', {className: 'passo-rotulo', textContent: PASSOS[i]})));
+        el('span', {className: 'passo-rotulo', textContent: ativos[i]})));
     }
     const partes = [];
     if (dados.especie) partes.push(['Espécie', nome(dados.especie)]);
@@ -989,6 +994,74 @@
     return r;
   }
 
+  function passoMagias() {
+    const caixa = el('div');
+    const status = meta('Carregando a progressão de conjuração…');
+    caixa.append(status);
+    carregarMagiasIniciais(caixa, status);
+    return [caixa];
+  }
+
+  async function carregarMagiasIniciais(caixa, status) {
+    try {
+      const finais = base();
+      const au = aumentos();
+      for (const a of ATRIBUTOS) finais[a] += au[a] || 0;
+      const parametros = new URLSearchParams({classe: dados.classe, nivel: '1'});
+      for (const a of ['inteligencia', 'sabedoria', 'carisma']) parametros.set(a, String(finais[a]));
+      const [magias, progresso] = await Promise.all([
+        api(`/v1/catalogo/magias?classe=${encodeURIComponent(dados.classe)}&nivel=1`),
+        api(`/v1/catalogo/conjuracao?${parametros.toString()}`),
+      ]);
+      status.remove();
+      caixa.replaceChildren();
+      if (progresso.resultado !== 'resolvido') {
+        caixa.append(meta('O motor ainda não calcula a conjuração inicial desta classe. Você pode concluir a criação e registrar as magias depois.'));
+        return;
+      }
+      dados.magias.espacos_totais = progresso.espacos_totais || {};
+      dados.magias.limites = {truques: Number(progresso.truques || 0), magias_preparadas: Number(progresso.magias_preparadas || 0), validado: Boolean(progresso.validacao_escolhas)};
+      const espacos = Object.entries(dados.magias.espacos_totais);
+      caixa.append(painel('Conjuração inicial',
+        meta(`Atributo: ${nome(progresso.atributo_conjuracao)} · Truques: ${progresso.truques} · Magias: ${progresso.magias_preparadas}`),
+        meta(espacos.length ? `Espaços: ${espacos.map(([circulo, total]) => `${circulo}º círculo ×${total}`).join(', ')}` : 'Nenhum espaço de magia neste nível.'),
+        meta(progresso.validacao_escolhas ? 'As escolhas são validadas pelo motor.' : 'A progressão é calculada; a lista de escolhas desta classe ainda não é validada integralmente.')));
+      const truques = magias.filter((m) => Number(m.circulo) === 0);
+      const circuloMaximo = Number(progresso.circulo_maximo || 0);
+      const preparadas = magias.filter((m) => Number(m.circulo) > 0 && Number(m.circulo) <= circuloMaximo);
+      caixa.append(listaEscolhaMagias('Truques', truques, 'truques', dados.magias.limites.truques, dados.magias.limites.validado));
+      caixa.append(listaEscolhaMagias('Magias preparadas/conhecidas', preparadas, 'magias_preparadas', dados.magias.limites.magias_preparadas, dados.magias.limites.validado));
+    } catch (erro) {
+      status.textContent = `Não foi possível carregar as magias: ${erro.message}`;
+    }
+  }
+
+  function listaEscolhaMagias(titulo, magias, campo, limite, validado) {
+    const selecionadas = dados.magias[campo];
+    const lista = el('ul', {className: 'lista-magias'});
+    const contador = meta('');
+    const atualizar = () => {
+      contador.textContent = `Selecionadas: ${selecionadas.length}/${limite}.`;
+      for (const botao of lista.querySelectorAll('button')) botao.setAttribute('aria-pressed', String(selecionadas.includes(botao.dataset.nome)));
+    };
+    for (const magia of magias) {
+      const botao = el('button', {type: 'button', className: 'botao-magia', 'aria-pressed': 'false'},
+        el('span', {className: 'magia-nome', textContent: magia.nome}),
+        el('span', {className: 'magia-meta', textContent: nome(magia.escola)});
+      botao.dataset.nome = magia.nome;
+      botao.addEventListener('click', () => {
+        const i = selecionadas.indexOf(magia.nome);
+        if (i >= 0) selecionadas.splice(i, 1);
+        else if (validado && selecionadas.length >= limite) { contador.textContent = `O motor limita esta lista a ${limite} escolha(s).`; return; }
+        else selecionadas.push(magia.nome);
+        atualizar();
+      });
+      lista.append(el('li', {}, botao));
+    }
+    atualizar();
+    return painel(titulo, contador, lista, ...(magias.length ? [] : [meta('Nenhuma magia disponível nesta lista.')]));
+  }
+
   function passoRevisao() {
     const b = base();
     const au = aumentos();
@@ -1023,11 +1096,15 @@
   }
 
   function payload() {
-    return {nome: dados.nome.trim(), especie: dados.especie, classe: dados.classe, nivel: 1, metodo_atributos: dados.metodo_atributos,
+    const corpo = {nome: dados.nome.trim(), especie: dados.especie, classe: dados.classe, nivel: 1, metodo_atributos: dados.metodo_atributos,
       atributos: base(), antecedente: dados.antecedente, aumentos_antecedente: aumentos(), talento_antecedente: dados.talento_antecedente || null,
       pericias_classe: dados.pericias_classe, ferramenta_artesao: dados.ferramenta_artesao || null,
       heranca_draconica: dados.heranca_draconica || null, ferramenta_antecedente: dados.ferramenta_antecedente || null,
       equipamento_antecedente: dados.equipamento_antecedente || null};
+    if (Boolean(catalogo.atributo_conjuracao?.[dados.classe]) && (dados.magias.truques.length || dados.magias.magias_preparadas.length)) {
+      corpo.magias_iniciais = {truques: dados.magias.truques, magias_preparadas: dados.magias.magias_preparadas, espacos_totais: dados.magias.espacos_totais || {}};
+    }
+    return corpo;
   }
 
   function validarPasso() {
@@ -1057,6 +1134,10 @@
       const b = base(); const au = aumentos();
       if (ATRIBUTOS.some((a) => b[a] + (au[a] || 0) > 20)) return 'Nenhum atributo pode passar de 20.';
     }
+    if (passosAtivos()[passo] === 'Magias' && dados.magias.limites?.validado) {
+      if (dados.magias.truques.length !== dados.magias.limites.truques) return `Escolha exatamente ${dados.magias.limites.truques} truques.`;
+      if (dados.magias.magias_preparadas.length !== dados.magias.limites.magias_preparadas) return `Escolha exatamente ${dados.magias.limites.magias_preparadas} magia(s).`;
+    }
     return '';
   }
 
@@ -1064,7 +1145,7 @@
     event.preventDefault();
     const erro = validarPasso();
     if (erro) { charError.textContent = erro; return; }
-    if (passo < PASSOS.length - 1) { passo += 1; render(); return; }
+    if (passo < passosAtivos().length - 1) { passo += 1; render(); return; }
     nextButton.disabled = true;
     try {
       await api(url(), {method: 'POST', body: JSON.stringify(payload())});
