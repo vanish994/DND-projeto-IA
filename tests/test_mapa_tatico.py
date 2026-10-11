@@ -190,6 +190,26 @@ class BackendMapaTaticoTests(unittest.TestCase):
         finally:
             self.hero = original
 
+    def test_magia_de_area_resolve_salvaguarda_em_alvo_com_ficha(self):
+        original = self._criar_artifice_com_magias()
+        try:
+            response = self.client.put(self.url, headers=self.headers, json={
+                "title": "Teste de área", "terrain": "forest",
+                "tokens": [{"id": "heroi-vex", "kind": "hero", "character_id": self.hero["id"], "x": 1, "y": 1}],
+            })
+            self.assertEqual(response.status_code, 200, response.text)
+            response = self.client.post(self.url + "/conjurar", headers=self.headers, json={
+                "atacante_id": "heroi-vex", "alvo_id": "heroi-vex", "magia": "Onda Trovejante",
+            })
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            self.assertEqual(len(body["resultados_area"]), 1)
+            self.assertIn("salvaguarda", body["resultados_area"][0])
+            self.assertGreaterEqual(body["dano"], 0)
+            self.assertEqual(body["espacos_restantes"]["1"], 1)
+        finally:
+            self.hero = original
+
     def test_ataque_fora_de_alcance_e_rejeitado(self):
         self.save_encounter(hero_x=1, hero_y=1, enemy_x=5, enemy_y=1)
         response = self.client.post(self.url + "/atacar", headers=self.headers, json={
