@@ -4,7 +4,7 @@ Este documento é o inventário de implementação do **Rule Engine**. Os livros
 
 ## Situação geral
 
-O motor está **funcional, mas incompleto**. A suíte atual possui **36 testes aprovados**.
+O motor está **funcional, mas incompleto**. Uma regra só será considerada concluída quando houver implementação determinística e testes executados; a execução dos testes mais recentes ainda precisa ser confirmada.
 
 ## Bloco 1 — núcleo de sobrevivência
 
@@ -111,25 +111,35 @@ Cada recurso aceita fatos estruturados em português, retorna um resultado audit
 - Agarrar, escape do agarramento e condição Imobilizado.
 - Empurrar, empurrão de 1,5 metro e efeito Caído.
 
+## Lote de fundamentos — testes de habilidade e Inspiração Heroica
+
+Adicionado `ability_checks.py` e integração ao `build_default_engine()` para:
+
+- As 18 perícias padrão e seus atributos associados.
+- Testes ativos com modificador de atributo, proficiência, Especialização, modificadores circunstanciais e vantagem/desvantagem.
+- Bônus de Proficiência aplicado uma única vez; Especialização duplica esse bônus.
+- CDs padrão de 5, 10, 15, 20, 25 e 30, aceitas também por rótulo.
+- Testes passivos, aplicando +5 por vantagem ou -5 por desvantagem.
+- Testes em grupo, exigindo sucesso de pelo menos metade dos participantes.
+- Vantagem quando a mesma tarefa combina proficiência relevante em perícia e ferramenta.
+- Inspiração Heroica com validação do recurso e uso obrigatório do novo resultado do d20.
+- Bloqueio explícito quando faltam modificadores do personagem, Bônus de Proficiência necessário ou resultados de dados.
+
+Os testes foram adicionados em `tests/test_ability_checks.py`. **Ainda não há confirmação de execução da suíte pelo GitHub Actions**, portanto este lote está implementado, mas não marcado como validado.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
 
 - Pipeline completo de Teste de D20 usando automaticamente atributo, perícia, proficiência e modificadores circunstanciais.
-- As 18 perícias com seus atributos padrão.
 - Perícia usando atributo alternativo autorizado pelo Mestre.
-- CDs padrão 5, 10, 15, 20, 25 e 30.
 - Não acumulação do Bônus de Proficiência.
 - Multiplicação e divisão do Bônus de Proficiência no máximo uma vez.
-- Testes passivos.
 - Testes resistidos.
-- Testes em grupo.
 - Regra para decidir quando não pedir um teste.
 - Proficiência em salvaguardas integrada ao cálculo.
 - Proficiência em ferramentas.
-- Vantagem por proficiência simultânea em ferramenta e perícia.
 - Rerrolagem/substituição de um único dado sob Vantagem ou Desvantagem.
-- Inspiração Heroica.
 - Interação social estruturada com atitude, objetivo, medo, desejo, simpatia e reação de NPC.
 
 ### 2. Combate e ações
