@@ -1013,6 +1013,18 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(hidden.outcome["resultado"], "escondido")
         self.assertEqual(hidden.outcome["dc_para_encontrar"], 17)
 
+    def test_dodge_action_requires_movement_and_grants_defensive_effects(self):
+        blocked = self.engine.evaluate({"type": "dodge_action", "deslocamento": 0})
+        ready = self.engine.evaluate({"type": "dodge_action", "deslocamento": 9})
+        self.assertEqual(blocked.outcome["resultado"], "bloqueado")
+        self.assertTrue(ready.outcome["vantagem_salvaguardas_destreza"])
+
+    def test_dodge_grants_dexterity_save_advantage_and_attack_disadvantage(self):
+        from rule_engine import resolver_salvaguarda, resolver_efeitos_condicao
+        save = resolver_salvaguarda({"atributo": "destreza", "modificador_atributo": 2, "dados": [4, 15], "cd": 15, "esquivando": True})
+        attack = resolver_efeitos_condicao({"action": "attack", "target_conditions": [], "alvo_esquivando": True, "atacante_visivel_para_alvo": True})
+        self.assertEqual(save["dado"], 15)
+        self.assertEqual(attack["resultado"], "desvantagem")
     def test_study_action_maps_knowledge_areas_to_intelligence_skills(self):
         result = self.engine.evaluate({"type": "study_action", "area_conhecimento": "armadilhas", "valor_atributo": 16, "roll": 12, "cd": 15})
         self.assertEqual(result.outcome["pericia"], "investigacao")
