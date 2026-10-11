@@ -179,14 +179,16 @@ class RuleEngineTests(unittest.TestCase):
         rastreador.mover(15)
         self.assertEqual(turno.movimento_restante, 0)
 
-    def test_surprised_participant_cannot_act_on_first_turn(self):
+    def test_surprised_participant_keeps_actions_in_2024(self):
         rastreador = RastreadorCombate([
             Participante("A", 10, surpreendido=True),
         ], deslocamentos={"A": 9})
         turno = rastreador.iniciar_proximo_turno()
         self.assertTrue(turno.surpreendido)
-        self.assertFalse(turno.acao_disponivel)
-        self.assertEqual(turno.movimento_restante, 0)
+        self.assertTrue(turno.acao_disponivel)
+        self.assertTrue(turno.acao_bonus_disponivel)
+        self.assertTrue(turno.reacao_disponivel)
+        self.assertEqual(turno.movimento_restante, 9)
 
     def test_disengage_blocks_opportunity_attacks(self):
         rastreador = RastreadorCombate([Participante("A", 10)])
