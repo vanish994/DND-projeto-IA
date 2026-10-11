@@ -84,6 +84,12 @@ Criado `class_features.py` com resolução executável para o primeiro lote de l
 
 Também foram corrigidos os marcos transversais de progressão: aumentos de atributo/talento nos níveis 4, 8, 12 e 16, Dádiva Épica no nível 19, marcos explícitos de subclasse, posição da subclasse do Mago no nível 3, espaço inicial do meio-conjurador e tabela completa de espaços de Magia de Pacto. Maestria em Arma agora contempla Paladino e Guardião, sem concedê-la indevidamente ao Monge; a progressão de usos de Fúria foi corrigida para os marcos de 2024.
 
+## Características restantes das 13 classes — segundo lote
+
+O segundo lote expandiu `class_features.py` com resoluções determinísticas para os recursos de Bardo (Inspiração, Pau pra Toda Obra, Especialista, Fonte de Inspiração, Contra-Encantamento, Inspiração Superior e Palavras de Criação), Clérigo (Ordem Divina, Canalizar Divindade, Fulminar Mortos-Vivos, Golpes Abençoados e Intervenção Divina), Druida (Idioma Druídico, Ordem Primal, Companheiro Selvagem, Ressurgimento Selvagem, Fúria Elemental, Magias Bestiais e Arquidruida), Mago (Adepto de Ritual, Recuperação Arcana, Acadêmico, Memorizar Magia, Maestria de Magias e Assinatura Mágica), Feiticeiro (Fonte de Magia, Metamagia, Restauração Feiticeira, Feitiçaria Encarnada e Apoteose Arcana), Bruxo (Astúcia Mágica, Contatar Patrono, Arcana Mística e Mestre Místico) e Artífice (Magia de Artífice, Replicar Item Mágico, Lampejo de Gênio, Item Armazenador de Magia, Artífice Avançado e Alma do Artífice).
+
+Cada recurso aceita fatos estruturados em português, retorna um resultado auditável e possui testes de comportamento. A nomenclatura da progressão do Artífice também foi traduzida para português do Brasil.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

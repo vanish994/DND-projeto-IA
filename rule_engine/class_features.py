@@ -98,6 +98,103 @@ def resolver_caracteristica(f: dict) -> dict:
         if recurso == "golpe_de_sorte":
             return {"resultado": "20_natural", "transforma_falha": True, "recarga": "descanso_curto_ou_longo"}
 
+    if classe == "bardo":
+        if recurso == "inspiracao_de_bardo":
+            dado = "d6" if nivel < 5 else "d8" if nivel < 10 else "d10" if nivel < 15 else "d12"
+            return {"resultado": "concedida", "dado": dado, "usos": max(1, _mod(f.get("carisma", 10))), "alcance_m": 18, "duracao_min": 10}
+        if recurso == "pau_pra_toda_obra":
+            return {"resultado": "resolvido", "bonus": _mod(f.get("carisma", 10)), "testes": "não_proficientes"}
+        if recurso == "especialista":
+            return {"resultado": "resolvido", "pericias_escolhidas": int(f.get("quantidade", 2)), "multiplicador_proficiencia": 2}
+        if recurso == "fonte_de_inspiracao":
+            return {"resultado": "resolvido", "recupera_em": "descanso_curto_ou_longo", "dado": "inspiracao_de_bardo"}
+        if recurso == "contra_encantamento":
+            return {"resultado": "ativado", "vantagem": True, "aliados_alcance_m": 9, "efeito": "amedrontado_ou_enfeiticado"}
+        if recurso == "inspiracao_superior":
+            return {"resultado": "resolvido", "recupera_uso_ao_iniciativa": True}
+        if recurso == "palavras_de_criacao":
+            return {"resultado": "resolvido", "cd_aumentada": 2, "efeitos": ["incapacitado", "amedrontado", "enfeitiçado"]}
+
+    if classe == "clerigo":
+        if recurso == "ordem_divina":
+            return {"resultado": "escolha", "opcoes": ["dominio_de_vida", "potencializar_cura"], "quantidade": 1}
+        if recurso == "canalizar_divindade":
+            return {"resultado": "resolvido", "usos": 2 if nivel < 6 else 3 if nivel < 18 else 4, "recupera_em": "descanso_curto_ou_longo"}
+        if recurso == "fulminar_mortos_vivos":
+            cd = 8 + int(f.get("bonus_proficiencia", 2)) + _mod(f.get("sabedoria", 10))
+            return {"resultado": "destruido" if f.get("falhou_salvaguarda", False) and nivel >= 5 else "repelido", "cd": cd, "tipo": "morto_vivo"}
+        if recurso == "golpes_abencoados":
+            return {"resultado": "resolvido", "dano_extra": "1d8_radiante_ou_necrotico", "limite": "uma_vez_por_turno"}
+        if recurso == "intervencao_divina":
+            return {"resultado": "resolvido", "efeito": f.get("efeito", "milagre_divino"), "recarga": "descanso_longo", "sem_custo": nivel >= 20}
+
+    if classe == "druida":
+        if recurso == "idioma_druidico":
+            return {"resultado": "resolvido", "idioma": "druidico", "pode_falar_com_druidas": True}
+        if recurso == "ordem_primal":
+            return {"resultado": "escolha", "opcoes": ["mago", "combatente"], "beneficio": "truque_ou_armadura_leve"}
+        if recurso == "companheiro_selvagem":
+            return {"resultado": "conjurado", "custo": "uso_de_forma_selvagem", "duracao_horas": 1, "familiar": True}
+        if recurso == "ressurgimento_selvagem":
+            return {"resultado": "recuperado", "pontos_forma_selvagem": 1, "recarga": "descanso_curto_ou_longo"}
+        if recurso == "furia_elemental":
+            return {"resultado": "resolvido", "dano_extra": "1d8", "tipos": ["frio", "fogo", "eletricidade", "trovejante"]}
+        if recurso == "magias_bestiais":
+            return {"resultado": "resolvido", "pode_conjurar_em_forma_selvagem": True, "componentes_somaticos": True}
+        if recurso == "arquidruida":
+            return {"resultado": "resolvido", "forma_selvagem_usos": "ilimitados", "recupera_foco": True}
+
+    if classe == "mago":
+        if recurso == "recuperacao_arcana":
+            return {"resultado": "recuperado", "circulos": min(5, (nivel + 1) // 2), "recarga": "descanso_curto_ou_longo", "uma_vez_por_dia": True}
+        if recurso == "adepto_de_ritual":
+            return {"resultado": "resolvido", "pode_conjurar_rituais_do_livro": True, "sem_preparar": True}
+        if recurso == "academico":
+            return {"resultado": "resolvido", "especializacao": f.get("pericia", "historia"), "dobro_proficiencia": True}
+        if recurso == "memorizar_magia":
+            return {"resultado": "resolvido", "troca_em_descanso_curto": True, "magias": 1}
+        if recurso == "maestria_de_magias":
+            return {"resultado": "resolvido", "magias_sem_espaco": int(f.get("quantidade", 2)), "recarga": "descanso_curto_ou_longo"}
+        if recurso == "assinatura_magica":
+            return {"resultado": "resolvido", "magias": 2, "circulo_maximo": 3, "uma_vez_sem_espaco": True}
+
+    if classe == "feiticeiro":
+        if recurso == "fonte_de_magia":
+            return {"resultado": "resolvido", "pontos": nivel, "conversao": True, "recarga": "descanso_longo"}
+        if recurso == "metamagia":
+            return {"resultado": "resolvido", "pontos": nivel, "opcoes": 2 if nivel < 10 else 4 if nivel < 17 else 6}
+        if recurso == "restauracao_feiticeira":
+            return {"resultado": "recuperado", "pontos": nivel // 2, "recarga": "descanso_curto"}
+        if recurso == "feiticaria_encarnada":
+            return {"resultado": "ativada", "custo_pontos": 2, "duas_metamagias_na_mesma_magia": True}
+        if recurso == "apoteose_arcana":
+            return {"resultado": "resolvido", "metamagia_sem_custo": True, "uma_vez_por_turno": True}
+
+    if classe == "bruxo":
+        if recurso == "astucia_magica":
+            return {"resultado": "recuperado", "espacos": max(1, int(f.get("espacos", 1)) // 2), "recarga": "descanso_longo", "acao": "minuto"}
+        if recurso == "contatar_patrono":
+            return {"resultado": "resolvido", "consulta": True, "telepatia": True, "recarga": "descanso_longo"}
+        if recurso == "arcana_mistica":
+            circulo = {11: 6, 13: 7, 15: 8, 17: 9}.get(nivel)
+            return {"resultado": "resolvido" if circulo else "bloqueado", "circulo": circulo, "recarga": "descanso_longo"}
+        if recurso == "mestre_mistico":
+            return {"resultado": "resolvido", "invocacao_adicional": True, "recupera_espaco_pacto": True}
+
+    if classe == "artifice":
+        if recurso in {"conjuracao", "tinkers_magic"}:
+            return {"resultado": "resolvido", "atributo_conjuracao": "inteligencia", "foco": "ferramentas_de_artifice"}
+        if recurso in {"replicar_item_magico", "replicate_magic_item"}:
+            return {"resultado": "infundido", "infusoes": 2 if nivel < 6 else 3 if nivel < 10 else 4, "itens": int(f.get("quantidade", 1))}
+        if recurso in {"flash_of_genius", "lampejo_de_genio"}:
+            return {"resultado": "resolvido", "bonus": _mod(f.get("inteligencia", 10)), "usos": max(1, _mod(f.get("inteligencia", 10))), "reacao": True}
+        if recurso in {"spell_storing_item", "item_armazenador_de_magia"}:
+            return {"resultado": "armazenado", "conjuracoes": 2 * _mod(f.get("inteligencia", 10)), "circulo_maximo": 2}
+        if recurso in {"advanced_artifice", "artifice_avancado"}:
+            return {"resultado": "resolvido", "itens_sintonizados_extra": 2, "bonus_todos_itens": 1}
+        if recurso in {"soul_of_artifice", "alma_do_artifice"}:
+            return {"resultado": "resolvido", "itens_sintonizados": 6, "bonus_salvaguardas_por_item": 1, "reacao_evitar_morte": True}
+
     if classe == "paladino":
         if recurso == "maos_consagradas":
             pool = 5 * nivel

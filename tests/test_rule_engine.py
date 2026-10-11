@@ -698,7 +698,7 @@ class RuleEngineTests(unittest.TestCase):
     def test_class_progression_exposes_features_and_extra_asi_levels(self):
         from rule_engine import caracteristicas_no_nivel, subclasses_da_classe
         self.assertIn("Fúria", caracteristicas_no_nivel("barbaro", 1))
-        self.assertIn("Flash of Genius", caracteristicas_no_nivel("artifice", 7))
+        self.assertIn("Lampejo de Gênio", caracteristicas_no_nivel("artifice", 7))
         self.assertIn("mestre_da_batalha", subclasses_da_classe("guerreiro"))
         fighter = self.engine.evaluate({"type": "level_up", "class": "guerreiro", "current_level": 5})
         self.assertEqual(fighter.outcome["nivel"], 6)
@@ -993,6 +993,31 @@ class RuleEngineTests(unittest.TestCase):
         self.assertIn("Dádiva Épica", result.outcome["caracteristicas"])
         result = self.engine.evaluate({"type": "level_up", "current_level": 5, "class": "bardo"})
         self.assertIn("Característica de Subclasse", result.outcome["caracteristicas"])
+
+    def test_second_batch_bard_cleric_and_druid_features(self):
+        bard = self.engine.evaluate({"type": "class_feature", "classe": "bardo", "recurso": "inspiracao_de_bardo", "nivel": 10, "carisma": 18})
+        self.assertEqual(bard.outcome["dado"], "d10")
+        self.assertEqual(bard.outcome["usos"], 4)
+        cleric = self.engine.evaluate({"type": "class_feature", "classe": "clerigo", "recurso": "fulminar_mortos_vivos", "nivel": 5, "sabedoria": 16, "bonus_proficiencia": 3, "falhou_salvaguarda": True})
+        self.assertEqual(cleric.outcome["resultado"], "destruido")
+        druid = self.engine.evaluate({"type": "class_feature", "classe": "druida", "recurso": "magias_bestiais", "nivel": 18})
+        self.assertTrue(druid.outcome["pode_conjurar_em_forma_selvagem"])
+
+    def test_second_batch_wizard_sorcerer_and_warlock_features(self):
+        wizard = self.engine.evaluate({"type": "class_feature", "classe": "mago", "recurso": "maestria_de_magias", "nivel": 18})
+        self.assertEqual(wizard.outcome["magias_sem_espaco"], 2)
+        sorcerer = self.engine.evaluate({"type": "class_feature", "classe": "feiticeiro", "recurso": "fonte_de_magia", "nivel": 12})
+        self.assertEqual(sorcerer.outcome["pontos"], 12)
+        warlock = self.engine.evaluate({"type": "class_feature", "classe": "bruxo", "recurso": "arcana_mistica", "nivel": 17})
+        self.assertEqual(warlock.outcome["circulo"], 9)
+
+    def test_second_batch_artificer_features(self):
+        genius = self.engine.evaluate({"type": "class_feature", "classe": "artifice", "recurso": "flash_of_genius", "nivel": 7, "inteligencia": 18})
+        self.assertEqual(genius.outcome["bonus"], 4)
+        stored = self.engine.evaluate({"type": "class_feature", "classe": "artifice", "recurso": "spell_storing_item", "nivel": 11, "inteligencia": 18})
+        self.assertEqual(stored.outcome["conjuracoes"], 8)
+        soul = self.engine.evaluate({"type": "class_feature", "classe": "artifice", "recurso": "soul_of_artifice", "nivel": 20})
+        self.assertTrue(soul.outcome["reacao_evitar_morte"])
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ FEATURES_BY_CLASS = {
     "feiticeiro": {1: ["Conjuração", "Feitiçaria Inata"], 2: ["Fonte de Magia", "Metamagia"], 3: ["Subclasse"], 5: ["Restauração Feiticeira"], 7: ["Feitiçaria Encarnada"], 20: ["Apoteose Arcana"]},
     "bruxo": {1: ["Magia de Pacto", "Invocações Místicas"], 2: ["Astúcia Mágica"], 3: ["Subclasse"], 9: ["Contatar Patrono"], 11: ["Arcana Mística"], 20: ["Mestre Místico"]},
     "mago": {1: ["Conjuração", "Livro de Magias", "Adepto de Ritual", "Recuperação Arcana"], 2: ["Acadêmico"], 3: ["Subclasse"], 5: ["Memorizar Magia"], 18: ["Maestria de Magias"], 20: ["Assinatura Mágica"]},
-    "artifice": {1: ["Conjuração", "Tinker’s Magic"], 2: ["Replicate Magic Item"], 3: ["Subclasse"], 6: ["Magic Item Tinker"], 7: ["Flash of Genius"], 10: ["Magic Item Adept"], 11: ["Spell-Storing Item"], 14: ["Advanced Artifice"], 18: ["Magic Item Master"], 20: ["Soul of Artifice"]},
+    "artifice": {1: ["Conjuração", "Magia de Artífice"], 2: ["Replicar Item Mágico"], 3: ["Subclasse"], 6: ["Artesão de Item Mágico"], 7: ["Lampejo de Gênio"], 10: ["Adepto de Item Mágico"], 11: ["Item Armazenador de Magia"], 14: ["Artífice Avançado"], 18: ["Mestre de Item Mágico"], 20: ["Alma do Artífice"]},
 }
 
 # Marcos transversais do PHB 2024: aumento de atributo/talento nos níveis
