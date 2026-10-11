@@ -221,7 +221,7 @@
           badge(`Dado de Vida d${p.dado_vida}`),
           badge(`${nome(p.tamanho)} · ${String(p.deslocamento).replace('.', ',')} m`),
           p.bloco?.conjuracao ? badge(`Conjuração: ${abreviar(p.bloco.conjuracao.atributo)}`, 'badge-magia') : null,
-          p.proficiencias_pendentes ? badge('Escolhas pendentes', 'badge-alerta') : null)),
+          (p.proficiencias_pendentes || p.escolhas_pendentes?.length) ? badge('Escolhas pendentes', 'badge-alerta') : null)),
       barra,
       el('div', {className: 'pv-topo'}, numero, situacao),
       controles);
