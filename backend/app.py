@@ -196,7 +196,7 @@ def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) ->
             f"{nome.upper()} {valor:+d}" for nome, valor in (p.get("modificadores") or {}).items()
         )
         linhas.append(
-            f"- FICHA AUTORITATIVA #{indice}: nome={p.get('nome', 'não registrado')}; "
+            f"- FICHA AUTORITATIVA #{indice}: id={p.get('id', 'não registrado')}; nome={p.get('nome', 'não registrado')}; "
             f"espécie={p.get('especie', 'não registrada')}; classe={p.get('classe', 'não registrada')}; "
             f"subclasse={p.get('subclasse') or 'nenhuma registrada'}; nível={p.get('nivel', 'não registrado')}; "
             f"antecedente={p.get('antecedente') or 'não registrado'}; "
@@ -269,6 +269,10 @@ def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanh
     # Contexto autoritativo sempre presente, inclusive quando a campanha ainda não tem ficha.
     historico = [{"role": "system", "content": contexto_personagem}, *historico]
     try:
+        personagens = repo.listar_personagens(jogador, campanha_id) or []
+    if isinstance(mj, DeepSeekMJ):
+        resposta = mj.responder(texto, historico, personagens=personagens)
+    else:
         resposta = mj.responder(texto, historico)
     except Exception as exc:
         logger.exception("Falha na chamada do provedor do MJ: %s", type(exc).__name__)
