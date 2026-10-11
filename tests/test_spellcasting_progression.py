@@ -76,5 +76,19 @@ class SpellcastingProgressionTests(unittest.TestCase):
         self.assertEqual(result["motivo"], "classe_ou_nivel_invalido")
 
 
+    def test_unimplemented_advanced_caster_actions_are_not_reported_as_resolved(self):
+        cases = [
+            (resolver_bruxo, {"nivel": 5, "acao": "invocacao_inventada"}),
+            (resolver_feiticeiro, {"nivel": 5, "acao": "metamagia_inventada"}),
+            (resolver_guardiao, {"nivel": 5, "acao": "recurso_inventado"}),
+            (resolver_paladino, {"nivel": 5, "acao": "recurso_inventado"}),
+        ]
+        for resolver, facts in cases:
+            with self.subTest(resolver=resolver.__name__):
+                result = resolver(facts)
+                self.assertEqual(result["resultado"], "bloqueado")
+                self.assertEqual(result["motivo"], "acao_desconhecida")
+
+
 if __name__ == "__main__":
     unittest.main()
