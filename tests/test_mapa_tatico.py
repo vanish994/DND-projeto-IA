@@ -429,6 +429,25 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertEqual(response.json()["detail"]["motivo"], "turno_de_outra_criatura")
 
+    def test_caido_custa_metade_do_movimento_para_levantar(self):
+        condicao = self.client.post(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/condicoes",
+            headers=self.headers,
+            json={"operacao": "apply", "condicao": "caido", "duracao": 2},
+        )
+        self.assertEqual(condicao.status_code, 200, condicao.text)
+        self.save_encounter()
+        longo = self.client.post(self.url + "/mover", headers=self.headers, json={
+            "token_id": "heroi-vex", "destino_x": 5, "destino_y": 1,
+        })
+        self.assertEqual(longo.status_code, 422, longo.text)
+        curto = self.client.post(self.url + "/mover", headers=self.headers, json={
+            "token_id": "heroi-vex", "destino_x": 4, "destino_y": 1,
+        })
+        self.assertEqual(curto.status_code, 200, curto.text)
+        ficha = self.repo.obter_personagem("jogador-mapa", self.cid, self.hero["id"])
+        self.assertNotIn("caido", ficha.get("condicoes_ativas", []))
+
     def test_condicao_que_zerou_deslocamento_impede_movimento(self):
         condicao = self.client.post(
             f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/condicoes",
