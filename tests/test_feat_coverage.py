@@ -16,6 +16,11 @@ class FeatCoverageTests(unittest.TestCase):
         self.assertEqual(result["pv_adicionais"], 10)
         self.assertNotIn("motivo", result)
 
+    def test_feat_name_normalizes_accents_and_spaces(self):
+        result = resolver_talento({"talento": "telecinético", "nivel": 4})
+        self.assertEqual(result["talento"], "telecinetico")
+        self.assertEqual(result["resultado"], "nao_implementado")
+
     def test_unknown_feat_is_blocked(self):
         result = resolver_talento({"talento": "talento_inventado", "nivel": 4})
         self.assertEqual(result["resultado"], "bloqueado")
