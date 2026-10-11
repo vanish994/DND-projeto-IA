@@ -357,6 +357,15 @@
           : meta(`Opção A: ${equipamento.A} · Opção B: ${equipamento.B}`)));
     }
 
+    const areaPendencias = el('div');
+    caixa.append(areaPendencias);
+    carregarCatalogo()
+      .then((cat) => {
+        const pendencias = painelPendencias(p, cat);
+        if (pendencias) areaPendencias.append(pendencias);
+      })
+      .catch(() => {});
+
     const apagar = el('button', {type: 'button', className: 'danger-button', textContent: 'Apagar personagem'});
     apagar.addEventListener('click', async () => {
       if (!window.confirm(`Apagar ${p.nome}? Esta ação não pode ser desfeita.`)) return;
@@ -367,6 +376,79 @@
       meta('Apagar remove a ficha da campanha. O histórico da campanha não é afetado.'),
       apagar));
     return caixa;
+  }
+
+  function painelPendencias(p, cat) {
+    const escolhaEspecie = cat.escolhas_especie?.[p.especie];
+    const escolhaFerramenta = cat.ferramentas_antecedente?.[p.antecedente];
+    const faltaHeranca = Boolean(escolhaEspecie) && !p.heranca_draconica;
+    const faltaFerramenta = typeof p.ferramenta_pendente === 'boolean'
+      ? p.ferramenta_pendente
+      : Boolean(escolhaFerramenta) && !p.ferramenta;
+    const faltaEquipamento = typeof p.equipamento_pendente === 'boolean'
+      ? p.equipamento_pendente
+      : Boolean(p.equipamento_antecedente?.A) && !String(p.equipamento_antecedente.escolha || '');
+    const faltaClasse = Boolean(p.proficiencias_pendentes);
+    if (!faltaHeranca && !faltaFerramenta && !faltaEquipamento && !faltaClasse) return null;
+
+    const itens = [
+      ...(faltaClasse ? ['Perícias ou ferramenta da classe'] : []),
+      ...(faltaHeranca ? [escolhaEspecie.rotulo] : []),
+      ...(faltaFerramenta ? [`${escolhaFerramenta.rotulo} (antecedente)`] : []),
+      ...(faltaEquipamento ? ['Equipamento de antecedente (A ou B)'] : []),
+    ];
+    const secao = painel('Escolhas pendentes',
+      el('div', {className: 'chips'}, ...itens.map((item) => el('span', {className: 'chip chip-aviso', textContent: item})),
+      meta('Enquanto existirem pendências, o mestre pergunta em vez de inventar.'));
+    const campos = el('div');
+    let heranca = null;
+    let ferramenta = null;
+    let equipamento = null;
+
+    if (faltaHeranca) {
+      heranca = el('select', {id: 'pendencia-heranca'},
+        el('option', {value: '', textContent: `Escolha a ${escolhaEspecie.rotulo}…`}),
+        ...escolhaEspecie.opcoes.map((opcao) => el('option', {value: opcao.chave, textContent: `Dragão ${opcao.nome} · dano ${opcao.dano}`})));
+      campos.append(el('label', {htmlFor: 'pendencia-heranca', textContent: escolhaEspecie.rotulo}), heranca);
+    }
+    if (faltaFerramenta) {
+      ferramenta = el('select', {id: 'pendencia-ferramenta'},
+        el('option', {value: '', textContent: `Escolha o tipo de ${escolhaFerramenta.rotulo}…`}),
+        ...escolhaFerramenta.opcoes.map((opcao) => el('option', {value: opcao, textContent: opcao})));
+      campos.append(el('label', {htmlFor: 'pendencia-ferramenta', textContent: `Ferramenta do antecedente (${escolhaFerramenta.rotulo})`}), ferramenta);
+    }
+    if (faltaEquipamento) {
+      equipamento = el('select', {id: 'pendencia-equipamento'},
+        el('option', {value: '', textContent: 'Escolha o pacote…'}),
+        el('option', {value: 'A', textContent: `Opção A — ${p.equipamento_antecedente.A}`}),
+        el('option', {value: 'B', textContent: `Opção B — ${p.equipamento_antecedente.B}`}));
+      campos.append(el('label', {htmlFor: 'pendencia-equipamento', textContent: 'Equipamento inicial'}), equipamento);
+    }
+    if (!campos.children.length) {
+      secao.append(meta('Use a aba Perícias para concluir as escolhas de classe.'));
+      return secao;
+    }
+
+    const status = el('p', {className: 'painel-nota', role: 'status', textContent: ''});
+    const salvar = el('button', {type: 'button', className: 'primary-button', textContent: 'Salvar escolhas'});
+    salvar.addEventListener('click', async () => {
+      const corpo = {pericias_classe: p.pericias_classe || [], ferramenta_artesao: p.ferramenta_artesao || null};
+      if (heranca?.value) corpo.heranca_draconica = heranca.value;
+      if (ferramenta?.value) corpo.ferramenta_antecedente = ferramenta.value;
+      if (equipamento?.value) corpo.equipamento_antecedente = equipamento.value;
+      salvar.disabled = true;
+      status.textContent = 'Validando no motor…';
+      try {
+        await api(url(`/${encodeURIComponent(p.id)}/proficiencias`), {method: 'PATCH', body: JSON.stringify(corpo)});
+        const atualizado = await api(url(`/${encodeURIComponent(p.id)}`));
+        mostrarFicha(atualizado);
+      } catch (erro) {
+        status.textContent = erro.message;
+        salvar.disabled = false;
+      }
+    });
+    secao.append(campos, status, salvar);
+    return secao;
   }
 
   function secaoAtributos(p) {
