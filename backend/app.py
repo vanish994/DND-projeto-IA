@@ -156,6 +156,17 @@ def _resumo_grupo(repo: RepositorioCampanhas, jogador: str, campanha_id: str) ->
             f"- Personagem {indice}: {p['especie']} {p['classe']} nível {p['nivel']}, antecedente {p['antecedente']}, "
             f"PV {p['pv_atual']}/{p['pv_maximo']}, BP +{p['bonus_proficiencia']}, {atributos}"
         )
+        conjuracao = p.get("conjuracao") or {}
+        truques = conjuracao.get("truques") or []
+        preparadas = conjuracao.get("magias_preparadas") or []
+        espacos = conjuracao.get("espacos_totais") or {}
+        if truques or preparadas or espacos:
+            linhas.append(
+                f"  Conjuração salva na ficha: truques={', '.join(truques) or 'nenhum'}; "
+                f"magias preparadas/conhecidas={', '.join(preparadas) or 'nenhuma'}; "
+                f"espaços totais por círculo={espacos}. Use isso como estado registrado, "
+                "mas confirme disponibilidade e espaços restantes com o Rule Engine antes de permitir conjurar."
+            )
     return (
         "Fichas do grupo registradas pelo Rule Engine (estado autoritativo; não altere valores "
         "sem resolução mecânica):\n" + "\n".join(linhas)
