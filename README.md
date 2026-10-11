@@ -79,4 +79,12 @@ resposta = mestre.responder("Quero opções oficiais de monstros para o próximo
 print(resposta)
 ```
 
+Também existe o inicializador interativo `run_mj.py`. Basta colar a chave em `.env` na variável `TOKENHARBOR_API_KEY` e executar:
+
+```bash
+python3 run_mj.py
+```
+
+O `.env` é carregado automaticamente, está excluído pelo `.gitignore` e não é publicado no GitHub.
+
 A estimativa de “mais de 300 monstros” não corresponde ao PDF SRD 5.2.1 presente na biblioteca ativa: a extração verificável dessa fonte resulta em 232 blocos completos. O catálogo não inventa entradas para preencher essa diferença.

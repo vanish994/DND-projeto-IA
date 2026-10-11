@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 from rule_engine import build_default_engine
@@ -81,10 +82,26 @@ TOOLS = [
 ]
 
 
+def _carregar_env_local() -> None:
+    """Carrega variáveis simples de .env sem sobrescrever o ambiente atual."""
+    caminho = Path(__file__).resolve().parents[1] / ".env"
+    if not caminho.exists():
+        return
+    for linha in caminho.read_text(encoding="utf-8").splitlines():
+        linha = linha.strip()
+        if not linha or linha.startswith("#") or "=" not in linha:
+            continue
+        nome, valor = linha.split("=", 1)
+        nome, valor = nome.strip(), valor.strip().strip('"').strip("'")
+        if nome and valor and nome not in os.environ:
+            os.environ[nome] = valor
+
+
 class DeepSeekMJ:
     """Orquestra conversa do MJ e chamadas normativas ao Rule Engine."""
 
     def __init__(self, client: Any | None = None, *, model: str | None = None):
+        _carregar_env_local()
         default_model = "deepseek-v4.1-flash:free" if os.getenv("TOKENHARBOR_API_KEY") else "deepseek-flash"
         if client is None:
             from openai import OpenAI
