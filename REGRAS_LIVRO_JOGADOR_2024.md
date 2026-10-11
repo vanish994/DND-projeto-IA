@@ -4,7 +4,7 @@ Este documento é o inventário de implementação do **Rule Engine**. Os livros
 
 ## Situação geral
 
-O motor está **funcional, mas incompleto**. A suíte atual possui **36 testes aprovados**.
+O motor está **funcional, mas incompleto**. A suíte automatizada está configurada para rodar nos branches do repositório. Uma regra só será considerada concluída quando houver implementação determinística e testes executados; a execução dos testes mais recentes ainda precisa ser confirmada.
 
 ## Bloco 1 — núcleo de sobrevivência
 
@@ -20,7 +20,7 @@ O **Bloco 2 está encerrado no nível do núcleo**. A integração com o catálo
 
 ## Bloco 3 — condições e efeitos
 
-O Bloco 3 foi iniciado com as 16 condições do Livro do Jogador 2024: Cego, Enfeitiçado, Surdo, Exaustão, Amedrontado, Agarrado, Incapacitado, Invisível, Paralisado, Petrificado, Envenenado, Caído, Contido, Lento, Atordoado e Inconsciente. O núcleo inclui estado persistente, imunidade, duração, remoção e efeitos sobre ações, movimento, fala, sentidos, salvaguardas e ataques. A cobertura de interações com concentração, magias específicas e características de classe será refinada nos blocos de Magias e Personagens.
+O Bloco 3 foi iniciado com as 15 condições oficiais do Livro do Jogador 2024: Cego, Enfeitiçado, Surdo, Exaustão, Amedrontado, Agarrado, Incapacitado, Invisível, Paralisado, Petrificado, Envenenado, Caído, Contido, Atordoado e Inconsciente. O núcleo inclui estado persistente, imunidade, duração, remoção e efeitos sobre ações, movimento, fala, sentidos, salvaguardas e ataques. A cobertura de interações com concentração, magias específicas e características de classe será refinada nos blocos de Magias e Personagens.
 
 ## Bloco 4 — magias, equipamentos e armas
 
@@ -30,7 +30,7 @@ Ainda faltam descrições completas dos efeitos individuais das 390 magias, fabr
 
 ## Bloco 5 — criação de personagens, classes e subclasses
 
-O núcleo foi iniciado com nove espécies, doze classes, subclasses a partir do nível 3, matriz padrão, compra por pontos, validação de atributos, criação de ficha, Bônus de Proficiência, Dados de Vida, progressão de nível, escolhas de Aumento de Atributo/Talento e pré-requisitos de multiclasse. Ainda faltam os traços completos de cada espécie, antecedentes, características individuais das doze classes, subclasses, talentos completos, progressão detalhada de espaços e equipamento inicial.
+O núcleo foi iniciado com dez espécies (incluindo Tiefling), treze classes, subclasses a partir do nível 3, matriz padrão, compra por pontos, validação de atributos, criação de ficha, Bônus de Proficiência, Dados de Vida, progressão de nível, escolhas de Aumento de Atributo/Talento e pré-requisitos de multiclasse. Ainda faltam os traços completos de cada espécie, antecedentes, características individuais das doze classes, subclasses, talentos completos, progressão detalhada de espaços e equipamento inicial.
 
 Correção de cobertura: Artífice foi adicionado como décima terceira classe, com Dado de Vida d8, Inteligência como atributo principal e requisito de Inteligência 13 para multiclasse. Também foram catalogadas as sete subclasses apresentadas em *Ravenloft*: Reanimador (Artífice), Colégio dos Espíritos (Bardo), Domínio da Sepultura (Clérigo), Guardião Oculto (Guardião), Fantasma (Ladino), Feitiçaria das Sombras (Feiticeiro) e Patrono Morto-Vivo (Bruxo), todas disponíveis a partir do nível 3.
 
@@ -72,7 +72,7 @@ Implementado `economy.py` com conversão entre PC, PP, PE, PO e PL; compra e ven
 
 ## Condições e estados alterados
 
-Completo o módulo `conditions.py` com as 16 condições do Livro do Jogador 2024, normalização de nomes em português/inglês, imunidades, duração, aplicação repetida, remoção, redução por turnos e níveis de Exaustão. Os efeitos derivados agora abrangem vantagem/desvantagem, acertos críticos automáticos, deslocamento 0, ações e reações bloqueadas, falhas automáticas de salvaguardas de Força/Destreza, concentração, fala, sentidos, ataques contra Caído, efeitos de Cego/Invisível, Petrificado, Contido, Atordoado, Inconsciente, Envenenado, Amedrontado, Enfeitiçado, Agarrado, Lento e Exaustão.
+Completo o módulo `conditions.py` com as 15 condições do Livro do Jogador 2024, normalização de nomes em português/inglês, imunidades, duração, aplicação repetida, remoção, redução por turnos e níveis de Exaustão. Os efeitos derivados agora abrangem vantagem/desvantagem, acertos críticos automáticos, deslocamento 0, ações e reações bloqueadas, falhas automáticas de salvaguardas de Força/Destreza, concentração, fala, sentidos, ataques contra Caído, efeitos de Cego/Invisível, Petrificado, Contido, Atordoado, Inconsciente, Envenenado, Amedrontado, Enfeitiçado, Agarrado e Exaustão.
 
 ## Combate tático avançado
 
@@ -121,30 +121,94 @@ A política final é: **liberdade criativa total para narrativa e conteúdo ficc
 - Agarrar, escape do agarramento e condição Imobilizado.
 - Empurrar, empurrão de 1,5 metro e efeito Caído.
 
+## Lote de fundamentos — testes de habilidade e Inspiração Heroica
+
+Adicionado `ability_checks.py` e integração ao `build_default_engine()` para:
+
+- As 18 perícias padrão e seus atributos associados.
+- Testes ativos com modificador de atributo, proficiência, Especialização, modificadores circunstanciais e vantagem/desvantagem.
+- Bônus de Proficiência aplicado uma única vez; Especialização duplica esse bônus.
+- CDs padrão de 5, 10, 15, 20, 25 e 30, aceitas também por rótulo.
+- Testes passivos, aplicando +5 por vantagem ou -5 por desvantagem.
+- Testes em grupo, exigindo sucesso de pelo menos metade dos participantes.
+- Vantagem quando a mesma tarefa combina proficiência relevante em perícia e ferramenta.
+- Inspiração Heroica com validação do recurso, rerrolagem imediata de qualquer dado e uso obrigatório do novo resultado.
+- Bloqueio explícito quando faltam modificadores do personagem, Bônus de Proficiência necessário ou resultados de dados.
+
+Os testes foram adicionados em `tests/test_ability_checks.py`. **Ainda não há confirmação de execução da suíte pelo GitHub Actions**, portanto este lote está implementado, mas não marcado como validado.
+
+## Lote de fundamentos — salvaguardas e iniciativa
+
+Ampliado o módulo `ability_checks.py` com `saving_throw_check` e `initiative_check`. Salvaguardas agora podem calcular o modificador do atributo e aplicar a proficiência declarada para aquele atributo; iniciativa usa Destreza e aceita bônus explícitos de características. Ambos validam a presença dos fatos necessários e aceitam vantagem/desvantagem com os mesmos controles de rolagem.
+
+Testes de integração foram adicionados. A execução automatizada continua sem confirmação; o lote não é considerado validado até que a suíte seja executada.
+
+## Correção de condições — sem efeitos inferidos incorretamente
+
+Ajustado `conditions.py` para não conceder vantagem a um atacante Cego, bloquear ataques de criaturas Incapacitadas, exigir distância em metros para declarar crítico automático contra Paralisado/Inconsciente e não aplicar desvantagem genérica a salvaguardas por Amedrontado/Envenenado. Incapacitado, por si só, não impede a fala; Paralisado, Petrificado e Inconsciente impedem. Foram adicionados testes de regressão para esses casos.
+
+Os testes foram adicionados, mas a suíte ainda não foi executada/confirmada por CI.
+
+## Auditoria oficial das condições
+
+A lista oficial do PHB 2024 contém **15 condições**, não 16. `Lento/Slowed` não faz parte da lista normativa e foi removida do conjunto de condições do motor; efeitos de lentidão devem ser modelados como efeitos específicos de magias ou características, não como condição geral. A fonte oficial D&D Beyond lista as 15 condições no glossário.
+
+## Escore de iniciativa
+
+`resolver_iniciativa` também aceita o escore de iniciativa: 10 + modificador de Destreza, com +5 por vantagem ou -5 por desvantagem; vantagem e desvantagem se cancelam.
+
+## Correção de Surpresa no combate de 2024
+
+Atualizado o rastreador de turnos: Surpresa não remove ação, ação bônus, reação nem movimento no primeiro turno. A condição de surpreendido agora é aplicada à rolagem de iniciativa como desvantagem, conforme o PHB 2024.
+
+## Correção de descanso e estabilização
+
+`EstadoVital` agora pode rastrear Dados de Vida máximos e disponíveis: o Descanso Curto consome os dados usados, e o Descanso Longo recupera todos os dados gastos, além dos PV e da redução de um nível de Exaustão. Estabilizar não é mais sucesso automático: exige teste de Sabedoria (Medicina) CD 10 ou uso de kit médico.
+
+Testes de regressão adicionados. A validação final depende da execução da suíte no branch.
+
+## Correção de interrupções de descanso e Salvaguardas contra a Morte
+
+Descanso Longo interrompido após pelo menos uma hora agora concede os benefícios de Descanso Curto; descansos longos completos validam sono mínimo de seis horas e até duas horas de atividade leve. Salvaguardas contra a Morte rejeitam valores fora de 1–20 e não podem ser roladas por uma criatura já estável.
+
+## Ações de exploração e interação social
+
+Adicionado `exploration_actions.py` para Esconder-se (requisitos de obscurecimento/cobertura, fora da linha de visão, Furtividade CD 15 e DC para encontrar) e Influenciar (disposto/indisposto sem teste; hesitante com a perícia aplicável e CD padrão max(15, Inteligência do monstro)).
+
+Testes de integração adicionados; aguardando execução da suíte.
+
+## Ações Search e Help
+
+Adicionadas regras para Search (Sabedoria com Intuição, Medicina, Percepção ou Sobrevivência conforme o alvo da busca) e Help (vantagem no próximo teste de perícia/ferramenta, exigindo proficiência do ajudante, ou no próximo ataque contra inimigo a até 1,5 m).
+
+## Ação Study
+
+Adicionada a ação Study com associação das áreas de conhecimento às perícias de Inteligência (Arcanismo, História, Investigação, Natureza e Religião).
+
+## Condições — efeitos derivados adicionais
+
+Ampliado o resolvedor de condições para contemplar falha automática em testes que exigem visão/audição, efeitos completos de Enfeitiçado sobre o enfeiticador, condições derivadas de Inconsciente, resistência e efeitos físicos de Petrificado, encerramento de Agarrado quando o agarrador fica Incapacitado e distância explícita para crítico/ataque contra Caído.
+
+## Ação Esquivar
+
+Adicionada a ação Esquivar: bloqueia quando Incapacitado ou com Deslocamento 0; concede vantagem em salvaguardas de Destreza e desvantagem em ataques contra a criatura por atacantes que ela possa ver, até o início do próximo turno.
+
 ## Regras que ainda faltam
 
 ### 1. Fundamentos e testes
 
 - Pipeline completo de Teste de D20 usando automaticamente atributo, perícia, proficiência e modificadores circunstanciais.
-- As 18 perícias com seus atributos padrão.
 - Perícia usando atributo alternativo autorizado pelo Mestre.
-- CDs padrão 5, 10, 15, 20, 25 e 30.
 - Não acumulação do Bônus de Proficiência.
 - Multiplicação e divisão do Bônus de Proficiência no máximo uma vez.
-- Testes passivos.
 - Testes resistidos.
-- Testes em grupo.
 - Regra para decidir quando não pedir um teste.
-- Proficiência em salvaguardas integrada ao cálculo.
 - Proficiência em ferramentas.
-- Vantagem por proficiência simultânea em ferramenta e perícia.
 - Rerrolagem/substituição de um único dado sob Vantagem ou Desvantagem.
-- Inspiração Heroica.
 - Interação social estruturada com atitude, objetivo, medo, desejo, simpatia e reação de NPC.
 
 ### 2. Combate e ações
 
-- Iniciativa com modificador de Destreza integrado.
 - Surpresa conforme percepção e estado Incapacitado.
 - Grid, quadrados, diagonais, cantos e distância.
 - Tamanho e espaço ocupado por criaturas.
@@ -386,3 +450,26 @@ A ordem recomendada permanece:
 8. Catálogo detalhado das magias e características de classe.
 
 A lista acima é a referência atual para determinar quando o Rule Engine estará realmente completo.
+## Auditoria de falsos positivos — características de classe
+
+Corrigido o resolvedor `class_features.py`: uma característica desconhecida ou catalogada sem resolução específica não pode mais retornar `resolvido` por padrão. O resolvedor retorna `nao_implementado`, solicita a característica quando ela não foi informada e bloqueia classes desconhecidas. Nomes de classes e características agora normalizam acentos e hífens, importante para entradas em português. Foram adicionados cinco testes de regressão. Este ajuste melhora a confiabilidade da auditoria, mas não significa que todas as características estejam implementadas; as lacunas agora ficam explícitas.
+## Auditoria de falsos positivos — magias
+
+`resolver_magia` não declara mais que uma magia foi conjurada quando só existem metadados de catálogo e nenhum efeito mecânico específico. Nesses casos, retorna `nao_implementado` com motivo auditável; magias com efeito detalhado continuam sendo resolvidas, e validações de componentes/círculo permanecem ativas. Foram adicionados testes para o fallback, uma magia detalhada com escalonamento e componentes ausentes. Isso corrige uma afirmação indevida de cobertura, mas deixa explícita a necessidade de implementar os efeitos restantes das magias catalogadas.
+## Cobertura de espécie — Tiefling
+
+Adicionado Tiefling ao catálogo base de criação de personagem com tamanho Pequeno ou Médio e deslocamento de 9 m, além de teste de criação. Isso fecha a ausência do décimo nome de espécie do PHB 2024 no catálogo básico, mas não substitui a implementação dos traços completos das espécies e das linhagens de Tiefling.
+
+## Auditoria de falsos positivos — talentos
+
+O resolvedor de talentos agora retorna `nao_implementado` para talentos que só têm metadados de categoria e efeitos catalogados, mas ainda não possuem resolução mecânica específica. Apenas os talentos com um ramo explícito no resolvedor continuam retornando `resolvido`. Foram adicionados testes para um talento sem resolução, um ramo existente e um talento desconhecido. O catálogo de efeitos não deve ser interpretado como implementação completa dos talentos.
+
+
+## Normalização de nomes de talentos
+
+O resolvedor normaliza acentos, espaços e hífens nos nomes dos talentos antes da consulta. Isso evita que variações de digitação em português causem falsos “talento desconhecido”. A normalização não significa que os efeitos do talento estejam implementados; os talentos sem ramo mecânico específico continuam retornando `nao_implementado`.
+
+
+## Auditoria adicional — efeitos parciais de talentos
+
+A revisão identificou talentos cujo resolvedor retornava `resolvido` após calcular apenas uma parte do efeito. Sortudo, Conjurador Ritualista, Líder Inspirador e três Dádivas Épicas agora permanecem `nao_implementado` até que seus efeitos e condições de uso sejam resolvidos por completo. Vigoroso permanece como resolução específica porque o cálculo de PV adicionais por nível é determinístico. Testes de regressão cobrem os casos rebaixados.
