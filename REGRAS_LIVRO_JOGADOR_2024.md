@@ -98,6 +98,8 @@ O fluxo de seleção foi separado do MJ: a operação `bestiary/sugerir` recebe 
 
 O limite arquitetural está explícito: o motor apenas impõe a resolução mecânica das regras e não interfere em história, narração, tom, decisões de campanha ou criatividade do MJ. `validar_uso` rejeita somente alterações silenciosas nos dados oficiais do bloco; narrativa e intenção dramática não são avaliadas.
 
+A política final é: **liberdade criativa total para narrativa e conteúdo ficcional; fidelidade obrigatória para mecânicas apresentadas como D&D**. Assim, o MJ pode criar qualquer história, local, conflito ou personagem narrativo, mas não pode apresentar como oficial um monstro, magia, item, condição, habilidade, estatística ou regra que não exista na biblioteca/regra validada.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.
