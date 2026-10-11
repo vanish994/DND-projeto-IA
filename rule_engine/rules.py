@@ -41,6 +41,7 @@ from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_tale
 from .spells import listar_magias, obter_magia, resolver_magia
 from .economy import comprar_item, consultar_item, resolver_inventario, resolver_sintonizacao, usar_item_magico, vender_item
 from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
+from .class_features import resolver_caracteristica
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -903,5 +904,11 @@ def build_default_engine() -> RuleEngine:
         description="Calcula o custo de terreno difícil e rastejar.",
         priority=70, when=lambda f: f["type"] == "tactical_terrain",
         resolve=resolver_terreno, source="D&D 2024 — combate tático",
+    ))
+    engine.register(Rule(
+        rule_id="class.feature",
+        description="Resolve características executáveis das 13 classes, incluindo recursos marciais, auras, perícias e capstones.",
+        priority=80, when=lambda f: f["type"] == "class_feature",
+        resolve=resolver_caracteristica, source="D&D 2024 — características de classe",
     ))
     return engine

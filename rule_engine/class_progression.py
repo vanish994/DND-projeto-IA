@@ -12,9 +12,21 @@ FEATURES_BY_CLASS = {
     "ladino": {1: ["Ataque Furtivo", "Especialização", "Gíria dos Ladrões", "Maestria em Arma"], 2: ["Ação Ardilosa"], 3: ["Mira Firme", "Subclasse"], 5: ["Esquiva Sobrenatural", "Golpe Astuto"], 7: ["Evasão", "Talento Confiável"], 11: ["Golpe Astuto Aprimorado"], 14: ["Golpes Sujos"], 15: ["Mente Escorregadia"], 18: ["Elusivo"], 20: ["Golpe de Sorte"]},
     "feiticeiro": {1: ["Conjuração", "Feitiçaria Inata"], 2: ["Fonte de Magia", "Metamagia"], 3: ["Subclasse"], 5: ["Restauração Feiticeira"], 7: ["Feitiçaria Encarnada"], 20: ["Apoteose Arcana"]},
     "bruxo": {1: ["Magia de Pacto", "Invocações Místicas"], 2: ["Astúcia Mágica"], 3: ["Subclasse"], 9: ["Contatar Patrono"], 11: ["Arcana Mística"], 20: ["Mestre Místico"]},
-    "mago": {1: ["Conjuração", "Livro de Magias", "Adepto de Ritual", "Recuperação Arcana"], 2: ["Acadêmico", "Subclasse"], 5: ["Memorizar Magia"], 18: ["Maestria de Magias"], 20: ["Assinatura Mágica"]},
+    "mago": {1: ["Conjuração", "Livro de Magias", "Adepto de Ritual", "Recuperação Arcana"], 2: ["Acadêmico"], 3: ["Subclasse"], 5: ["Memorizar Magia"], 18: ["Maestria de Magias"], 20: ["Assinatura Mágica"]},
     "artifice": {1: ["Conjuração", "Tinker’s Magic"], 2: ["Replicate Magic Item"], 3: ["Subclasse"], 6: ["Magic Item Tinker"], 7: ["Flash of Genius"], 10: ["Magic Item Adept"], 11: ["Spell-Storing Item"], 14: ["Advanced Artifice"], 18: ["Magic Item Master"], 20: ["Soul of Artifice"]},
 }
+
+# Marcos transversais do PHB 2024: aumento de atributo/talento nos níveis
+# indicados e Dádiva Épica no nível 19. O Artífice segue o UA adotado pelo projeto.
+for _classe in FEATURES_BY_CLASS:
+    for _nivel in (4, 8, 12, 16):
+        FEATURES_BY_CLASS[_classe].setdefault(_nivel, []).append("Aumento de Atributo ou Talento")
+    FEATURES_BY_CLASS[_classe].setdefault(19, []).append("Dádiva Épica")
+for _classe in FEATURES_BY_CLASS:
+    if "Subclasse" in FEATURES_BY_CLASS[_classe].get(3, []):
+        for _nivel in (6, 10, 14, 18):
+            FEATURES_BY_CLASS[_classe].setdefault(_nivel, []).append("Característica de Subclasse")
+
 
 SUBCLASSES_BY_CLASS = {
     "barbaro": {"trilha_da_arvore_do_mundo", "trilha_do_berserker", "trilha_do_coracao_selvagem", "caminho_do_guerreiro_espiritual", "trilha_do_fanatico"},

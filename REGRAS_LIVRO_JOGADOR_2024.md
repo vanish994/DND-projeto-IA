@@ -78,6 +78,12 @@ Completo o módulo `conditions.py` com as 16 condições do Livro do Jogador 202
 
 Criado `tactical.py` para resolver deslocamento em grade, casulas bloqueadas, terreno difícil, rastejar, linha de efeito, cobertura, flanqueamento e ataques táticos. O ataque tático combina alcance normal/máximo, desvantagem por distância, cobertura parcial ou de três quartos, cobertura total, bloqueadores na linha, vantagem de flanqueamento e movimento restante. O módulo mantém a compatibilidade com as regras geométricas e de movimento existentes.
 
+## Características restantes das 13 classes — lote transversal
+
+Criado `class_features.py` com resolução executável para o primeiro lote de lacunas auditadas: Defesa sem Armadura, Sentido de Perigo, Conhecimento Primordial, Movimento Rápido, Fúria Implacável, Força Indomável, Campeão Primitivo, Surto de Ação, Mente Tática, Indomável, Ajuste Tático, Ataques Estudados, Artes Marciais, Queda Lenta, Golpe Atordoante, Sobrevivente Disciplinado, Foco Perfeito, Defesa Superior, Corpo e Mente, Ação Ardilosa, Mira Firme, Talento Confiável, Mente Escorregadia, Elusivo, Golpe de Sorte, Mãos Consagradas, Auras do Paladino, Golpes Radiantes, Toque Restaurador, Errante, Incansável, Sentidos Selvagens e Matador de Inimigos Favoritos.
+
+Também foram corrigidos os marcos transversais de progressão: aumentos de atributo/talento nos níveis 4, 8, 12 e 16, Dádiva Épica no nível 19, marcos explícitos de subclasse, posição da subclasse do Mago no nível 3, espaço inicial do meio-conjurador e tabela completa de espaços de Magia de Pacto. Maestria em Arma agora contempla Paladino e Guardião, sem concedê-la indevidamente ao Monge; a progressão de usos de Fúria foi corrigida para os marcos de 2024.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

@@ -972,6 +972,28 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "tactical_terrain", "distancia": 3, "terreno_dificil": True, "rastejando": True, "movimento_disponivel": 12})
         self.assertEqual(result.outcome["custo"], 12)
 
+    def test_class_features_cover_core_barbarian_fighter_and_rogue_rules(self):
+        result = self.engine.evaluate({"type": "class_feature", "classe": "barbaro", "recurso": "defesa_sem_armadura", "destreza": 14, "constituicao": 16})
+        self.assertEqual(result.outcome["ca"], 15)
+        result = self.engine.evaluate({"type": "class_feature", "classe": "guerreiro", "recurso": "indomavel", "nivel": 13})
+        self.assertEqual(result.outcome["usos"], 2)
+        result = self.engine.evaluate({"type": "class_feature", "classe": "ladino", "recurso": "talento_confiavel", "rolagem_d20": 4, "bonus": 5, "proficiente": True})
+        self.assertEqual(result.outcome["total"], 15)
+
+    def test_class_features_cover_monk_paladin_and_ranger_rules(self):
+        result = self.engine.evaluate({"type": "class_feature", "classe": "monge", "recurso": "golpe_atordoante", "nivel": 5, "sabedoria": 16, "bonus_proficiencia": 3, "salvaguarda_constituicao": 12})
+        self.assertEqual(result.outcome["resultado"], "atordoado")
+        result = self.engine.evaluate({"type": "class_feature", "classe": "paladino", "recurso": "aura_de_protecao", "carisma": 18})
+        self.assertEqual(result.outcome["bonus_salvaguardas"], 4)
+        result = self.engine.evaluate({"type": "class_feature", "classe": "guardiao", "recurso": "errante"})
+        self.assertTrue(result.outcome["escalada_igual_deslocamento"])
+
+    def test_progression_contains_asi_epic_boon_and_subclass_milestones(self):
+        result = self.engine.evaluate({"type": "level_up", "current_level": 18, "class": "guerreiro"})
+        self.assertIn("Dádiva Épica", result.outcome["caracteristicas"])
+        result = self.engine.evaluate({"type": "level_up", "current_level": 5, "class": "bardo"})
+        self.assertIn("Característica de Subclasse", result.outcome["caracteristicas"])
+
 
 if __name__ == "__main__":
     unittest.main()

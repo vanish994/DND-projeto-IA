@@ -25,7 +25,7 @@ def resolver_ataque_extra(fatos: dict) -> dict:
 def resolver_maestria_arma(fatos: dict) -> dict:
     classe = str(fatos["classe"]).lower()
     nivel = int(fatos["nivel"])
-    limites = {"guerreiro": (3, 4, 5, 6), "barbaro": (2, 3, 4, 4), "monge": (2, 3, 4, 4), "ladino": (2, 2, 2, 2)}
+    limites = {"guerreiro": (3, 4, 5, 6), "barbaro": (2, 3, 4, 4), "paladino": (2, 3, 4, 4), "guardiao": (2, 3, 4, 4), "ladino": (2, 2, 2, 2)}
     tabela = limites.get(classe, (0, 0, 0, 0))
     quantidade = tabela[0] if nivel < 4 else tabela[1] if nivel < 10 else tabela[2] if nivel < 16 else tabela[3]
     escolhidas = list(fatos.get("armas", []))
@@ -40,7 +40,7 @@ def resolver_furia(fatos: dict) -> dict:
     if acao == "ativar":
         if fatos.get("armadura_pesada", False) or fatos.get("incapacitado", False):
             return {"resultado": "bloqueado", "motivo": "armadura_pesada_ou_incapacitado"}
-        max_usos = 2 if nivel < 3 else 3 if nivel < 11 else 4 if nivel < 17 else 5 if nivel < 20 else 6
+        max_usos = 2 if nivel < 3 else 3 if nivel < 6 else 4 if nivel < 12 else 5 if nivel < 17 else 6
         dano = 2 if nivel < 9 else 3 if nivel < 16 else 4
         return {"resultado": "ativada", "caracteristica": "furia", "usos_maximos": max_usos,
                 "dano_adicional": dano, "resistencias": ["contundente", "cortante", "perfurante"],
