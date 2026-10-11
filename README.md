@@ -10,7 +10,3 @@ Biblioteca de referência do projeto de IA para Dungeons & Dragons.
 - Ravenloft
 - Dragon Delves
 
-
-## Biblioteca
-
-[Abrir a biblioteca](./biblioteca.html)
