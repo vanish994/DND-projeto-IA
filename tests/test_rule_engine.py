@@ -949,6 +949,29 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "condition_effect", "action": "move", "target_conditions": ["exhaustion"], "exhaustion_niveis": 3})
         self.assertEqual(result.outcome["modificador_d20"], -6)
 
+    def test_tactical_grid_movement_respects_difficult_terrain_and_blockers(self):
+        result = self.engine.evaluate({"type": "tactical_movement", "caminho": [(0, 0), (1, 0), (2, 0)], "terreno_dificil": [(1, 0)], "movimento_disponivel": 4})
+        self.assertEqual(result.outcome["custo"], 3)
+        blocked = self.engine.evaluate({"type": "tactical_movement", "caminho": [(0, 0), (1, 0)], "bloqueados": [(1, 0)]})
+        self.assertEqual(blocked.outcome["motivo"], "casula_bloqueada")
+
+    def test_tactical_line_and_flanking(self):
+        blocked = self.engine.evaluate({"type": "tactical_line", "origem": (0, 0), "alvo": (3, 0), "bloqueados": [(1, 0)]})
+        self.assertEqual(blocked.outcome["resultado"], "bloqueada")
+        flank = self.engine.evaluate({"type": "tactical_flanking", "atacante": (0, 1), "alvo": (1, 1), "aliados": [(2, 1)]})
+        self.assertTrue(flank.outcome["vantagem"])
+
+    def test_tactical_attack_combines_cover_range_and_flanking(self):
+        result = self.engine.evaluate({"type": "tactical_attack", "distancia": 9, "alcance": 9, "ataque_a_distancia": True, "cobertura": "meia", "atacante": (0, 1), "alvo_posicao": (1, 1), "aliados": [(2, 1)]})
+        self.assertEqual(result.outcome["estado_jogada"], "vantagem")
+        self.assertEqual(result.outcome["bonus_ca_por_cobertura"], 2)
+        blocked = self.engine.evaluate({"type": "tactical_attack", "distancia": 9, "alcance": 9, "cobertura": "total"})
+        self.assertEqual(blocked.outcome["motivo"], "cobertura_total")
+
+    def test_tactical_terrain_costs_rushing_and_crawling(self):
+        result = self.engine.evaluate({"type": "tactical_terrain", "distancia": 3, "terreno_dificil": True, "rastejando": True, "movimento_disponivel": 12})
+        self.assertEqual(result.outcome["custo"], 12)
+
 
 if __name__ == "__main__":
     unittest.main()

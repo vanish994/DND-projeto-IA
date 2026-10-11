@@ -74,6 +74,10 @@ Implementado `economy.py` com conversão entre PC, PP, PE, PO e PL; compra e ven
 
 Completo o módulo `conditions.py` com as 16 condições do Livro do Jogador 2024, normalização de nomes em português/inglês, imunidades, duração, aplicação repetida, remoção, redução por turnos e níveis de Exaustão. Os efeitos derivados agora abrangem vantagem/desvantagem, acertos críticos automáticos, deslocamento 0, ações e reações bloqueadas, falhas automáticas de salvaguardas de Força/Destreza, concentração, fala, sentidos, ataques contra Caído, efeitos de Cego/Invisível, Petrificado, Contido, Atordoado, Inconsciente, Envenenado, Amedrontado, Enfeitiçado, Agarrado, Lento e Exaustão.
 
+## Combate tático avançado
+
+Criado `tactical.py` para resolver deslocamento em grade, casulas bloqueadas, terreno difícil, rastejar, linha de efeito, cobertura, flanqueamento e ataques táticos. O ataque tático combina alcance normal/máximo, desvantagem por distância, cobertura parcial ou de três quartos, cobertura total, bloqueadores na linha, vantagem de flanqueamento e movimento restante. O módulo mantém a compatibilidade com as regras geométricas e de movimento existentes.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.
