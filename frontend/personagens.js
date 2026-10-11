@@ -21,7 +21,7 @@
     pequeno: 'Pequeno', medio: 'Médio', pequeno_ou_medio: 'Pequeno ou Médio',
     iniciado_em_magia: 'Iniciado em Magia', artifista: 'Artifista', atacante_selvagem: 'Atacante Selvagem', valentao_de_taverna: 'Valentão de Taverna', olho_agucado: 'Olho Aguçado', dadiva_sombria: 'Dádiva Sombria',
     anatomia_aberrante: 'Anatomia Aberrante', sombra_viva: 'Sombra Viva', ser_simbiotico: 'Ser Simbiótico', alma_ecoante: 'Alma Ecoante', andarilho_das_brumas: 'Andarilho das Brumas', toque_da_morte: 'Toque da Morte', sussurros_reunidos: 'Sussurros Reunidos', segunda_pele: 'Segunda Pele', observadores: 'Observadores',
-    intuicao: 'Intuição', religiao: 'Religião', investigacao: 'Investigação', persuasao: 'Persuasão', atuacao: 'Atuação', enganacao: 'Enganação', prestidigitacao: 'Prestidigitação', percepcao: 'Percepção', lidar_com_animais: 'Lidar com Animais', sobrevivencia: 'Sobrevivência', historia: 'História', intimidacao: 'Intimidação',
+    intuicao: 'Intuição', religiao: 'Religião', investigacao: 'Investigação', persuasao: 'Persuasão', atuacao: 'Atuação', enganacao: 'Enganação', prestidigitacao: 'Prestidigitação', percepcao: 'Percepção', lidar_com_animais: 'Lidar com Animais', adestrar_animais: 'Lidar com Animais', arcanismo: 'Arcanismo', acrobacia: 'Acrobacia', atletismo: 'Atletismo', furtividade: 'Furtividade', medicina: 'Medicina', natureza: 'Natureza', sobrevivencia: 'Sobrevivência', historia: 'História', intimidacao: 'Intimidação',
     forca_ou_destreza: 'Força ou Destreza', destreza_e_sabedoria: 'Destreza e Sabedoria', forca_ou_destreza_e_carisma: 'Força ou Destreza, e Carisma',
   };
   const PASSOS = ['Nome', 'Espécie', 'Classe', 'Proficiências', 'Antecedente', 'Atributos', 'Revisão'];
