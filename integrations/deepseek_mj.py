@@ -175,7 +175,7 @@ class DeepSeekMJ:
                 if pericia_bruta:
                     pericia = str(pericia_bruta).strip().lower().replace(" ", "_")
                     aliases = {
-                        "athletics": "atletismo", "acrobatics": "acrobacia", "animal_handling": "adestrar_animais",
+                        "athletics": "atletismo", "acrobatics": "acrobacia", "animal_handling": "adestrar_animais", "lidar_com_animais": "adestrar_animais",
                         "sleight_of_hand": "prestidigitacao", "stealth": "furtividade", "arcana": "arcanismo",
                         "history": "historia", "insight": "intuicao", "intimidation": "intimidacao",
                         "investigation": "investigacao", "medicine": "medicina", "nature": "natureza",
@@ -201,7 +201,10 @@ class DeepSeekMJ:
                             return {"resultado": "bloqueado", "motivo": "atributo_incompativel_com_pericia", "pericia": pericia, "atributo_correto": atributo}
                     facts["skill"] = pericia
                     facts["ability"] = atributo
-                    proficiencias = {str(p).strip().lower().replace(" ", "_") for p in (personagem.get("pericias") or [])}
+                    proficiencias = {
+                        aliases.get(str(p).strip().lower().replace(" ", "_"), str(p).strip().lower().replace(" ", "_"))
+                        for p in (personagem.get("pericias") or [])
+                    }
                     proficiente = pericia in proficiencias
                 else:
                     atributo_bruto = facts.get("ability", facts.get("atributo"))
