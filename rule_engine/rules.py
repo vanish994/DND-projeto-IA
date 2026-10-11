@@ -9,6 +9,7 @@ from .combat_special import (
     resolver_escape_agarramento,
 )
 from .engine import Rule, RuleEngine
+from .ability_checks import resolver_teste_habilidade, resolver_teste_passivo, resolver_teste_grupo, resolver_inspiracao_heroica
 from .combat_geometry import (
     resolver_ataque_geometria, resolver_alcance, resolver_cobertura,
     resolver_queda, resolver_linha_de_visao, espaco_por_tamanho,
@@ -911,4 +912,29 @@ def build_default_engine() -> RuleEngine:
         priority=80, when=lambda f: f["type"] == "class_feature",
         resolve=resolver_caracteristica, source="D&D 2024 — características de classe",
     ))
+    engine.register(Rule(
+        rule_id="ability.skill-check",
+        description="Resolve teste ativo de habilidade com perícia, proficiência, vantagem e modificadores.",
+        priority=75, when=lambda f: f["type"] == "skill_check",
+        resolve=resolver_teste_habilidade, source="D&D 2024 — Testes de D20 e perícias",
+    ))
+    engine.register(Rule(
+        rule_id="ability.passive-check",
+        description="Calcula teste passivo com ajuste de vantagem ou desvantagem.",
+        priority=75, when=lambda f: f["type"] == "passive_check",
+        resolve=resolver_teste_passivo, source="D&D 2024 — Testes passivos",
+    ))
+    engine.register(Rule(
+        rule_id="ability.group-check",
+        description="Resolve teste de grupo pela regra de pelo menos metade dos participantes.",
+        priority=75, when=lambda f: f["type"] == "group_check",
+        resolve=resolver_teste_grupo, source="D&D 2024 — Testes em grupo",
+    ))
+    engine.register(Rule(
+        rule_id="heroic-inspiration.reroll",
+        description="Consome Inspiração Heroica para rerrolar um d20 e usar o novo resultado.",
+        priority=75, when=lambda f: f["type"] == "heroic_inspiration",
+        resolve=resolver_inspiracao_heroica, source="D&D 2024 — Inspiração Heroica",
+    ))
+
     return engine
