@@ -977,6 +977,21 @@ class RuleEngineTests(unittest.TestCase):
         result = self.engine.evaluate({"type": "rest", "estado": estado, "rest_type": "longo", "duration_hours": 2, "interrupted": True, "hit_dice_rolls": [6]})
         self.assertEqual(result.outcome["resultado"], "beneficios_de_descanso_curto_antes_da_interrupcao")
         self.assertEqual(estado.dados_vida_disponiveis, 2)
+    def test_hide_action_requires_cover_and_line_of_sight_conditions(self):
+        blocked = self.engine.evaluate({"type": "hide_action", "modificador_atributo": 4, "roll": 12})
+        self.assertEqual(blocked.outcome["resultado"], "bloqueado")
+        hidden = self.engine.evaluate({"type": "hide_action", "muito_obscurecido": True, "fora_da_linha_de_visao": True, "modificador_atributo": 4, "proficiente": True, "bonus_proficiencia": 3, "roll": 10})
+        self.assertEqual(hidden.outcome["resultado"], "escondido")
+        self.assertEqual(hidden.outcome["dc_para_encontrar"], 17)
+
+    def test_influence_action_handles_willing_unwilling_and_hesitant(self):
+        willing = self.engine.evaluate({"type": "influence_action", "disposicao": "disposto"})
+        unwilling = self.engine.evaluate({"type": "influence_action", "disposicao": "indisposto"})
+        hesitant = self.engine.evaluate({"type": "influence_action", "disposicao": "hesitante", "interacao": "persuasao", "valor_atributo": 16, "roll": 10, "inteligencia_monstro": 12})
+        self.assertFalse(willing.outcome["teste_realizado"])
+        self.assertFalse(unwilling.outcome["monstro_atende"])
+        self.assertEqual(hesitant.outcome["cd"], 15)
+        self.assertTrue(hesitant.outcome["monstro_atende"])
     def test_short_rest_tracks_spent_hit_dice_and_long_rest_restores_them(self):
         estado = EstadoVital(20, 5, dados_vida_maximos=4)
         self.engine.evaluate({"type": "short_rest", "estado": estado, "hit_dice_rolls": [4, 6], "constitution_modifier": 2, "duration_hours": 1})
