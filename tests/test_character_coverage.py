@@ -20,6 +20,7 @@ class CharacterCoverageTests(unittest.TestCase):
                 "inteligencia": 15, "sabedoria": 12, "carisma": 10,
             },
             "background": "sabio",
+            "equipamento_antecedente": "A",
         })
         self.assertEqual(character.especie, "tiefling")
         self.assertEqual(character.classe, "mago")
