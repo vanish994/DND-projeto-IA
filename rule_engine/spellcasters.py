@@ -45,7 +45,10 @@ def resolver_progressao_conjuracao(fatos: dict) -> dict:
         return {"resultado": "bloqueado", "motivo": "classe_ou_nivel_invalido"}
     atributo = CASTING_ABILITY[classe]
     modificador = _mod(int(fatos.get(atributo, 10)))
-    preparados = max(1, nivel + modificador) if classe in {"clerigo", "druida", "mago"} else max(2, nivel + modificador)
+    magias_bardo = {1: 4, 2: 5, 3: 6, 4: 7, 5: 9, 6: 10, 7: 11, 8: 12,
+                    9: 14, 10: 15, 11: 15, 12: 16, 13: 16, 14: 17,
+                    15: 17, 16: 18, 17: 19, 18: 20, 19: 21, 20: 22}
+    preparados = magias_bardo[nivel] if classe == "bardo" else max(1, nivel + modificador)
     return {"resultado": "resolvido", "classe": classe, "atributo_conjuracao": atributo,
             "espacos": list(FULL_CASTER_SLOTS[nivel]), "magias_preparadas": preparados,
             "truques": _quantidade_truques(classe, nivel),
