@@ -47,6 +47,10 @@ class AntecedentesTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             criar_personagem(fatos(background="sabio", background_increases={"forca": 2, "inteligencia": 1}))
 
+    def test_aumentos_explicitamente_vazios_sao_rejeitados(self):
+        with self.assertRaises(ValueError):
+            criar_personagem(fatos(background="sabio", background_increases={}))
+
     def test_distribuicao_invalida_e_bloqueada(self):
         with self.assertRaises(ValueError):
             criar_personagem(fatos(background="sabio", background_increases={"inteligencia": 3}))
@@ -82,6 +86,15 @@ class AntecedentesTests(unittest.TestCase):
         self.assertIn("observadores", p.talentos)
         with self.assertRaises(ValueError):
             criar_personagem(fatos(background="sabio", background_feat="observadores"))
+
+    def test_dadiva_sombria_exige_contexto_ravenloft(self):
+        from rule_engine.feats import validar_talento
+        self.assertEqual(validar_talento({"talento": "sombra_viva"})["motivo"], "requer_campanha_ravenloft")
+        self.assertEqual(validar_talento({"talento": "sombra_viva", "campanha_ravenloft": True})["resultado"], "disponivel")
+
+    def test_escolha_da_lista_de_iniciado_em_magia_persiste(self):
+        p = criar_personagem(fatos(background="sabio", background_feat="iniciado_em_magia:mago"))
+        self.assertEqual(ficha_personagem(p)["escolhas_talentos"]["iniciado_em_magia"], "mago")
 
     def test_dadivas_sombrias_catalogadas(self):
         self.assertEqual(len(DARK_GIFT_FEATS), 9)
@@ -143,7 +156,11 @@ class BackendPersonagensTests(unittest.TestCase):
         self.assertEqual(p["atributos"]["inteligencia"], 17)
         self.assertEqual(p["pv_atual"], p["pv_maximo"])
         self.assertEqual(len(self.client.get(self.url(), headers=self.h).json()), 1)
-        r = self.client.patch(self.url(f"/{p['id']}"), json={"pv_atual": 999}, headers=self.h)
+        r = self.client.patch(self.url(f"/{p['id']}"), json={"ajuste_pv": -1}, headers=self.h)
+        self.assertEqual(r.json()["pv_atual"], p["pv_maximo"] - 1)
+        r = self.client.patch(self.url(f"/{p['id']}"), json={"ajuste_pv": -1}, headers=self.h)
+        self.assertEqual(r.json()["pv_atual"], p["pv_maximo"] - 2)
+        r = self.client.patch(self.url(f"/{p['id']}"), json={"ajuste_pv": 100}, headers=self.h)
         self.assertEqual(r.json()["pv_atual"], p["pv_maximo"])
         r = self.client.put(self.url(f"/{p['id']}"), json=self.payload(nome="Vex II"), headers=self.h)
         self.assertEqual(r.json()["nome"], "Vex II")
