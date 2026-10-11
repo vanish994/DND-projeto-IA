@@ -735,8 +735,10 @@ def _estado_mapa_normalizado(repo: RepositorioCampanhas, jogador: str, campanha_
             token.update({
                 "name": m["nome"], "hp": max(0, int(token.get("hp", m["pv"]))),
                 "maxHp": int(token.get("maxHp", m["pv"])), "ac": int(m["ca"]),
-                "speed_ft": 30, "str_mod": 2,
-                "proficiency": max(2, 2 + max(0, int(float(m["nd"])) - 1) // 4) if "/" not in str(m["nd"]) else 2,
+                "speed_ft": int(m.get("deslocamento_pes", 30)),
+                "str_mod": int((m.get("modificadores") or {}).get("forca", 2)),
+                "dex_mod": int((m.get("modificadores") or {}).get("destreza", 0)),
+                "proficiency": int(m.get("bonus_proficiencia", max(2, 2 + max(0, int(float(m["nd"])) - 1) // 4) if "/" not in str(m["nd"]) else 2)),
                 "source": "bestiary",
             })
         else:
