@@ -7,7 +7,7 @@ Este arquivo é o mapa de implementação do **Rule Engine**. A biblioteca de li
 | Módulo | Situação | Próxima cobertura |
 |---|---|---|
 | Fundamentos e testes | Em implementação | Atributos, CD, proficiência, vantagem/desvantagem, perícias e interação social |
-| Combate e ações | Parcial | Iniciativa, turnos, ações, movimento, alcance, cobertura e agarrar |
+| Combate e ações | Em implementação | Iniciativa, rodadas, turnos, ações, movimento e Correr já iniciados; faltam alcance, cobertura e agarrar |
 | Vida, dano e descanso | Parcial | PV, PV temporários, resistência, vulnerabilidade, morte, exaustão e descansos |
 | Condições e efeitos | Parcial | Todas as condições, efeitos derivados e término contextual |
 | Conjuração e magias | Parcial | Componentes, preparação, rituais, alvos, áreas, concentração e duração |
@@ -44,3 +44,12 @@ Já existem regras iniciais para testes de atributo, ataques, dano, salvaguardas
 - seleção determinística de d20 com Vantagem e Desvantagem;
 - cancelamento entre Vantagem e Desvantagem;
 - comparação do total com uma CD.
+
+O módulo de combate já inclui:
+
+- ordenação de iniciativa com desempate determinístico;
+- avanço de rodadas e turnos;
+- uma ação, uma ação bônus e uma reação por turno;
+- movimento restante e limite de deslocamento;
+- ação Correr, que concede movimento adicional igual ao deslocamento;
+- estado de surpresa no primeiro turno.

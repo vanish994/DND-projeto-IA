@@ -4,6 +4,8 @@ from rule_engine import (
     bonus_proficiencia,
     build_default_engine,
     modificador_atributo,
+    Participante,
+    RastreadorCombate,
     resolver_teste_d20,
 )
 
@@ -136,6 +138,54 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result.dado_selecionado, 4)
         self.assertFalse(result.vantagem)
         self.assertFalse(result.desvantagem)
+
+    def test_initiative_orders_by_roll_then_tiebreak(self):
+        rastreador = RastreadorCombate([
+            Participante("Goblin", 12, 1),
+            Participante("Aventureiro", 12, 4),
+            Participante("Dragão", 18, 0),
+        ])
+        self.assertEqual([p.identificador for p in rastreador.ordem], ["Dragão", "Aventureiro", "Goblin"])
+
+    def test_round_and_turn_advance_in_order(self):
+        rastreador = RastreadorCombate([
+            Participante("A", 10), Participante("B", 5),
+        ])
+        self.assertEqual(rastreador.iniciar_proximo_turno().identificador, "A")
+        self.assertEqual(rastreador.rodada, 1)
+        self.assertEqual(rastreador.iniciar_proximo_turno().identificador, "B")
+        self.assertEqual(rastreador.rodada, 1)
+        self.assertEqual(rastreador.iniciar_proximo_turno().identificador, "A")
+        self.assertEqual(rastreador.rodada, 2)
+
+    def test_turn_resources_are_limited_and_reset_next_turn(self):
+        rastreador = RastreadorCombate([Participante("A", 10)])
+        rastreador.iniciar_proximo_turno()
+        rastreador.gastar("acao")
+        with self.assertRaises(ValueError):
+            rastreador.gastar("acao")
+        rastreador.iniciar_proximo_turno()
+        rastreador.gastar("acao")
+
+    def test_movement_and_dash(self):
+        rastreador = RastreadorCombate(
+            [Participante("A", 10)], deslocamentos={"A": 9}
+        )
+        turno = rastreador.iniciar_proximo_turno()
+        self.assertEqual(turno.movimento_restante, 9)
+        rastreador.mover(3)
+        self.assertEqual(rastreador.correr(), 15)
+        rastreador.mover(15)
+        self.assertEqual(turno.movimento_restante, 0)
+
+    def test_surprised_participant_cannot_act_on_first_turn(self):
+        rastreador = RastreadorCombate([
+            Participante("A", 10, surpreendido=True),
+        ], deslocamentos={"A": 9})
+        turno = rastreador.iniciar_proximo_turno()
+        self.assertTrue(turno.surpreendido)
+        self.assertFalse(turno.acao_disponivel)
+        self.assertEqual(turno.movimento_restante, 0)
 
 
 if __name__ == "__main__":
