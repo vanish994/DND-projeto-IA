@@ -992,7 +992,7 @@ def salvar_mapa_tatico(
             anterior = tokens_anteriores.get(token.id, {})
             hp_maximo = int(m["pv"])
             hp_atual = max(0, min(hp_maximo, int(anterior.get("hp", hp_maximo)))) if anterior.get("monster_name") == m["nome"] else hp_maximo
-            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": hp_atual, "maxHp": hp_maximo, "conditions": list(anterior.get("conditions") or []), "condition_durations": dict(anterior.get("condition_durations") or {})})
+            tokens.append({"id": token.id, "kind": "enemy", "monster_name": m["nome"], "x": token.x, "y": token.y, "hp": hp_atual, "maxHp": hp_maximo, "conditions": list(anterior.get("conditions") or []), "condition_durations": dict(anterior.get("condition_durations") or {}), "condition_save_to_end": dict(anterior.get("condition_save_to_end") or {})})
         else:
             raise HTTPException(status_code=422, detail="Use um personagem ou monstro do catálogo")
     estado = {"title": pedido.title, "terrain": pedido.terrain, "tokens": tokens, "bloqueados": [], "terreno_dificil": []}
@@ -1128,7 +1128,12 @@ def avancar_turno_tatico(
             if sucesso:
                 if estado_condicoes:
                     estado_condicoes.remover(condicao)
-                    _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha_atual, estado_condicoes)
+                    ficha_atual = _salvar_condicoes_ficha(repo, jogador, campanha_id, ficha_atual, estado_condicoes)
+                    metadados = dict(ficha_atual.get("salvaguardas_fim_condicoes") or {})
+                    metadados.pop(condicao, None)
+                    dados_ficha = {k: v for k, v in ficha_atual.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+                    dados_ficha["salvaguardas_fim_condicoes"] = metadados
+                    repo.atualizar_dados_ficha(jogador, campanha_id, ficha_atual["id"], dados_ficha)
                 elif token_bruto_atual:
                     token_bruto_atual["conditions"] = [
                         c for c in token_bruto_atual.get("conditions", [])
