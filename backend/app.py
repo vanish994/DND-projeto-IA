@@ -11,7 +11,7 @@ import os
 import secrets
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -32,6 +32,8 @@ from rule_engine import (
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine.spells import listar_magias, obter_magia
+from rule_engine.character import PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE
+from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice, validar_escolhas_artifice
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +113,7 @@ class NovoPersonagem(BaseModel):
     antecedente: str
     aumentos_antecedente: dict[str, int]
     talento_antecedente: str | None = None
+    pericias_classe: list[str] | None = Field(default=None, max_length=10)
 
 
 class AtualizarPersonagem(BaseModel):
@@ -169,6 +172,7 @@ def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
             "background": dados.antecedente,
             "background_increases": dados.aumentos_antecedente,
             "background_feat": dados.talento_antecedente,
+            **({"class_skill_proficiencies": dados.pericias_classe} if dados.pericias_classe is not None else {}),
         })
     except (KeyError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc).strip("'\"")) from exc
@@ -362,14 +366,37 @@ def catalogo_personagens() -> dict:
         "antecedentes": ANTECEDENTES,
         "talentos_origem": sorted(ORIGIN_FEATS),
         "dadivas_sombrias": sorted(DARK_GIFT_FEATS),
+        "pericias_classe_opcoes": {classe: sorted(opcoes) for classe, opcoes in PERICIAS_CLASSE_OPCOES.items()},
+        "quantidade_pericias_classe": dict(QUANTIDADE_PERICIAS_CLASSE),
         "matriz_padrao": sorted(gerar_atributos_matriz_padrao().values(), reverse=True),
         "compra_pontos": {"total": 27, "custos": {8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}},
     }
 
 
 @app.get("/v1/catalogo/magias")
-def catalogo_magias() -> list[dict]:
+def catalogo_magias(
+    classe: str | None = Query(default=None, max_length=40),
+    nivel: int = Query(default=1, ge=1, le=20),
+) -> list[dict]:
+    classe_normalizada = (classe or "").strip().lower().replace("í", "i").replace(" ", "")
+    if classe_normalizada in {"artifice", "artífice"}:
+        return listar_magias_artifice(nivel)
     return listar_magias()
+
+
+@app.get("/v1/catalogo/conjuracao")
+def catalogo_conjuracao(
+    classe: str = Query(min_length=1, max_length=40),
+    nivel: int = Query(default=1, ge=1, le=20),
+    inteligencia: int = Query(default=10, ge=1, le=30),
+) -> dict:
+    classe_normalizada = classe.strip().lower().replace("í", "i").replace(" ", "")
+    if classe_normalizada not in {"artifice", "artífice"}:
+        return {"resultado": "nao_implementado", "motivo": "progressao_de_conjuracao_ainda_nao_validada_para_esta_classe"}
+    try:
+        return progresso_artifice(nivel, inteligencia)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/v1/campanhas/{campanha_id}/personagens")
@@ -464,6 +491,17 @@ def atualizar_magias_personagem(
             raise HTTPException(status_code=422, detail=f"Magia preparada inválida: {nome_magia}")
     if any(not isinstance(n, int) or n < 0 or n > 20 for n in dados.espacos_totais.values()):
         raise HTTPException(status_code=422, detail="Quantidade de espaços inválida")
+    if personagem.get("classe") == "artifice":
+        try:
+            validar_escolhas_artifice(
+                int(personagem.get("nivel", 1)),
+                int((personagem.get("modificadores") or {}).get("inteligencia", 0)) + 10,
+                truques,
+                preparadas,
+                dados.espacos_totais,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     ficha = {k: v for k, v in personagem.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
     ficha["conjuracao"] = {
         "truques": truques,
