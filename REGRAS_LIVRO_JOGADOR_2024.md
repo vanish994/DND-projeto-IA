@@ -54,6 +54,10 @@ Iniciado o núcleo de Mago, Clérigo, Druida e Bardo. O motor agora resolve a pr
 
 Implementados Bruxo, Feiticeiro e Guardião. O Bruxo agora possui progressão de Magia de Pacto, quantidade de Invocações Místicas, Astúcia Mágica e Arcana Mística. O Feiticeiro possui Pontos de Feitiçaria, Metamagia, Feitiçaria Inata, Restauração Feiticeira, Feitiçaria Encarnada e Apoteose Arcana. O Guardião possui progressão de espaços, Inimigo Favorito, Explorador Hábil, Incansável, Predador Implacável e Véu da Natureza. Permanecem para lotes posteriores os efeitos individuais de invocações, opções de Metamagia, subclasses e listas detalhadas de magias.
 
+## Invocações Místicas do Bruxo
+
+O catálogo do PHB 2024 foi integrado em `warlock_invocations.py`, com 27 opções, níveis mínimos, requisitos de Pacto da Lâmina/Corrente/Tomo, requisitos de truques, invocações repetíveis e bloqueio de duplicatas. O motor resolve os efeitos detalhados de Explosão Agonizante/Repulsiva, Lança Mística, Lâmina Sedenta/Devoradora, Punição Mística, Sorvedouro de Vida, Investimento do Mestre da Corrente, Presentes, Pactos, visões, conjurações sem espaço, Mente Mística e demais opções catalogadas.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

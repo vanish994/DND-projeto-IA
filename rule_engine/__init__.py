@@ -31,6 +31,7 @@ from .martial import resolver_ataque_extra, resolver_ataque_furtivo, resolver_de
 from .martial_subclasses import SUBCLASS_FEATURES, caracteristicas_subclasse, resolver_subclasse_marcial
 from .spellcasters import resolver_canalizar_divindade, resolver_forma_selvagem, resolver_inspiracao_bardo, resolver_livro_de_magias, resolver_progressao_conjuracao
 from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guardiao
+from .warlock_invocations import INVOCATIONS, resolver_invocacao, validar_invocacao
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -64,6 +65,7 @@ __all__ = [
     "SUBCLASS_FEATURES", "caracteristicas_subclasse", "resolver_subclasse_marcial",
     "resolver_canalizar_divindade", "resolver_forma_selvagem", "resolver_inspiracao_bardo", "resolver_livro_de_magias", "resolver_progressao_conjuracao",
     "resolver_bruxo", "resolver_feiticeiro", "resolver_guardiao",
+    "INVOCATIONS", "resolver_invocacao", "validar_invocacao",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
     "resolver_descanso",

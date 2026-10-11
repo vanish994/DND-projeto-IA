@@ -36,6 +36,7 @@ from .spellcasters import (
     resolver_progressao_conjuracao,
 )
 from .advanced_casters import resolver_bruxo, resolver_feiticeiro, resolver_guardiao
+from .warlock_invocations import resolver_invocacao, validar_invocacao
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -778,6 +779,18 @@ def build_default_engine() -> RuleEngine:
         description="Resolve Magia de Pacto, Invocações, Astúcia Mágica e Arcana Mística.",
         priority=60, when=lambda f: f["type"] == "advanced_caster_feature" and f.get("classe") == "bruxo",
         resolve=resolver_bruxo, source="D&D 2024 — Bruxo",
+    ))
+    engine.register(Rule(
+        rule_id="warlock.invocation.validate",
+        description="Valida nome, nível, pacto, truque e repetição de uma Invocação Mística.",
+        priority=70, when=lambda f: f["type"] == "warlock_invocation" and f.get("operation", "resolve") == "validate",
+        resolve=validar_invocacao, source="D&D 2024 — Invocações Místicas",
+    ))
+    engine.register(Rule(
+        rule_id="warlock.invocation.resolve",
+        description="Resolve o efeito detalhado de uma Invocação Mística do Bruxo.",
+        priority=70, when=lambda f: f["type"] == "warlock_invocation" and f.get("operation", "resolve") != "validate",
+        resolve=resolver_invocacao, source="D&D 2024 — Invocações Místicas",
     ))
     engine.register(Rule(
         rule_id="sorcerer.features",

@@ -816,6 +816,38 @@ class RuleEngineTests(unittest.TestCase):
         self.assertTrue(result.outcome["invisivel"])
         self.assertEqual(result.outcome["usos"], 3)
 
+    def test_all_phb_warlock_invocations_are_catalogued(self):
+        from rule_engine import INVOCATIONS
+        self.assertGreaterEqual(len(INVOCATIONS), 27)
+        for name in ("explosao_agonizante", "lamina_sedenta", "pacto_da_corrente", "pacto_da_lamina", "pacto_do_tomo", "visao_da_bruxa", "vigor_infero"):
+            self.assertIn(name, INVOCATIONS)
+
+    def test_invocation_prerequisites_block_low_level_and_missing_pact(self):
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "visao_da_bruxa", "nivel": 9, "operation": "validate"})
+        self.assertEqual(result.outcome["resultado"], "bloqueado")
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "lamina_sedenta", "nivel": 5, "operation": "validate"})
+        self.assertEqual(result.outcome["motivo"], "pacto_obrigatorio")
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "explosao_agonizante", "nivel": 2, "truque_causa_dano": False, "operation": "validate"})
+        self.assertEqual(result.outcome["motivo"], "truque_de_dano_obrigatorio")
+
+    def test_invocation_effects_cover_blast_blade_vision_and_familiar(self):
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "explosao_agonizante", "nivel": 2, "carisma": 18, "truque_causa_dano": True})
+        self.assertEqual(result.outcome["bonus_dano"], 4)
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "explosao_repulsiva", "nivel": 2, "truque_exige_jogada_ataque": True})
+        self.assertEqual(result.outcome["empurra_metros"], 3)
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "visao_diabolica", "nivel": 2})
+        self.assertEqual(result.outcome["visao_escuro_m"], 36)
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "investimento_do_mestre_da_corrente", "nivel": 5, "pactos": ["pacto_da_corrente"]})
+        self.assertTrue(result.outcome["resistencia_familiar_reacao"])
+
+    def test_pact_invocations_and_smite_effects(self):
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "pacto_da_lamina", "nivel": 1})
+        self.assertEqual(result.outcome["atributo_ataque_dano"], "carisma")
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "lamina_sedenta", "nivel": 5, "pactos": ["pacto_da_lamina"]})
+        self.assertEqual(result.outcome["ataques_com_arma_pacto"], 2)
+        result = self.engine.evaluate({"type": "warlock_invocation", "invocacao": "punicao_mistica", "nivel": 5, "pactos": ["pacto_da_lamina"], "circulo_espaco": 3, "tamanho_alvo": "Grande"})
+        self.assertEqual(result.outcome["dano_energetico"], 32)
+
 
 if __name__ == "__main__":
     unittest.main()
