@@ -153,6 +153,10 @@ class AtualizarMagiasPersonagem(BaseModel):
     espacos_totais: dict[str, int] = Field(default_factory=dict)
 
 
+class AtualizarProficienciasPersonagem(BaseModel):
+    pericias_classe: list[str] = Field(min_length=1, max_length=10)
+
+
 def _resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
     """Toda ficha passa pelo Rule Engine; nada é calculado no cliente."""
     try:
@@ -467,6 +471,32 @@ def atualizar_pv_personagem(
 ) -> dict:
     _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
     atualizado = repo.ajustar_pv_personagem(jogador, campanha_id, personagem_id, dados.ajuste_pv)
+    if atualizado is None:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    return atualizado
+
+
+@app.patch("/v1/campanhas/{campanha_id}/personagens/{personagem_id}/proficiencias")
+def atualizar_proficiencias_personagem(
+    campanha_id: str,
+    personagem_id: str,
+    dados: AtualizarProficienciasPersonagem,
+    jogador: str = Depends(obter_jogador),
+    repo: RepositorioCampanhas = Depends(obter_repositorio),
+) -> dict:
+    personagem = _personagem_ou_404(repo, jogador, campanha_id, personagem_id)
+    entrada = dict(personagem.get("entrada") or {})
+    entrada["pericias_classe"] = dados.pericias_classe
+    try:
+        novo = NovoPersonagem.model_validate(entrada)
+        nova_entrada, nova_ficha = _resolver_ficha(novo)
+    except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    atualizado = repo.atualizar_personagem(
+        jogador, campanha_id, personagem_id, entrada=nova_entrada, ficha=nova_ficha
+    )
     if atualizado is None:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
     return atualizado
