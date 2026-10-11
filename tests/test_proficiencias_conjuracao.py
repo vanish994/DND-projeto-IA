@@ -22,7 +22,7 @@ class ProficienciasClasseTests(unittest.TestCase):
             },
             "background": "investigador",
             "class_skill_proficiencies": ["arcanismo", "historia"],
-            "artisan_tool_proficiency": "Ferramentas de Funileiro",
+            "artisan_tool_proficiency": "Ferramentas de Carpinteiro",
         }
         dados.update(extra)
         return dados
