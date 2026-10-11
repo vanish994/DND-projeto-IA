@@ -318,5 +318,39 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(response.status_code, 422, response.text)
 
 
+    def test_condicao_persiste_na_ficha_e_bloqueia_ataque_incompativel(self):
+        response = self.client.post(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}/condicoes",
+            headers=self.headers,
+            json={"operacao": "apply", "condicao": "paralisado", "duracao": 2},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        ficha = self.client.get(
+            f"/v1/campanhas/{self.cid}/personagens/{self.hero['id']}", headers=self.headers
+        ).json()
+        self.assertIn("paralisado", ficha["condicoes_ativas"])
+        self.assertEqual(ficha["duracoes_condicoes"]["paralisado"], 2)
+        self.save_encounter()
+        ataque = self.client.post(self.url + "/atacar", headers=self.headers, json={
+            "atacante_id": "heroi-vex", "alvo_id": "inimigo-bandido",
+        })
+        self.assertEqual(ataque.status_code, 422, ataque.text)
+        self.assertEqual(ataque.json()["detail"]["motivo"], "atacante_incapacitado")
+
+    def test_concentracao_e_encerrada_apos_salvaguarda_falha_por_dano(self):
+        ficha = self.repo.obter_personagem("jogador-mapa", self.cid, self.hero["id"])
+        dados = {k: v for k, v in ficha.items() if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}}
+        dados["concentrando"] = "Benção"
+        self.repo.atualizar_dados_ficha("jogador-mapa", self.cid, self.hero["id"], dados)
+        with patch.object(backend_app.secrets, "randbelow", return_value=0):
+            resultado = backend_app._resolver_concentracao_apos_dano(
+                self.repo, "jogador-mapa", self.cid, self.hero["id"], 12
+            )
+        self.assertEqual(resultado["resultado"], "falha")
+        self.assertFalse(resultado["concentracao_mantida"])
+        ficha_final = self.repo.obter_personagem("jogador-mapa", self.cid, self.hero["id"])
+        self.assertIsNone(ficha_final["concentrando"])
+
+
 if __name__ == "__main__":
     unittest.main()
