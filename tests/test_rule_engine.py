@@ -470,6 +470,73 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result.outcome["resultado"], "destruido")
         self.assertEqual(result.outcome["pv_restantes"], 0)
 
+    def test_all_player_handbook_conditions_are_available(self):
+        from rule_engine import CONDICOES
+        self.assertEqual(len(CONDICOES), 16)
+        self.assertIn("cego", CONDICOES)
+        self.assertIn("lento", CONDICOES)
+        self.assertIn("inconsciente", CONDICOES)
+
+    def test_condition_state_applies_immunity_and_expires_duration(self):
+        from rule_engine import EstadoCondicoes
+        estado = EstadoCondicoes(imunidades={"envenenado"})
+        immune = self.engine.evaluate({
+            "type": "condition_state", "estado": estado,
+            "operation": "apply", "condition": "envenenado", "duration": 2,
+        })
+        self.assertEqual(immune.outcome["resultado"], "não_aplicada")
+        applied = self.engine.evaluate({
+            "type": "condition_state", "estado": estado,
+            "operation": "apply", "condition": "cego", "duration": 2,
+        })
+        self.assertEqual(applied.outcome["resultado"], "aplicada")
+        tick = self.engine.evaluate({
+            "type": "condition_state", "estado": estado,
+            "operation": "tick", "units": 2,
+        })
+        self.assertEqual(tick.outcome["encerradas"], ["cego"])
+
+    def test_condition_effects_block_actions_movement_and_speech(self):
+        result = self.engine.evaluate({
+            "type": "condition_effect", "action": "move",
+            "target_conditions": ["incapacitated", "grappled", "deafened"],
+        })
+        self.assertFalse(result.outcome["pode_mover"])
+        self.assertFalse(result.outcome["pode_realizar_acoes"])
+        self.assertFalse(result.outcome["pode_falar"])
+        self.assertFalse(result.outcome["pode_ouvir"])
+
+    def test_paralyzed_target_fails_strength_and_dexterity_saves_and_is_critically_hit(self):
+        result = self.engine.evaluate({
+            "type": "condition_effect", "action": "attack",
+            "target_conditions": ["paralyzed"], "distance": "corpo_a_corpo",
+        })
+        self.assertTrue(result.outcome["acerto_critico_automatico"])
+        saves = self.engine.evaluate({
+            "type": "condition_effect", "action": "save",
+            "target_conditions": ["paralyzed"],
+        })
+        self.assertTrue(saves.outcome["falha_salvaguardas_forca_destreza"])
+
+    def test_invisible_and_blinded_conditions_create_opposing_attack_effects(self):
+        result = self.engine.evaluate({
+            "type": "condition_effect", "action": "attack",
+            "attacker_conditions": ["blinded"], "target_conditions": ["invisible"],
+        })
+        self.assertEqual(result.outcome["resultado"], "normal")
+
+    def test_frightened_charmed_prone_slowed_and_exhaustion_have_effects(self):
+        result = self.engine.evaluate({
+            "type": "condition_effect", "action": "move",
+            "target_conditions": ["frightened", "charmed", "prone", "slowed", "exhaustion"],
+            "exhaustion_niveis": 2,
+        })
+        self.assertTrue(result.outcome["não_pode_se_aproximar_da_fonte"])
+        self.assertTrue(result.outcome["não_pode_atacar_o_enfeiticador"])
+        self.assertEqual(result.outcome["movimento_para_levantar"], "metade_do_deslocamento")
+        self.assertTrue(result.outcome["deslocamento_reduzido"])
+        self.assertEqual(result.outcome["modificador_d20"], -4)
+
 
 if __name__ == "__main__":
     unittest.main()

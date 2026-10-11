@@ -17,6 +17,7 @@ from .combat_movement import (
     resolver_ataque_subaquatico, resolver_montaria, resolver_movimento_especial,
     resolver_objeto, resolver_sentidos,
 )
+from .conditions import resolver_efeitos_condicao, resolver_estado_condicao
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -312,6 +313,22 @@ def build_default_engine() -> RuleEngine:
             "type": f["type"], "result": "not_active", "condition": f["condition"],
         },
         source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.state",
+        description="Aplica, remove, consulta e atualiza a duração de condições persistentes.",
+        priority=110,
+        when=lambda f: f["type"] == "condition_state",
+        resolve=resolver_estado_condicao,
+        source="D&D 2024 — condições",
+    ))
+    engine.register(Rule(
+        rule_id="condition.effects.complete",
+        description="Resolve os efeitos completos das condições sobre ações, movimento e sentidos.",
+        priority=110,
+        when=lambda f: f["type"] == "condition_effect",
+        resolve=resolver_efeitos_condicao,
+        source="D&D 2024 — efeitos de condições",
     ))
     engine.register(Rule(
         rule_id="condition.attack.cancelled",

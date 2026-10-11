@@ -15,6 +15,10 @@ from .combat_movement import (
     custo_movimento, resolver_ataque_subaquatico, resolver_montaria,
     resolver_movimento_especial, resolver_objeto, resolver_sentidos,
 )
+from .conditions import (
+    CONDICOES, EstadoCondicoes, normalizar_condicao,
+    resolver_efeitos_condicao, resolver_estado_condicao,
+)
 from .rules import build_default_engine
 from .turns import EstadoTurno, Participante, RastreadorCombate, ordenar_iniciativa
 from .survival import (
@@ -33,6 +37,8 @@ __all__ = [
     "resolver_linha_de_visao", "resolver_queda",
     "custo_movimento", "resolver_ataque_subaquatico", "resolver_montaria",
     "resolver_movimento_especial", "resolver_objeto", "resolver_sentidos",
+    "CONDICOES", "EstadoCondicoes", "normalizar_condicao",
+    "resolver_efeitos_condicao", "resolver_estado_condicao",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",
     "descanso_curto", "descanso_longo", "salvaguarda_contra_morte", "estabilizar",
     "resolver_descanso",

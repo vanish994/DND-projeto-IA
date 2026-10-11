@@ -18,6 +18,10 @@ O núcleo geométrico foi concluído com distância em grade, espaço por tamanh
 
 O **Bloco 2 está encerrado no nível do núcleo**. A integração com o catálogo de criaturas, mapas, obstáculos e características de classe será feita pelos módulos que consumirem essas resoluções.
 
+## Bloco 3 — condições e efeitos
+
+O Bloco 3 foi iniciado com as 16 condições do Livro do Jogador 2024: Cego, Enfeitiçado, Surdo, Exaustão, Amedrontado, Agarrado, Incapacitado, Invisível, Paralisado, Petrificado, Envenenado, Caído, Contido, Lento, Atordoado e Inconsciente. O núcleo inclui estado persistente, imunidade, duração, remoção e efeitos sobre ações, movimento, fala, sentidos, salvaguardas e ataques. A cobertura de interações com concentração, magias específicas e características de classe será refinada nos blocos de Magias e Personagens.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.
