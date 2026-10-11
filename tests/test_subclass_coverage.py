@@ -43,5 +43,15 @@ class SubclassCoverageTruthfulnessTests(unittest.TestCase):
         self.assertEqual(result["motivo"], "caracteristica_ainda_nao_disponivel")
 
 
+    def test_tree_of_world_features_do_not_use_generic_success_fallback(self):
+        result = resolver_subclasse_marcial({
+            "subclasse": "trilha_da_arvore_do_mundo",
+            "nivel": 3,
+            "caracteristica": "vitalidade_da_arvore",
+        })
+        self.assertEqual(result["resultado"], "nao_implementado")
+        self.assertEqual(result["motivo"], "caracteristica_catalogada_sem_resolver_especifico")
+
+
 if __name__ == "__main__":
     unittest.main()
