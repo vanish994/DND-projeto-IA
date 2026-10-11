@@ -60,6 +60,7 @@ def aplicar_dano(
             vulneravel=tipo_dano in set(vulnerabilidades),
             imune=tipo_dano in set(imunidades),
         )
+    antes_pv = estado.pv_atuais
     absorvido = min(estado.pv_temporarios, dano)
     estado.pv_temporarios -= absorvido
     restante = dano - absorvido
@@ -74,7 +75,7 @@ def aplicar_dano(
         resultado["origem"] = origem
     if estado.pv_atuais > 0:
         return resultado
-    if restante >= estado.pv_maximos:
+    if antes_pv > 0 and restante >= estado.pv_maximos:
         estado.morto = True
         resultado["estado"] = "morto"
         return resultado
@@ -150,7 +151,7 @@ def adicionar_exaustao(estado: EstadoVital, niveis: int = 1) -> dict[str, Any]:
     estado.exaustao = min(6, estado.exaustao + max(0, int(niveis)))
     if estado.exaustao >= 6:
         estado.morto = True
-    return {"exaustao": estado.exaustao, "morto": estado.morto, "modificador_d20": -2 * estado.exaustao}
+    return {"exaustao": estado.exaustao, "morto": estado.morto, "modificador_d20": -2 * estado.exaustao, "deslocamento_reduzido_m": 1.5 * estado.exaustao}
 
 
 def descanso_curto(estado: EstadoVital, rolagens_dados_vida: Iterable[int], modificador_constituicao: int = 0) -> dict[str, Any]:
@@ -172,7 +173,6 @@ def descanso_longo(estado: EstadoVital) -> dict[str, Any]:
     if estado.pv_atuais <= 0 or estado.morto:
         raise ValueError("É preciso ter pelo menos 1 PV para um Descanso Longo")
     estado.pv_atuais = estado.pv_maximos
-    estado.pv_temporarios = 0
     estado.exaustao = max(0, estado.exaustao - 1)
     estado.inconsciente = False
     estado.estavel = False
