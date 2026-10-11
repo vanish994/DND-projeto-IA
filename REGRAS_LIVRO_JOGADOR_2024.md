@@ -22,6 +22,10 @@ O **Bloco 2 está encerrado no nível do núcleo**. A integração com o catálo
 
 O Bloco 3 foi iniciado com as 16 condições do Livro do Jogador 2024: Cego, Enfeitiçado, Surdo, Exaustão, Amedrontado, Agarrado, Incapacitado, Invisível, Paralisado, Petrificado, Envenenado, Caído, Contido, Lento, Atordoado e Inconsciente. O núcleo inclui estado persistente, imunidade, duração, remoção e efeitos sobre ações, movimento, fala, sentidos, salvaguardas e ataques. A cobertura de interações com concentração, magias específicas e características de classe será refinada nos blocos de Magias e Personagens.
 
+## Bloco 4 — magias, equipamentos e armas
+
+O núcleo do Bloco 4 foi iniciado com cálculo de CA, armaduras, escudos, proficiência, propriedades de armas, maestria, duas armas Leves, Capacidade de Carga, preparação de magias, componentes, rituais, concentração anterior, alcance de alvos e áreas de efeito. Ainda faltam os catálogos completos, valores de cada item, propriedades individuais, fabricação, classes conjuradoras, progressão de espaços e efeitos específicos de cada magia.
+
 ## O que já está implementado
 
 - Modificador de atributo para valores de 1 a 30.

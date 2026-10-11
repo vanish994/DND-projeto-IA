@@ -18,6 +18,10 @@ from .combat_movement import (
     resolver_objeto, resolver_sentidos,
 )
 from .conditions import resolver_efeitos_condicao, resolver_estado_condicao
+from .magic_equipment import (
+    calcular_ca, resolver_alvo_magia, resolver_area_magia, resolver_arma,
+    resolver_conjuracao, resolver_carga, resolver_duas_armas,
+)
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -548,5 +552,61 @@ def build_default_engine() -> RuleEngine:
         when=lambda f: f["type"] == "object_damage",
         resolve=resolver_objeto,
         source="D&D 2024 — objetos",
+    ))
+    engine.register(Rule(
+        rule_id="equipment.armor-class",
+        description="Calcula CA com armadura, Destreza, escudo e requisitos de Força.",
+        priority=50,
+        when=lambda f: f["type"] == "armor_class",
+        resolve=calcular_ca,
+        source="D&D 2024 — armaduras e escudos",
+    ))
+    engine.register(Rule(
+        rule_id="equipment.weapon",
+        description="Valida propriedades, proficiência e maestria de uma arma.",
+        priority=50,
+        when=lambda f: f["type"] == "weapon",
+        resolve=resolver_arma,
+        source="D&D 2024 — armas",
+    ))
+    engine.register(Rule(
+        rule_id="equipment.two-weapons",
+        description="Valida o ataque adicional com duas armas Leves.",
+        priority=50,
+        when=lambda f: f["type"] == "two_weapon_attack",
+        resolve=resolver_duas_armas,
+        source="D&D 2024 — armas Leves",
+    ))
+    engine.register(Rule(
+        rule_id="equipment.carrying-capacity",
+        description="Calcula a Capacidade de Carga e sobrecarga.",
+        priority=50,
+        when=lambda f: f["type"] == "carrying_capacity",
+        resolve=resolver_carga,
+        source="D&D 2024 — equipamentos",
+    ))
+    engine.register(Rule(
+        rule_id="spell.casting-complete",
+        description="Valida preparação, espaço, componentes, ritual e concentração.",
+        priority=110,
+        when=lambda f: f["type"] == "spell_cast_complete",
+        resolve=resolver_conjuracao,
+        source="D&D 2024 — conjuração",
+    ))
+    engine.register(Rule(
+        rule_id="spell.targets",
+        description="Valida alcance, linha de efeito e quantidade de alvos da magia.",
+        priority=50,
+        when=lambda f: f["type"] == "spell_targets",
+        resolve=resolver_alvo_magia,
+        source="D&D 2024 — alvos de magia",
+    ))
+    engine.register(Rule(
+        rule_id="spell.area",
+        description="Valida as formas e medidas das áreas de efeito.",
+        priority=50,
+        when=lambda f: f["type"] == "spell_area",
+        resolve=resolver_area_magia,
+        source="D&D 2024 — áreas de efeito",
     ))
     return engine

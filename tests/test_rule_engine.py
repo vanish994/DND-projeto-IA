@@ -537,6 +537,68 @@ class RuleEngineTests(unittest.TestCase):
         self.assertTrue(result.outcome["deslocamento_reduzido"])
         self.assertEqual(result.outcome["modificador_d20"], -4)
 
+    def test_armor_class_uses_dexterity_cap_and_shield(self):
+        result = self.engine.evaluate({
+            "type": "armor_class", "armor": "media", "armor_bonus": 4,
+            "dexterity_modifier": 4, "shield": True, "shield_bonus": 2,
+        })
+        self.assertEqual(result.outcome["ca"], 18)
+
+    def test_heavy_armor_requires_strength_and_proficiency(self):
+        weak = self.engine.evaluate({
+            "type": "armor_class", "armor": "pesada", "armor_bonus": 16,
+            "strength": 12, "minimum_strength": 13,
+        })
+        self.assertEqual(weak.outcome["motivo"], "forca_insuficiente")
+        untrained = self.engine.evaluate({
+            "type": "armor_class", "armor": "leve", "dexterity_modifier": 2,
+            "armor_bonus": 1, "armor_proficient": False,
+        })
+        self.assertEqual(untrained.outcome["motivo"], "sem_proficiencia_em_armadura")
+
+    def test_weapon_properties_mastery_and_two_light_weapons(self):
+        weapon = self.engine.evaluate({
+            "type": "weapon", "weapon": "espada curta",
+            "properties": ["leve", "acuidade"], "proficient": True, "mastery": "agil",
+        })
+        self.assertEqual(weapon.outcome["resultado"], "permitida")
+        two = self.engine.evaluate({
+            "type": "two_weapon_attack", "primary_properties": ["leve"],
+            "secondary_properties": ["leve"],
+        })
+        self.assertTrue(two.outcome["usa_acao_bonus"])
+
+    def test_carrying_capacity_detects_overload(self):
+        result = self.engine.evaluate({
+            "type": "carrying_capacity", "strength": 10, "weight": 76,
+        })
+        self.assertEqual(result.outcome["resultado"], "sobrecarregado")
+        self.assertEqual(result.outcome["capacidade"], 75)
+
+    def test_spell_casting_validates_preparation_components_and_ritual(self):
+        blocked = self.engine.evaluate({
+            "type": "spell_cast_complete", "spell": "mísseis mágicos",
+            "spell_level": 1, "prepared": False, "has_slot": True,
+        })
+        self.assertEqual(blocked.outcome["motivo"], "magia_nao_preparada")
+        ritual = self.engine.evaluate({
+            "type": "spell_cast_complete", "spell": "detectar magia",
+            "spell_level": 1, "ritual": True, "ritualista": True,
+            "required_components": ["V", "S"], "available_components": ["V", "S"],
+        })
+        self.assertEqual(ritual.outcome["tempo_extra_minutos"], 10)
+
+    def test_spell_targets_and_area(self):
+        target = self.engine.evaluate({
+            "type": "spell_targets", "distance": 12, "range": 18,
+            "line_of_effect": True, "targets": 2, "max_targets": 3,
+        })
+        self.assertEqual(target.outcome["resultado"], "alvos_validos")
+        area = self.engine.evaluate({
+            "type": "spell_area", "shape": "cone", "size": 18,
+        })
+        self.assertEqual(area.outcome["resultado"], "area_valida")
+
 
 if __name__ == "__main__":
     unittest.main()
