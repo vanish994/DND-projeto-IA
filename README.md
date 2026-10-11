@@ -45,6 +45,8 @@ O resultado contém apenas resumos dos candidatos, a origem `SRD 5.2.1` e `escol
 
 O motor é **somente normativo**. Ele confere a existência do monstro, os dados oficiais, as ações e as consequências mecânicas. O MJ mantém liberdade total para criar história, lugares, conflitos, personagens, diálogos, mistérios, objetivos, cenas e interpretações próprias. O motor não narra, não cria uma história pré-fabricada, não escolhe o rumo da campanha e não avalia a qualidade da ideia do MJ.
 
+Isso também vale para a condução de encontros: o MJ pode decidir a dificuldade desejada, a quantidade de criaturas, a composição do grupo e o ritmo da cena. O motor não escolhe por ele; quando houver um cálculo mecânico oficial disponível, o motor apenas calcula ou valida o resultado. Uma recomendação de condução do MJ pode existir mesmo quando ainda não houver uma ferramenta específica para aquele cálculo, desde que não seja apresentada como regra oficial calculada pelo motor.
+
 A restrição se aplica somente ao conteúdo mecânico apresentado como regra de D&D: o MJ não pode inventar um monstro, uma magia, uma condição, um item, uma habilidade, uma estatística ou uma regra e tratá-los como oficiais. Para isso, o conteúdo deve existir no catálogo ou nas regras implementadas. A operação `validar_uso` bloqueia alterações silenciosas em dados oficiais como CA, PV, ND, tipo ou bloco de regras; decisões narrativas continuam fora do motor.
 
 ## DeepSeek como MJ
