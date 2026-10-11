@@ -108,4 +108,8 @@ curl -X POST http://localhost:8000/v1/mj/mensagem \
 
 O backend atual mantém sessões em memória para desenvolvimento. Para produção, a sessão deve ser transferida para Redis ou banco de dados e o endpoint deve receber autenticação própria; a chave do TokenHarbor nunca deve chegar ao navegador.
 
+### Deploy no Render
+
+O arquivo `render.yaml` deixa o repositório pronto para o Render Blueprint. No Render, use **New → Blueprint**, conecte o repositório `vanish994/DND-projeto-IA` e selecione a branch `main`. O Render lerá o `render.yaml`, instalará as dependências, iniciará o FastAPI na porta `$PORT` e usará `/v1/status` como health check. Quando o painel solicitar `TOKENHARBOR_API_KEY`, cole a chave diretamente no campo secreto do Render; ela não deve ser adicionada ao GitHub.
+
 A estimativa de “mais de 300 monstros” não corresponde ao PDF SRD 5.2.1 presente na biblioteca ativa: a extração verificável dessa fonte resulta em 232 blocos completos. O catálogo não inventa entradas para preencher essa diferença.
