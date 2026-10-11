@@ -1997,7 +1997,7 @@ def conjurar_no_mapa_tatico(
             repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto)
         else:
             repo.ajustar_pv_personagem(jogador, campanha_id, alvo["character_id"], -dano)
-            concentracao_alvo = _resolver_concentracao_apos_dano(repo, jogador, campanha_id, alvo["character_id"], dano)
+            concentracao_alvo = _resolver_concentracao_apos_dano(repo, jogador, campanha_id, alvo["character_id"], dano) if dano > 0 else None
     if cura:
         if alvo["kind"] == "enemy":
             estado_bruto = repo.obter_mapa_tatico(jogador, campanha_id) or {}
