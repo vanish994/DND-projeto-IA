@@ -8,7 +8,8 @@
   const campaignCount=document.querySelector('#dashboard-campaign-count');
   const characterCount=document.querySelector('#dashboard-character-count');
   const notice=document.querySelector('#dashboard-notice');
-  const PLAYER_KEY='dnd-mj-jogador';\n  const API_BASE=location.hostname==='dnd-projeto-ia-frontend-novo.onrender.com'?'https://dnd-projeto-ia-fichas-teste.onrender.com':'';
+  const PLAYER_KEY='dnd-mj-jogador';
+  const API_BASE=location.hostname==='dnd-projeto-ia-frontend-novo.onrender.com'?'https://dnd-projeto-ia-fichas-teste.onrender.com':'';
   function playerId(){let id=localStorage.getItem(PLAYER_KEY);if(!id){id='jogador-'+(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2));localStorage.setItem(PLAYER_KEY,id)}return id}
   async function api(path,options={}){const res=await fetch(API_BASE+path,{...options,headers:{'Content-Type':'application/json','X-Jogador-Id':playerId(),...(options.headers||{})}});if(res.status===204)return null;const body=await res.json().catch(()=>({}));if(!res.ok)throw new Error(typeof body.detail==='string'?body.detail:'Falha na API ('+res.status+')');return body}
   function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
