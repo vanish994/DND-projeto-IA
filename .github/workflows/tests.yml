@@ -28,7 +28,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt httpx
       - name: Collect tests (diagnóstico de import)
-        run: pytest --collect-only -q
+        run: |
+          set +e
+          pytest --collect-only -q > collect.log 2>&1
+          code=$?
+          cat collect.log
+          if [ $code -ne 0 ]; then
+            echo "::error title=pytest collect falhou::$(tail -c 600 collect.log | tr '\n' '|' | tr -d '\r')"
+          fi
+          exit $code
       - name: Python test suite with coverage floor
         run: pytest -q --cov --cov-fail-under=80 2>&1 | tee pytest-ci.log
       - name: Upload pytest log
@@ -36,7 +44,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pytest-ci-log
-          path: pytest-ci.log
+          path: |
+            pytest-ci.log
+            collect.log
           if-no-files-found: ignore
       - name: Set up Node.js
         uses: actions/setup-node@v4
