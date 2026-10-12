@@ -13,7 +13,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # Superfície pública de injeção de dependências do app (usada pela suíte para
@@ -32,6 +33,14 @@ app = FastAPI(
     title="D&D Projeto IA — MJ",
     version="1.1.0",
     description="MJ DeepSeek com Rule Engine determinístico para mecânicas oficiais.",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://dnd-projeto-ia-frontend-novo.onrender.com"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-Jogador-Id"],
 )
 
 # Container de recursos de processo (MJ e repositório), um por instância de app.
