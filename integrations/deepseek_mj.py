@@ -15,7 +15,13 @@ from rule_engine import PERICIAS, build_default_engine
 from rule_engine.catalog import CATALOGO_ARMAS
 from rule_engine.character import PROFICIENCIAS_CLASSE
 from rule_engine.bestiary import consultar_monstro
-from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS, normalizar_nome_magia, progresso_artifice
+from rule_engine.spellcasting import (
+    ARTIFICER_SPELL_LEVELS,
+    circulo_magia_subclasse,
+    magia_sempre_preparada_do_artifice,
+    normalizar_nome_magia,
+    progresso_artifice,
+)
 from rule_engine.casting import atributo_de_conjuracao
 from rule_engine.damage import aplicar_defesas_monstro
 from rule_engine.species import HERANCA_DRACONICA, bloco_heranca_draconica
@@ -1130,19 +1136,26 @@ class DeepSeekMJ:
                 nome_canonico = str(magia["nome"])
                 nome_magia = normalizar_nome_magia(nome_canonico)
                 classe = str(personagem_magia.get("classe", "")).strip().lower()
+                sempre_preparada = False
                 if classe == "artifice":
+                    progresso = progresso_artifice(
+                        int(personagem_magia.get("nivel", 1)),
+                        int((personagem_magia.get("atributos") or {}).get("inteligencia", 10)),
+                    )
+                    circulo_maximo = int(progresso["circulo_maximo"])
                     circulo = next(
                         (nivel for nome, nivel in ARTIFICER_SPELL_LEVELS.items()
                          if normalizar_nome_magia(nome) == nome_magia),
                         None,
                     )
                     if circulo is None:
-                        return {"resultado": "bloqueado", "motivo": "magia_nao_disponivel_para_artifice", "magia": facts.get("magia")}
-                    progresso = progresso_artifice(
-                        int(personagem_magia.get("nivel", 1)),
-                        int((personagem_magia.get("atributos") or {}).get("inteligencia", 10)),
-                    )
-                    circulo_maximo = int(progresso["circulo_maximo"])
+                        subclasse = personagem_magia.get("subclasse") or personagem_magia.get("subclass")
+                        if magia_sempre_preparada_do_artifice(subclasse, int(personagem_magia.get("nivel", 1)), nome_canonico):
+                            # Magia de subclasse já liberada: sempre preparada, fora da escolha da ficha.
+                            sempre_preparada = True
+                            circulo = circulo_magia_subclasse(nome_canonico)
+                        else:
+                            return {"resultado": "bloqueado", "motivo": "magia_nao_disponivel_para_artifice", "magia": facts.get("magia")}
                 else:
                     # Qualquer classe conjuradora usa o círculo do catálogo; a lista
                     # de magias preparadas da própria ficha é a autoridade.
@@ -1155,7 +1168,7 @@ class DeepSeekMJ:
                 if not conjuracao:
                     return {"resultado": "bloqueado", "motivo": "ficha_sem_dados_de_conjuracao", "classe": classe}
                 escolhidas = conjuracao.get("truques", []) if circulo == 0 else conjuracao.get("magias_preparadas", [])
-                if nome_magia not in {normalizar_nome_magia(x) for x in escolhidas}:
+                if not sempre_preparada and nome_magia not in {normalizar_nome_magia(x) for x in escolhidas}:
                     return {"resultado": "bloqueado", "motivo": "magia_nao_escolhida_na_ficha", "magia": facts.get("magia")}
                 if circulo > circulo_maximo:
                     return {"resultado": "bloqueado", "motivo": "circulo_indisponivel_para_nivel", "circulo": circulo}

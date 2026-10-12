@@ -15,16 +15,10 @@ ARTIFICER_SPELL_LEVELS: dict[str, int] = {
     "Acudir os Moribundos": 0,
     "Bolha Ácida": 0,
     "Chicote de Espinhos": 0,
-    "Consertar": 0,
-    "Criar Fogueira": 0,
-    "Congelamento": 0,
-    "Explosão de Espadas": 0,
     "Luz": 0,
     "Luzes Dançantes": 0,
-    "Mão Mágica": 0,
     "Mensagem": 0,
     "Orientação": 0,
-    "Pedra Mágica": 0,
     "Prestidigitação Arcana": 0,
     "Raio de Fogo": 0,
     "Raio de Gelo": 0,
@@ -33,25 +27,20 @@ ARTIFICER_SPELL_LEVELS: dict[str, int] = {
     "Toque Chocante": 0,
     "Trovão": 0,
     # 1º círculo
-    "Absorver Elementos": 1,
     "Alarme": 1,
-    "Catapulta": 1,
+    "Passos Longos": 1,
     "Curar Ferimentos": 1,
     "Detectar Magia": 1,
     "Disfarçar-se": 1,
     "Fogo das Fadas": 1,
     "Graxa": 1,
     "Identificar": 1,
-    "Onda Trovejante": 1,
-    "Passos Longos": 1,
     "Purificar Alimentos e Bebidas": 1,
     "Queda Suave": 1,
     "Retirada Acelerada": 1,
     "Salto": 1,
     "Santuário": 1,
-    "Armadilha": 1,
     "Vitalidade Vazia": 1,
-    "Bebida Cáustica de Tasha": 1,
     # 2º círculo
     "Aumentar/Reduzir": 2,
     "Alterar-se": 2,
@@ -70,34 +59,34 @@ ARTIFICER_SPELL_LEVELS: dict[str, int] = {
     "Teia": 2,
     "Tranca Arcana": 2,
     "Truque de Corda": 2,
-    "Ver Invisibilidade": 2,
+    "Ver o Invisível": 2,
     "Visão no Escuro": 2,
-    "Aquecer Metal": 2,
+    "Esquentar Metal": 2,
     # 3º círculo
     "Arma Elemental": 3,
-    "Acelerar": 3,
+    "Celeridade": 3,
     "Caminhar Sobre as Águas": 3,
-    "Criar Alimentos e Água": 3,
+    "Criar Comida e Água": 3,
     "Dissipar Magia": 3,
     "Flechas Flamejantes": 3,
     "Glifo de Proteção": 3,
     "Piscar": 3,
     "Proteção Contra Energia": 3,
-    "Respiração Aquática": 3,
-    "Revificar": 3,
+    "Respirar na Água": 3,
+    "Revivificar": 3,
     "Servo Minúsculo": 3,
     "Voo": 3,
     # 4º círculo
-    "Liberdade de Movimento": 4,
+    "Movimentação Livre": 4,
     "Maldição Elemental": 4,
-    "Moldar Pedra": 4,
+    "Moldar Rochas": 4,
     "Olho Arcano": 4,
     "Fabricar": 4,
     "Baú Secreto de Leomund": 4,
     "Cão Fiel de Mordenkainen": 4,
     "Santuário Particular de Mordenkainen": 4,
     "Esfera Resiliente de Otiluke": 4,
-    "Pele de Pedra": 4,
+    "Pele-Rocha": 4,
     "Invocar Constructo": 4,
     # 5º círculo
     "Animar Objetos": 5,
@@ -106,7 +95,13 @@ ARTIFICER_SPELL_LEVELS: dict[str, int] = {
     "Mão de Bigby": 5,
     "Muralha de Pedra": 5,
     "Restauração Maior": 5,
-    "Transmutar Rocha": 5,
+    # Lista base 2024 (Eberron: Forge of the Artificer / D&D Beyond UA 2024)
+    "Mãos Mágicas": 0,
+    "Golpe Certeiro": 0,
+    "Elementalismo": 0,
+    "Sopro de Dragão": 2,
+    "Vigor Arcano": 2,
+    "Círculo de Poder": 5,
 }
 
 # Slots por nível de Artífice. Índice 0 corresponde ao 1º círculo.
@@ -145,6 +140,79 @@ def progresso_artifice(nivel: int, inteligencia: int) -> dict[str, Any]:
         "espacos_totais": slots,
     }
 
+# Magias de subclasse do Artífice (Eberron: Forge of the Artificer). São sempre preparadas
+# a partir do nível indicado e não contam na escolha de magias preparadas.
+# Nomes em PT conferidos no cabeçalho do PHB 2024 (equivalentes EN do Forge entre parênteses).
+# Pendentes, sem cabeçalho no PHB 2024 (não entram aqui): Golpe Brilhante (Branding Smite),
+# Servo Homúnculo (Homunculus Servant), Passagem (Passwall).
+ARTIFICER_SUBCLASS_SPELLS: dict[str, dict[int, list[str]]] = {
+    "Armeiro": {3: ["Mísseis Mágicos", "Onda Trovejante"],  # Magic Missile, Thunderwave
+                5: ["Reflexos", "Despedaçar"],               # Mirror Image, Shatter
+                9: ["Padrão Hipnótico", "Relâmpago"],        # Hypnotic Pattern, Lightning Bolt
+                13: ["Invisibilidade Maior"],                # Greater Invisibility
+                17: ["Muralha de Energia"]},                 # Wall of Force
+    "Artilheiro": {3: ["Escudo Arcano", "Onda Trovejante"],  # Shield, Thunderwave
+                   5: ["Raio Ardente", "Despedaçar"],        # Scorching Ray, Shatter
+                   9: ["Bola de Fogo", "Muralha de Vento"],  # Fireball, Wind Wall
+                   13: ["Tempestade Glacial", "Muralha de Fogo"],  # Ice Storm, Wall of Fire
+                   17: ["Cone de Frio", "Muralha de Energia"]},    # Cone of Cold, Wall of Force
+    "Alquimista": {3: ["Palavra Curativa", "Raio Nauseante"],
+                   5: ["Esfera Flamejante", "Flecha Ácida de Melf"],
+                   9: ["Forma Gasosa", "Palavra Curativa em Massa"],
+                   13: ["Proteção Contra a Morte", "Esfera Vitriólica"],
+                   17: ["Névoa Mortal", "Reviver os Mortos"]},  # Cloudkill, Raise Dead
+    "Ferreiro de Batalha": {3: ["Heroísmo"], 5: ["Vínculo de Proteção"],
+                            9: ["Aura de Vitalidade", "Invocar Barragem"],
+                            13: ["Escudo Ardente", "Aura de Pureza"],   # Fire Shield, Aura of Purity
+                            17: ["Destruição Banidora", "Curar Ferimentos em Massa"]},  # Banishing Smite
+    "Cartógrafo": {3: ["Fogo das Fadas", "Raio Guia", "Palavra Curativa"],
+                   5: ["Localizar Objeto", "Espinho Mental"],           # Mind Spike
+                   9: ["Convocar Relâmpagos", "Clarividência"],         # Call Lightning, Clairvoyance
+                   13: ["Banimento", "Localizar Criatura"],
+                   17: ["Vidência", "Círculo de Teleporte"]},           # Scrying, Teleportation Circle
+}
+
+# Círculo de cada magia de subclasse, conferido no cabeçalho do PHB 2024.
+CIRCULO_MAGIAS_SUBCLASSE: dict[str, int] = {
+    "Mísseis Mágicos": 1, "Onda Trovejante": 1, "Reflexos": 2, "Despedaçar": 2, "Padrão Hipnótico": 3,
+    "Relâmpago": 3, "Invisibilidade Maior": 4, "Muralha de Energia": 5, "Escudo Arcano": 1,
+    "Raio Ardente": 2, "Bola de Fogo": 3, "Muralha de Vento": 3, "Tempestade Glacial": 4,
+    "Muralha de Fogo": 4, "Cone de Frio": 5, "Palavra Curativa": 1, "Raio Nauseante": 1,
+    "Esfera Flamejante": 2, "Flecha Ácida de Melf": 2, "Forma Gasosa": 3,
+    "Palavra Curativa em Massa": 3, "Proteção Contra a Morte": 4, "Esfera Vitriólica": 4,
+    "Reviver os Mortos": 5, "Heroísmo": 1, "Vínculo de Proteção": 2, "Aura de Vitalidade": 3,
+    "Invocar Barragem": 3, "Escudo Ardente": 4, "Aura de Pureza": 4, "Curar Ferimentos em Massa": 5,
+    "Destruição Banidora": 5, "Fogo das Fadas": 1, "Raio Guia": 1, "Localizar Objeto": 2,
+    "Espinho Mental": 2, "Convocar Relâmpagos": 3, "Clarividência": 3, "Banimento": 4,
+    "Localizar Criatura": 4, "Vidência": 5, "Círculo de Teleporte": 5, "Névoa Mortal": 5,
+}
+
+
+def circulo_magia_subclasse(nome: str) -> int | None:
+    alvo = normalizar_nome_magia(nome)
+    return next((c for n, c in CIRCULO_MAGIAS_SUBCLASSE.items() if normalizar_nome_magia(n) == alvo), None)
+
+
+def magias_sempre_preparadas(subclasse: str | None, nivel: int) -> list[str]:
+    """Magias de subclasse já liberadas no nível do Artífice (sempre preparadas)."""
+    if not subclasse:
+        return []
+    tabela_sub = ARTIFICER_SUBCLASS_SPELLS.get(str(subclasse).strip())
+    if tabela_sub is None:
+        return []
+    resultado: list[str] = []
+    for nivel_min in sorted(tabela_sub):
+        if nivel >= nivel_min:
+            resultado.extend(n for n in tabela_sub[nivel_min] if n not in resultado)
+    return resultado
+
+
+
+def magia_sempre_preparada_do_artifice(subclasse: str | None, nivel: int, nome: str) -> bool:
+    """True se a magia é de subclasse já liberada no nível do Artífice (não entra na escolha)."""
+    alvo = normalizar_nome_magia(nome)
+    return any(normalizar_nome_magia(n) == alvo for n in magias_sempre_preparadas(subclasse, nivel))
+
 
 def listar_magias_artifice(nivel: int) -> list[dict[str, Any]]:
     from .spells import obter_magia
@@ -166,10 +234,15 @@ def validar_escolhas_artifice(
     truques: list[str],
     magias_preparadas: list[str],
     espacos_totais: dict[str, int],
+    subclasse: str | None = None,
 ) -> dict[str, Any]:
     from .spells import obter_magia
 
     progresso = progresso_artifice(nivel, inteligencia)
+    sempre = {normalizar_nome_magia(n) for n in magias_sempre_preparadas(subclasse, nivel)}
+    for nome in list(truques) + list(magias_preparadas):
+        if normalizar_nome_magia(nome) in sempre:
+            raise ValueError(f"Magia de subclasse já é sempre preparada e não entra na escolha: {nome}")
     permitidas = {normalizar_nome_magia(nome): circulo for nome, circulo in ARTIFICER_SPELL_LEVELS.items()}
 
     # A mesma magia não pode ocupar duas escolhas de truque/preparação.

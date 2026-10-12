@@ -230,7 +230,6 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
         subclasse = str(subclasse).lower()
         if nivel < SUBCLASSES[classe]["nivel"]:
             raise ValueError("A subclasse só pode ser escolhida no nível adequado")
-        conhecida = subclasse in SUBCLASSES[classe]["nomes"]
         catalogadas = subclasses_da_classe(classe)
         if catalogadas and subclasse not in catalogadas:
             raise ValueError("Subclasse inválida para a classe escolhida")

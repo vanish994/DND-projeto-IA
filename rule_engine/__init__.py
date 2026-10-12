@@ -41,7 +41,6 @@ from .warlock_invocations import INVOCATIONS, resolver_invocacao, validar_invoca
 from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_talento, validar_talento
 from .spells import ESCOLAS, MAGIAS, listar_magias, obter_magia, resolver_magia
 from .economy import ITENS_MAGICOS, converter_de_po, converter_para_po, comprar_item, consultar_item, resolver_inventario, resolver_sintonizacao, usar_item_magico, vender_item
-from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
 from .class_features import resolver_caracteristica
 from .bestiary import BESTIARIO, XP_POR_ND, consultar_bloco_completo, consultar_monstro, listar_monstros, resolver_bestiario, secao_monstro, sugerir_monstros, validar_uso_monstro, xp_encontro, xp_por_nd
 from .rules import build_default_engine
@@ -83,7 +82,6 @@ __all__ = [
     "EPIC_FEATS", "FEATS", "GENERAL_FEATS", "ORIGIN_FEATS", "resolver_talento", "validar_talento",
     "ESCOLAS", "MAGIAS", "listar_magias", "obter_magia", "resolver_magia",
     "ITENS_MAGICOS", "converter_de_po", "converter_para_po", "comprar_item", "consultar_item", "resolver_inventario", "resolver_sintonizacao", "usar_item_magico", "vender_item",
-    "caminho_grade", "resolver_ataque_tatico", "resolver_flanco", "resolver_linha_grade", "resolver_terreno",
     "resolver_caracteristica",
     "BESTIARIO", "XP_POR_ND", "consultar_bloco_completo", "consultar_monstro", "listar_monstros", "resolver_bestiario", "secao_monstro", "sugerir_monstros", "validar_uso_monstro", "xp_encontro", "xp_por_nd",
     "EstadoVital", "adicionar_exaustao", "ajustar_dano", "aplicar_dano", "curar",

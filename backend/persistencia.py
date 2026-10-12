@@ -74,15 +74,6 @@ personagens = Table(
     Column("atualizado_em", DateTime(timezone=True), nullable=False),
 )
 
-encontros_taticos = Table(
-    "encontros_taticos",
-    metadata,
-    Column("campanha_id", String(64), ForeignKey("campanhas.id", ondelete="CASCADE"), primary_key=True),
-    Column("estado", Text, nullable=False),
-    Column("atualizado_em", DateTime(timezone=True), nullable=False),
-)
-
-
 # Chave única por campanha. Só existe registro para uma operação confirmada;
 # resposta, rolagens, fichas e mensagens participam da mesma transação.
 operacoes_mj = Table(
@@ -154,6 +145,7 @@ class RepositorioCampanhas:
         self.engine = engine
         metadata.create_all(self.engine)
         self._garantir_coluna_rolagens()
+        self._remover_tabela_mapa_tatico()
 
     def _garantir_coluna_rolagens(self) -> None:
         """Adiciona ``mensagens.rolagens`` em bancos criados antes da animação de dados.
@@ -169,6 +161,17 @@ class RepositorioCampanhas:
             return
         with self.engine.begin() as conn:
             conn.execute(text("ALTER TABLE mensagens ADD COLUMN rolagens TEXT"))
+
+    def _remover_tabela_mapa_tatico(self) -> None:
+        """Apaga ``encontros_taticos`` (estado do mapa tático, recurso removido).
+
+        Idempotente: sem efeito quando a tabela não existe. Os estados salvos
+        dos mapas são descartados junto com ela.
+        """
+        if "encontros_taticos" not in inspect(self.engine).get_table_names():
+            return
+        with self.engine.begin() as conn:
+            conn.execute(text("DROP TABLE encontros_taticos"))
 
     def _resumo(self, linha: Any, ultima: str | None, total: int) -> dict[str, Any]:
         return {
@@ -485,37 +488,6 @@ class RepositorioCampanhas:
             if resultado.rowcount == 0:
                 return None
         return self.obter_personagem(jogador_id, campanha_id, personagem_id)
-
-    def obter_mapa_tatico(self, jogador_id: str, campanha_id: str) -> dict[str, Any] | None:
-        if self.obter(jogador_id, campanha_id) is None:
-            return None
-        with self.engine.connect() as conn:
-            linha = conn.execute(
-                select(encontros_taticos.c.estado).where(encontros_taticos.c.campanha_id == campanha_id)
-            ).first()
-        if linha is None:
-            return {"tokens": [], "bloqueados": [], "terreno_dificil": []}
-        return json.loads(linha.estado)
-
-    def salvar_mapa_tatico(self, jogador_id: str, campanha_id: str, estado: dict[str, Any]) -> dict[str, Any] | None:
-        if self.obter(jogador_id, campanha_id) is None:
-            return None
-        agora = _agora()
-        conteudo = json.dumps(estado, ensure_ascii=False)
-        with self.engine.begin() as conn:
-            existe = conn.execute(
-                select(encontros_taticos.c.campanha_id).where(encontros_taticos.c.campanha_id == campanha_id)
-            ).first()
-            if existe:
-                conn.execute(
-                    update(encontros_taticos).where(encontros_taticos.c.campanha_id == campanha_id)
-                    .values(estado=conteudo, atualizado_em=agora)
-                )
-            else:
-                conn.execute(insert(encontros_taticos).values(
-                    campanha_id=campanha_id, estado=conteudo, atualizado_em=agora
-                ))
-        return estado
 
     def apagar_personagem(self, jogador_id: str, campanha_id: str, personagem_id: str) -> bool:
         if self.obter_personagem(jogador_id, campanha_id, personagem_id) is None:

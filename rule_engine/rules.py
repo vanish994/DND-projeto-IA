@@ -43,7 +43,6 @@ from .warlock_invocations import resolver_invocacao, validar_invocacao
 from .feats import EPIC_FEATS, FEATS, GENERAL_FEATS, ORIGIN_FEATS, resolver_talento, validar_talento
 from .spells import listar_magias, obter_magia, resolver_magia
 from .economy import comprar_item, consultar_item, resolver_inventario, resolver_sintonizacao, usar_item_magico, vender_item
-from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
 from .class_features import resolver_caracteristica
 from .bestiary import resolver_bestiario
 from .dice import (
@@ -941,36 +940,6 @@ def build_default_engine() -> RuleEngine:
         description="Usa item mágico, valida sintonização e consome cargas.",
         priority=70, when=lambda f: f["type"] == "magic_item" and f.get("operation") == "use",
         resolve=usar_item_magico, source="D&D 2024 — Itens Mágicos",
-    ))
-    engine.register(Rule(
-        rule_id="tactical.grid-movement",
-        description="Valida caminho em grade, casulas bloqueadas, terreno difícil e movimento restante.",
-        priority=70, when=lambda f: f["type"] == "tactical_movement",
-        resolve=caminho_grade, source="D&D 2024 — combate tático",
-    ))
-    engine.register(Rule(
-        rule_id="tactical.line",
-        description="Calcula linha de efeito entre posições e bloqueadores.",
-        priority=70, when=lambda f: f["type"] == "tactical_line",
-        resolve=resolver_linha_grade, source="D&D 2024 — combate tático",
-    ))
-    engine.register(Rule(
-        rule_id="tactical.flanking",
-        description="Determina se aliados ocupam lados opostos do alvo.",
-        priority=70, when=lambda f: f["type"] == "tactical_flanking",
-        resolve=resolver_flanco, source="D&D 2024 — combate tático",
-    ))
-    engine.register(Rule(
-        rule_id="tactical.attack",
-        description="Combina alcance, cobertura, linha de efeito, flanqueamento e vantagem.",
-        priority=70, when=lambda f: f["type"] == "tactical_attack",
-        resolve=resolver_ataque_tatico, source="D&D 2024 — combate tático",
-    ))
-    engine.register(Rule(
-        rule_id="tactical.terrain",
-        description="Calcula o custo de terreno difícil e rastejar.",
-        priority=70, when=lambda f: f["type"] == "tactical_terrain",
-        resolve=resolver_terreno, source="D&D 2024 — combate tático",
     ))
     engine.register(Rule(
         rule_id="class.feature",

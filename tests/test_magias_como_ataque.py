@@ -58,7 +58,7 @@ class MotorDeMagiaTests(unittest.TestCase):
         self.assertEqual(mecanica_de_magia("Bola de Fogo", nivel_personagem=5)["dados_dano"], "8d6")
         self.assertEqual(mecanica_de_magia("Bola de Fogo", nivel_personagem=5, aumento=2)["dados_dano"], "10d6")
         self.assertIsNone(mecanica_de_magia("Magia Inexistente"))
-        self.assertIsNone(mecanica_de_magia("Raio de Gelo"))
+        self.assertIsNone(mecanica_de_magia("Reviver os Mortos"))
 
     # ---------- ataque de magia ----------
 
@@ -320,100 +320,6 @@ except ImportError:  # pragma: no cover - backend opcional fora do CI
 
 
 @unittest.skipUnless(DEPENDENCIAS, "fastapi/sqlalchemy/httpx não instalados")
-class ConjurarNoMapaTaticoTests(unittest.TestCase):
-    """/conjurar usa o catálogo para escalonar e devolve os dados que a interface anima."""
-
-    def setUp(self):
-        from unittest.mock import patch
-
-        self.patch = patch
-        engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-        self.repo = RepositorioCampanhas(engine=engine)
-        backend_app.app.dependency_overrides[backend_app.obter_repositorio] = lambda: self.repo
-        self.client = TestClient(backend_app.app)
-        self.headers = {"X-Jogador-Id": "jogador-conjurador"}
-        self.cid = self.client.post("/v1/campanhas", json={"titulo": "Magia"}, headers=self.headers).json()["id"]
-        self.ficha = self.client.post(f"/v1/campanhas/{self.cid}/personagens", headers=self.headers, json={
-            "nome": "Ferrun", "especie": "draconato", "heranca_draconica": "vermelho", "classe": "artifice",
-            "metodo_atributos": "matriz_padrao",
-            "atributos": {"forca": 10, "destreza": 13, "constituicao": 14, "inteligencia": 15, "sabedoria": 12, "carisma": 8},
-            "antecedente": "soldado", "aumentos_antecedente": {"constituicao": 2, "destreza": 1},
-            "ferramenta_antecedente": "Dados", "equipamento_antecedente": "A",
-        }).json()
-        self.client.patch(
-            f"/v1/campanhas/{self.cid}/personagens/{self.ficha['id']}/magias", headers=self.headers,
-            json={"truques": ["Raio de Fogo", "Raio de Gelo"], "magias_preparadas": ["Curar Ferimentos", "Graxa"],
-                  "espacos_totais": {"1": 2}},
-        )
-        self.url = f"/v1/campanhas/{self.cid}/mapa-tatico"
-        self.client.put(self.url, headers=self.headers, json={
-            "title": "Cripta", "terrain": "dungeon",
-            "tokens": [
-                {"id": "heroi", "kind": "hero", "character_id": self.ficha["id"], "x": 1, "y": 1},
-                {"id": "inimigo", "kind": "enemy", "monster_name": "Awakened Shrub", "x": 2, "y": 1},
-            ],
-        })
-        self.client.post(self.url + "/iniciativa/iniciar", headers=self.headers)
-        for _ in range(3):
-            if (self.client.get(self.url, headers=self.headers).json().get("mapa") or {}).get("token_ativo") == "heroi":
-                break
-            self.client.post(self.url + "/turno/avancar", headers=self.headers)
-        self.mapa = self.client.get(self.url, headers=self.headers).json()["mapa"]
-
-    def tearDown(self):
-        backend_app.app.dependency_overrides.clear()
-
-    def _nivel(self, nivel):
-        atual = self.repo.obter_personagem("jogador-conjurador", self.cid, self.ficha["id"])
-        self.repo.atualizar_dados_ficha("jogador-conjurador", self.cid, self.ficha["id"], {**atual, "nivel": nivel})
-
-    def _conjurar(self, valores):
-        """Rola com valores fixos: o mesmo número de d20 que a geometria exigir."""
-        chamadas = []
-
-        def randbelow(lados):
-            # Repete o último valor se a rota pedir mais rolagens do que o previsto.
-            indice = min(len(chamadas), len(valores) - 1)
-            chamadas.append(valores[indice])
-            return valores[indice]
-
-        with self.patch.object(backend_app.secrets, "randbelow", side_effect=randbelow):
-            resposta = self.client.post(self.url + "/conjurar", headers=self.headers, json={
-                "atacante_id": "heroi", "alvo_id": "inimigo", "magia": "Raio de Fogo",
-            })
-        self.assertEqual(resposta.status_code, 200, resposta.text)
-        return resposta.json()
-
-    def test_truque_no_nivel_1_rola_um_dado(self):
-        self.assertEqual(self.mapa.get("token_ativo"), "heroi", "o turno do herói precisa estar ativo")
-        body = self._conjurar([9, 9, 4])  # d20 = 10 em cada dado de desvantagem; dano 5
-        self.assertEqual(body["dano_expressao"], "1d10")
-        self.assertEqual(len(body["dados_dano"]), 1)
-        # Awakened Shrub é vulnerável a fogo; o total aplicado é dobrado.
-        self.assertEqual(body["defesas_dano"]["aplicacao"], "vulnerabilidade")
-        self.assertEqual(body["dano"], 2 * sum(body["dados_dano"]))
-        self.assertEqual(body["ca_alvo"], 9)
-        self.assertEqual(body["tipo_dano"], "igneo")
-        self.assertIsNone(body["espaco_usado"], "truque não gasta espaço")
-
-    def test_truque_no_nivel_11_escala_para_tres_dados(self):
-        self._nivel(11)
-        body = self._conjurar([9, 9, 4, 4, 4])
-        self.assertEqual(body["dano_expressao"], "3d10")
-        self.assertEqual(len(body["dados_dano"]), 3)
-        # Awakened Shrub é vulnerável a fogo; o total aplicado é dobrado.
-        self.assertEqual(body["defesas_dano"]["aplicacao"], "vulnerabilidade")
-        self.assertEqual(body["dano"], 2 * sum(body["dados_dano"]))
-
-    def test_critico_dobra_os_dados_do_truque(self):
-        body = self._conjurar([19, 19, 4, 4])  # 20 natural nas duas rolagens
-        self.assertTrue(body["ataque"]["critical"])
-        self.assertEqual(len(body["dados_dano"]), 2)
-        # Awakened Shrub é vulnerável a fogo; o total aplicado é dobrado.
-        self.assertEqual(body["defesas_dano"]["aplicacao"], "vulnerabilidade")
-        self.assertEqual(body["dano"], 2 * sum(body["dados_dano"]))
-
-
 class _Ferramenta:
     def __init__(self, nome, argumentos, identificador="call-1"):
         self.id = identificador

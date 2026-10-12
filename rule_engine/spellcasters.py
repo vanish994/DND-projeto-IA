@@ -73,7 +73,7 @@ def resolver_canalizar_divindade(fatos: dict) -> dict:
         return {"resultado": "recuperado", "usos": usos, "recupera_em": "descanso_curto_ou_longo"}
     resultado = {"resultado": "usado", "usos_maximos": usos, "acao": acao}
     if acao == "centelha_divina":
-        resultado.update({"cura_ou_dano": f"2d8 + modificador de Sabedoria", "escalonamento": {7: "3d8", 13: "4d8", 18: "5d8"}})
+        resultado.update({"cura_ou_dano": "2d8 + modificador de Sabedoria", "escalonamento": {7: "3d8", 13: "4d8", 18: "5d8"}})
     elif acao == "expulsar_mortos_vivos":
         resultado["alvo"] = "mortos_vivos_em_emanacao"
     return resultado

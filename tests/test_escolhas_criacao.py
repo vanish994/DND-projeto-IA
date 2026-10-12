@@ -205,7 +205,7 @@ class BackendEscolhasCriacaoTests(unittest.TestCase):
         self.assertEqual(ficha["escolhas_pendentes"], [])
 
     def test_criacao_aceita_as_magias_iniciais_do_conjurador(self):
-        magias = {"truques": ["Luz", "Raio de Gelo"], "magias_preparadas": ["Alarme", "Curar Ferimentos", "Onda Trovejante"], "espacos_totais": {"1": 2}}
+        magias = {"truques": ["Luz", "Raio de Gelo"], "magias_preparadas": ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"], "espacos_totais": {"1": 2}}
         resposta = self.client.post(self.url(), json=self.payload(magias_iniciais=magias), headers=self.headers)
         self.assertEqual(resposta.status_code, 201, resposta.text)
         self.assertEqual(resposta.json()["conjuracao"]["truques"], ["Luz", "Raio de Gelo"])
@@ -218,7 +218,7 @@ class BackendEscolhasCriacaoTests(unittest.TestCase):
 
     def test_ficha_antiga_pode_ser_concluida_sem_perder_a_conjuracao(self):
         criado = self.client.post(self.url(), json=self.payload(), headers=self.headers).json()
-        magias = {"truques": ["Luz", "Raio de Gelo"], "magias_preparadas": ["Alarme", "Curar Ferimentos", "Onda Trovejante"], "espacos_totais": {"1": 2}}
+        magias = {"truques": ["Luz", "Raio de Gelo"], "magias_preparadas": ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"], "espacos_totais": {"1": 2}}
         self.client.patch(self.url(f"/{criado['id']}/magias"), json=magias, headers=self.headers)
         # Simula uma ficha criada antes das escolhas existirem.
         personagem = self.repo.obter_personagem("jogador-escolhas", self.campaign_id, criado["id"])

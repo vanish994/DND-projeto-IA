@@ -27,8 +27,8 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertNotIn(unknown, {m["nome"].lower() for m in listar_magias(circulo=0)})
 
     def test_spell_names_are_normalized_without_accents(self):
-        result = resolver_magia({"magia": "RAIO MISTICO"})
-        self.assertEqual(result["magia"], "Raio Místico")
+        result = resolver_magia({"magia": "SERVO MINUSCULO", "espaco": 3})
+        self.assertEqual(result["magia"], "Servo Minúsculo")
         self.assertEqual(result["resultado"], "nao_implementado")
 
     def test_cantrips_cannot_spend_spell_slots(self):
@@ -67,7 +67,8 @@ class SpellCoverageTests(unittest.TestCase):
     def test_healing_word_scales_and_uses_bonus_action(self):
         result = resolver_magia({"magia": "palavra curativa", "espaco": 2})
         self.assertEqual(result["resultado"], "conjurada")
-        self.assertEqual(result["mecanica"]["dados_cura"], "2d4")
+        # PHB 2024: 2d4 + modificador, +2d4 por círculo acima do 1.º (2.º círculo = 4d4)
+        self.assertEqual(result["mecanica"]["dados_cura"], "4d4")
         self.assertEqual(result["mecanica"]["acao"], "bonus")
         self.assertTrue(result["mecanica"]["soma_modificador_conjuracao"])
 
@@ -111,6 +112,277 @@ class SpellCoverageTests(unittest.TestCase):
         result = resolver_magia({"magia": "bola de fogo", "componentes_disponiveis": ["V"]})
         self.assertEqual(result["resultado"], "bloqueado")
         self.assertEqual(result["motivo"], "componentes_ausentes")
+
+
+
+
+class MagiasSalvaguardaEControleTests(unittest.TestCase):
+    """Magias do PHB 2024 modeladas em 'mecanica' estruturada (texto oficial)."""
+
+    def test_inflict_wounds_scales_and_halves_on_save(self):
+        result = resolver_magia({"magia": "infligir ferimentos", "espaco": 3})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["dados_dano"], "4d10")
+        self.assertEqual(result["mecanica"]["tipo_dano"], "necrotico")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "constituicao")
+        self.assertTrue(result["mecanica"]["sucesso_metade"])
+
+    def test_command_uses_wisdom_save_and_one_target_at_first_level(self):
+        result = resolver_magia({"magia": "comando", "espaco": 1})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "sabedoria")
+        self.assertEqual(result["mecanica"]["alvos"], 1)
+        self.assertIn("parar", result["mecanica"]["comandos"])
+
+    def test_sleep_is_concentration_sphere_with_incapacitated_condition(self):
+        result = resolver_magia({"magia": "sono", "espaco": 1})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertTrue(result["concentracao"])
+        self.assertEqual(result["mecanica"]["area"]["raio_m"], 1.5)
+        self.assertEqual(result["mecanica"]["condicao_inicial"], "incapacitado")
+        self.assertEqual(result["mecanica"]["condicao_apos_segunda_falha"], "inconsciente")
+
+    def test_heroism_scales_targets_and_grants_immunity(self):
+        result = resolver_magia({"magia": "heroismo", "espaco": 3})
+        self.assertEqual(result["mecanica"]["alvos"], 3)
+        self.assertIn("amedrontado", result["mecanica"]["condicao_imune"])
+        self.assertEqual(result["duracao"], "concentração, até 1 minuto")
+
+    def test_aid_scales_max_hp_bonus_by_slot_level(self):
+        result = resolver_magia({"magia": "auxílio", "espaco": 4})
+        self.assertEqual(result["mecanica"]["alvos"], 3)
+        self.assertEqual(result["mecanica"]["pv_bonus"], 15)
+        self.assertEqual(result["duracao"], "8 horas")
+
+    def test_sanctuary_is_bonus_action_and_ignores_areas(self):
+        result = resolver_magia({"magia": "santuário", "espaco": 1})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["acao"], "bonus")
+        self.assertIn("area", result["mecanica"]["nao_protege_contra"])
+
+
+class MagiasControleProtecaoTests(unittest.TestCase):
+    """Lote 2 de magias do PHB 2024 (texto oficial)."""
+
+    def test_scorching_ray_adds_rays_not_dice(self):
+        result = resolver_magia({"magia": "raio ardente", "espaco": 4})
+        self.assertEqual(result["mecanica"]["alvos"], 5)
+        self.assertEqual(result["mecanica"]["dados_dano"], "2d6")
+        self.assertEqual(result["mecanica"]["tipo_dano"], "igneo")
+
+    def test_web_is_cube_with_dex_save_and_restrained(self):
+        result = resolver_magia({"magia": "teia", "espaco": 2})
+        self.assertEqual(result["mecanica"]["area"], {"forma": "cubo", "lado_m": 6})
+        self.assertEqual(result["mecanica"]["salvaguarda"], "destreza")
+        self.assertEqual(result["mecanica"]["condicao"], "contido")
+        self.assertEqual(result["duracao"], "concentração, até 1 hora")
+
+    def test_dispel_magic_ends_spells_up_to_slot_level(self):
+        result = resolver_magia({"magia": "dissipar magia", "espaco": 5})
+        self.assertEqual(result["mecanica"]["dissipa_ate_circulo"], 5)
+
+    def test_counterspell_is_reaction(self):
+        result = resolver_magia({"magia": "contramagia", "espaco": 3})
+        self.assertEqual(result["mecanica"]["acao"], "reacao")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "constituicao")
+
+    def test_feather_fall_is_reaction_for_up_to_five(self):
+        result = resolver_magia({"magia": "queda suave", "espaco": 1})
+        self.assertEqual(result["mecanica"]["alvos"], 5)
+        self.assertEqual(result["mecanica"]["acao"], "reacao")
+
+    def test_lesser_restoration_removes_one_listed_condition(self):
+        result = resolver_magia({"magia": "restauração menor", "espaco": 2})
+        self.assertEqual(result["mecanica"]["acao"], "bonus")
+        self.assertIn("envenenado", result["mecanica"]["condicoes_removiveis"])
+
+    def test_protection_from_energy_lists_five_damage_types(self):
+        result = resolver_magia({"magia": "proteção contra energia", "espaco": 3})
+        self.assertEqual(len(result["mecanica"]["tipos_escolha"]), 5)
+        self.assertTrue(result["concentracao"])
+
+
+class TruquesEPrimeiroCirculoTests(unittest.TestCase):
+    """Lote de truques e magias de 1.º círculo do PHB 2024 (texto oficial)."""
+
+    def test_cantrip_dice_scale_with_character_level(self):
+        from rule_engine.spells import mecanica_de_magia
+        self.assertEqual(mecanica_de_magia("chicote de espinhos", nivel_personagem=5)["dados_dano"], "2d6")
+        self.assertEqual(mecanica_de_magia("chicote de espinhos", nivel_personagem=17)["dados_dano"], "4d6")
+        self.assertEqual(mecanica_de_magia("raio de gelo", nivel_personagem=11)["dados_dano"], "3d8")
+
+    def test_eldritch_blast_like_beams_scale_targets_not_dice(self):
+        from rule_engine.spells import mecanica_de_magia
+        mec = mecanica_de_magia("raio místico", nivel_personagem=11)
+        self.assertEqual(mec["dados_dano"], "1d10")
+        self.assertEqual(mec["alvos"], 3)
+
+    def test_acudir_range_doubles_at_5_11_17(self):
+        from rule_engine.spells import mecanica_de_magia
+        self.assertEqual(mecanica_de_magia("acudir os moribundos", nivel_personagem=5)["alcance_m"], 9)
+        self.assertEqual(mecanica_de_magia("acudir os moribundos", nivel_personagem=17)["alcance_m"], 36)
+
+    def test_cantrip_does_not_consume_slot(self):
+        result = resolver_magia({"magia": "raio de gelo"})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["dados_dano"], "1d8")
+
+    def test_vitalidade_vazia_adds_five_temp_hp_per_extra_slot_level(self):
+        result = resolver_magia({"magia": "vitalidade vazia", "espaco": 3})
+        self.assertEqual(result["mecanica"]["pv_temporarios_extra"], 10)
+        self.assertEqual(result["mecanica"]["pv_temporarios_base"], "2d4")
+
+    def test_salto_targets_scale_with_slot(self):
+        result = resolver_magia({"magia": "salto", "espaco": 3})
+        self.assertEqual(result["mecanica"]["alvos"], 3)
+
+    def test_dissipar_style_detection_and_identify_are_resolved(self):
+        self.assertEqual(resolver_magia({"magia": "detectar magia", "espaco": 1})["resultado"], "conjurada")
+        self.assertEqual(resolver_magia({"magia": "identificar", "espaco": 1})["resultado"], "conjurada")
+
+    def test_resistance_lists_eleven_damage_types(self):
+        result = resolver_magia({"magia": "resistência"})
+        self.assertEqual(len(result["mecanica"]["tipos_escolha"]), 11)
+        self.assertEqual(result["mecanica"]["reducao_dano_base"], "1d4")
+
+
+class MagiasPHB2024NomesNovosTests(unittest.TestCase):
+    """Nomes do PHB 2024: Mãos Mágicas (no lugar de Mão Mágica) e Reparar (no lugar de Consertar)."""
+
+    def test_maos_magicas_is_cantrip_with_nine_metre_hand(self):
+        result = resolver_magia({"magia": "mãos mágicas"})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["mover_m"], 9)
+        self.assertEqual(result["mecanica"]["carga_max_kg"], 5)
+        self.assertFalse(result["mecanica"]["pode_atacar"])
+
+    def test_reparar_repairs_up_to_30cm_and_takes_one_minute(self):
+        result = resolver_magia({"magia": "reparar"})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["ruptura_max_cm"], 30)
+        self.assertEqual(result["mecanica"]["tempo_conjuracao"], "1_minuto")
+        self.assertFalse(result["mecanica"]["restaura_magia"])
+
+
+class MagiasForaDoPHB2024Tests(unittest.TestCase):
+    """Nomes de 2014 ou de suplementos não são usados pelo projeto (regras 2024)."""
+
+    def test_names_from_2014_or_supplements_are_blocked(self):
+        for nome in ["Catapulta", "Pedra Mágica", "Armadilha", "Criar Fogueira"]:
+            with self.subTest(magia=nome):
+                result = resolver_magia({"magia": nome})
+                self.assertEqual(result["resultado"], "bloqueado")
+                # Sem entrada no catálogo (magia_desconhecida) ou bloqueada pela lista explícita.
+                self.assertIn(result["motivo"], {"magia_desconhecida", "fora_do_phb_2024"})
+
+    def test_old_portuguese_names_are_aliases_of_2024_cantrips(self):
+        self.assertEqual(resolver_magia({"magia": "Mão Mágica"})["magia"], "Mãos Mágicas")
+        self.assertEqual(resolver_magia({"magia": "Consertar"})["magia"], "Reparar")
+
+    def test_passos_longos_is_listed_for_artificer_but_has_no_effect_yet(self):
+        from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS
+        self.assertEqual(ARTIFICER_SPELL_LEVELS["Passos Longos"], 1)
+        self.assertEqual(resolver_magia({"magia": "passos longos"})["resultado"], "nao_implementado")
+
+    def test_2024_names_still_resolve(self):
+        self.assertEqual(resolver_magia({"magia": "mãos mágicas"})["resultado"], "conjurada")
+        self.assertEqual(resolver_magia({"magia": "reparar"})["resultado"], "conjurada")
+
+
+class ArtificerListaBase2024Tests(unittest.TestCase):
+    """Lista base do Artífice conforme Eberron: Forge of the Artificer (2024)."""
+
+    def test_base_list_matches_2024_additions(self):
+        from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS as A
+        self.assertEqual(A["Mãos Mágicas"], 0)
+        self.assertEqual(A["Golpe Certeiro"], 0)
+        self.assertEqual(A["Elementalismo"], 0)
+        self.assertEqual(A["Sopro de Dragão"], 2)
+        self.assertEqual(A["Vigor Arcano"], 2)
+        self.assertEqual(A["Círculo de Poder"], 5)
+
+    def test_subclass_spells_are_not_in_base_list(self):
+        from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS as A
+        self.assertNotIn("Onda Trovejante", A)
+        self.assertNotIn("Transmutar Rocha", A)
+
+    def test_subclass_spells_are_always_prepared_by_level(self):
+        from rule_engine.spellcasting import magias_sempre_preparadas
+        self.assertIn("Onda Trovejante", magias_sempre_preparadas("Armeiro", 3))
+        self.assertNotIn("Relâmpago", magias_sempre_preparadas("Armeiro", 5))
+        self.assertIn("Relâmpago", magias_sempre_preparadas("Armeiro", 9))
+        self.assertEqual(magias_sempre_preparadas(None, 9), [])
+
+    def test_subclass_spell_cannot_be_chosen_as_prepared(self):
+        from rule_engine.spellcasting import validar_escolhas_artifice
+        with self.assertRaisesRegex(ValueError, "sempre preparada"):
+            validar_escolhas_artifice(3, 16, ["Luz"], ["Alarme", "Onda Trovejante"], {"1": 2}, subclasse="Armeiro")
+
+
+class CatalogoPHB2024LimpezaTests(unittest.TestCase):
+    def test_fragmentos_de_texto_nao_entram_no_catalogo(self):
+        from rule_engine.spells import MAGIAS
+        for nome in ["você", "m", "r", "se", "use", "nenhuma", "o mal", "círculo ou"]:
+            self.assertNotIn(nome, MAGIAS)
+
+    def test_nomes_de_2014_resolvem_para_nome_do_phb_2024(self):
+        from rule_engine.spells import obter_magia
+        self.assertEqual(obter_magia("Revificar")["nome"], "Revivificar")
+        self.assertEqual(obter_magia("Ver Invisibilidade")["nome"], "Ver o Invisível")
+        self.assertEqual(obter_magia("Liberdade de Movimento")["nome"], "Movimentação Livre")
+        self.assertEqual(obter_magia("Criar Alimentos e Água")["nome"], "Criar Comida e Água")
+        self.assertEqual(obter_magia("Benção")["nome"], "Bênção")
+
+    def test_catalogo_sem_circulo_restringe_a_2014_e_bloqueadas(self):
+        from rule_engine.spells import MAGIAS
+        sem = sorted(v["nome"] for v in MAGIAS.values() if v.get("circulo") is None and "alias_de" not in v)
+        self.assertEqual(sem, ["Animar Mortos", "Sorvedouro de Vida", "Véu da Natureza"])
+
+    def test_bencao_mantem_componente_do_phb_2024(self):
+        from rule_engine.spells import resolver_magia
+        r = resolver_magia({"magia": "benção", "espaco": 2})
+        self.assertEqual(r["resultado"], "conjurada")
+        self.assertEqual(r["mecanica"]["alvos"], 4)
+        self.assertIn("M", r["componentes"])
+        self.assertEqual(r["duracao"], "concentração, até 1 minuto")
+
+    def test_magias_de_fontes_fora_do_phb_2024_sao_bloqueadas(self):
+        from rule_engine.spells import resolver_magia
+        for nome in ["Sorvedouro de Vida", "Véu da Natureza"]:
+            with self.subTest(magia=nome):
+                self.assertEqual(resolver_magia({"magia": nome})["motivo"], "fora_do_phb_2024")
+
+    def test_prestidigitacao_arcana_tem_mecanica_de_utilidade(self):
+        from rule_engine.spells import resolver_magia
+        r = resolver_magia({"magia": "Prestidigitação Arcana"})
+        self.assertEqual(r["resultado"], "conjurada")
+        self.assertEqual(r["mecanica"]["max_efeitos_nao_instantaneos"], 3)
+        self.assertEqual(len(r["mecanica"]["modos"]), 6)
+        self.assertEqual(r["mecanica"]["duracao"], "ate_1_hora")
+
+
+class ArtificerSubclasseCirculosTests(unittest.TestCase):
+    def test_circulos_de_subclasse_conferidos_no_phb_2024(self):
+        from rule_engine.spellcasting import ARTIFICER_SUBCLASS_SPELLS, circulo_magia_subclasse
+        from rule_engine.spells import obter_magia
+        for sub, tabela in ARTIFICER_SUBCLASS_SPELLS.items():
+            for nivel, nomes in tabela.items():
+                for nome in nomes:
+                    with self.subTest(subclasse=sub, magia=nome):
+                        self.assertIsNotNone(circulo_magia_subclasse(nome))
+                        self.assertIsNotNone(obter_magia(nome), nome)
+                        self.assertEqual(obter_magia(nome)["circulo"], circulo_magia_subclasse(nome))
+
+    def test_destruicao_banidora_e_banishing_smite(self):
+        from rule_engine.spellcasting import circulo_magia_subclasse
+        self.assertEqual(circulo_magia_subclasse("Destruição Banidora"), 5)
+
+    def test_magias_pendentes_nao_entram_nas_listas(self):
+        from rule_engine.spellcasting import ARTIFICER_SUBCLASS_SPELLS, ARTIFICER_SPELL_LEVELS
+        todas = {n for t in ARTIFICER_SUBCLASS_SPELLS.values() for ns in t.values() for n in ns}
+        for pendente in ["Golpe Brilhante", "Servo Homúnculo", "Passagem", "Smite Banidor", "Nuvem Mortal"]:
+            self.assertNotIn(pendente, todas)
+        self.assertNotIn("Passagem", ARTIFICER_SPELL_LEVELS)
 
 
 if __name__ == "__main__":
