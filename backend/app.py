@@ -23,6 +23,7 @@ from backend.dependencies import (  # noqa: F401
     obter_mj,
     obter_repositorio,
 )
+from backend.dependencies import Recursos
 from backend.routes import campanhas, catalogo, personagens, sistema
 
 app = FastAPI(
@@ -30,6 +31,9 @@ app = FastAPI(
     version="1.1.0",
     description="MJ DeepSeek com Rule Engine determinístico para mecânicas oficiais.",
 )
+
+# Container de recursos de processo (MJ e repositório), um por instância de app.
+app.state.recursos = Recursos()
 
 app.include_router(sistema.router)
 app.include_router(campanhas.router)

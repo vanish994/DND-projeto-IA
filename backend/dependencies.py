@@ -1,36 +1,48 @@
 """Dependências FastAPI: identidade do jogador, repositório, MJ e limite de taxa.
 
-Os providers ficam registrados uma única vez e são injetados nas rotas com
-``Depends``; a suíte de testes substitui instâncias via ``dependency_overrides``.
+Os recursos de processo (MJ e repositório) vivem em ``app.state.recursos`` — um
+container por instância de app — e nunca em variáveis de módulo: assim requests
+concorrentes e testes isolados não compartilham estado mutável. Os providers
+``obter_mj`` e ``obter_repositorio`` fazem lazy init e podem ser substituídos em
+testes via ``app.dependency_overrides``.
 """
 from __future__ import annotations
 
-from fastapi import Depends, Header, HTTPException
+from dataclasses import dataclass
+
+from fastapi import Depends, Header, HTTPException, Request
 
 from backend.config import JOGADOR_ANONIMO, PADRAO_ID
 from backend.limite_taxa import limitador_padrao
 from backend.persistencia import RepositorioCampanhas
 from integrations.deepseek_mj import DeepSeekMJ
 
-_mj: DeepSeekMJ | None = None
-_repositorio: RepositorioCampanhas | None = None
+
+@dataclass
+class Recursos:
+    """Recursos de processo criados no máximo uma vez por instância de app."""
+
+    mj: DeepSeekMJ | None = None
+    repositorio: RepositorioCampanhas | None = None
 
 
-def obter_mj() -> DeepSeekMJ:
-    global _mj
-    if _mj is None:
+def obter_recursos(request: Request) -> Recursos:
+    return request.app.state.recursos
+
+
+def obter_mj(recursos: Recursos = Depends(obter_recursos)) -> DeepSeekMJ:
+    if recursos.mj is None:
         try:
-            _mj = DeepSeekMJ()
+            recursos.mj = DeepSeekMJ()
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return _mj
+    return recursos.mj
 
 
-def obter_repositorio() -> RepositorioCampanhas:
-    global _repositorio
-    if _repositorio is None:
-        _repositorio = RepositorioCampanhas()
-    return _repositorio
+def obter_repositorio(recursos: Recursos = Depends(obter_recursos)) -> RepositorioCampanhas:
+    if recursos.repositorio is None:
+        recursos.repositorio = RepositorioCampanhas()
+    return recursos.repositorio
 
 
 def obter_jogador(
@@ -39,7 +51,8 @@ def obter_jogador(
     return x_jogador_id or JOGADOR_ANONIMO
 
 
-# Limite de taxa das rotas que chamam o MJ (cada chamada custa uma requisição ao provedor).
+# Limite de taxa das rotas que chamam o MJ (cada chamada custa uma requisição ao
+# provedor). É estado de processo por desenho — memória por processo, por jogador.
 _limitador_mj = limitador_padrao()
 
 
