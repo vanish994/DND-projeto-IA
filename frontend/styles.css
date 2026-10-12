@@ -56,6 +56,7 @@ h1, h2, h3, p, ul, ol { margin: 0; }
 .primary-button:active:not(:disabled) { transform: translateY(1px); }
 .primary-button:disabled { opacity: .55; cursor: not-allowed; }
 .button-glyph { font-size: var(--text-lg); line-height: 1; }
+.button-icon { flex: none; }
 .text-button {
   border: 1px solid var(--color-border);
   background: transparent;
@@ -559,3 +560,18 @@ h1, h2, h3, p, ul, ol { margin: 0; }
   .composer { margin: 0 clamp(var(--space-6), 5vw, 6rem) var(--space-6); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-panel); }
   .scroll-bottom { right: clamp(var(--space-6), 5vw, 6rem); bottom: calc(var(--space-6) + 5rem); }
 }
+
+/* ------------------------------------------------------------------ *
+ * Refinamentos visuais
+ * ------------------------------------------------------------------ */
+/* Estado vazio da lista de campanhas: painel com filete âmbar em vez de texto solto. */
+.campaigns-status:not(:empty) {
+  padding: var(--space-4);
+  border: 1px dashed var(--color-line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-veil);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+/* Ícone do botão principal alinhado ao texto, sem depender de fonte com o glifo. */
+.primary-button .button-icon { margin-right: calc(var(--space-1) * -1); }

@@ -44,7 +44,7 @@ Os rampas neutral-50…900 e amber-50…900 estão em frontend/design-tokens.css
 
 - Celular primeiro e uma viewport para a tela de conversa: use 100dvh (com fallback 100vh) e impeça rolagem do body. O cabeçalho fica no topo, o histórico é o único painel rolável e o compositor fica ancorado no rodapé. Ao abrir o teclado virtual, nenhum controle pode ficar inacessível.
 - Desktop pode ampliar a navegação lateral, sem reduzir a largura de leitura da conversa. Se a lista de campanhas for longa, ela rola dentro do próprio painel/overlay, não na página inteira.
-- Espaçamento em múltiplos de 4 px; tokens disponíveis até 64 px. Cantos: 8 px para elementos compactos, 12 px para controles, 16 px para painéis e bolhas.
+- Espaçamento em múltiplos de 4 px; tokens disponíveis até 64 px (inclui `--space-5` = 20 px, usado no cabeçalho desktop e nas bolhas do MJ). Use somente tokens declarados em `design-tokens.css`: um token inexistente zera a propriedade silenciosamente. Cantos: 8 px para elementos compactos, 12 px para controles, 16 px para painéis e bolhas.
 - Início do jogador: mostrar apenas o nome do produto, campanhas recentes e ações Retomar/Nova campanha. Ocultar explicações do motor, indicadores técnicos e as seções 03/04 deste guia; detalhes ficam em Ajuda/Configurações.
 - Campanha: nome visível, estado de carregamento e troca explícita; criar campanha não apaga nem arquiva silenciosamente outras.
 - Mensagem do MJ: alinhamento editorial simples, avatar identificável e parágrafos com boa largura. Mensagem do jogador: superfície elevada e alinhamento oposto.
