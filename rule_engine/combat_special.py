@@ -42,7 +42,10 @@ def resolver_empurrar(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if total >= cd:
         return {"tipo": "empurrar", "resultado": "resistido", "cd": cd, "total": total}
     return {
-        "tipo": "empurrar", "resultado": "aplicado", "cd": cd, "total": total,
+        "tipo": "empurrar",
+        "resultado": "aplicado",
+        "cd": cd,
+        "total": total,
         "efeito": "caido" if fatos.get("efeito") == "caido" else "empurrado_1_5_m",
     }
 
@@ -56,7 +59,10 @@ def resolver_agarrar(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if total >= cd:
         return {"tipo": "agarrar", "resultado": "resistido", "cd": cd, "total": total}
     return {
-        "tipo": "agarrar", "resultado": "aplicado", "cd": cd, "total": total,
+        "tipo": "agarrar",
+        "resultado": "aplicado",
+        "cd": cd,
+        "total": total,
         "condicao": "agarrado",
     }
 

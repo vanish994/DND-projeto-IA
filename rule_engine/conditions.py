@@ -1,11 +1,45 @@
 """Estado persistente e efeitos das 15 condições do Livro do Jogador 2024."""
+
 from __future__ import annotations
-from dataclasses import dataclass, field
+
 import unicodedata
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-CONDICOES = {"cego", "enfeiticado", "surdo", "exaustao", "amedrontado", "agarrado", "incapacitado", "invisivel", "paralisado", "petrificado", "envenenado", "caido", "contido", "atordoado", "inconsciente"}
-ALIASES = {"blinded": "cego", "charmed": "enfeiticado", "deafened": "surdo", "exhaustion": "exaustao", "frightened": "amedrontado", "grappled": "agarrado", "incapacitated": "incapacitado", "invisible": "invisivel", "paralyzed": "paralisado", "petrified": "petrificado", "poisoned": "envenenado", "prone": "caido", "restrained": "contido", "stunned": "atordoado", "unconscious": "inconsciente"}
+CONDICOES = {
+    "cego",
+    "enfeiticado",
+    "surdo",
+    "exaustao",
+    "amedrontado",
+    "agarrado",
+    "incapacitado",
+    "invisivel",
+    "paralisado",
+    "petrificado",
+    "envenenado",
+    "caido",
+    "contido",
+    "atordoado",
+    "inconsciente",
+}
+ALIASES = {
+    "blinded": "cego",
+    "charmed": "enfeiticado",
+    "deafened": "surdo",
+    "exhaustion": "exaustao",
+    "frightened": "amedrontado",
+    "grappled": "agarrado",
+    "incapacitated": "incapacitado",
+    "invisible": "invisivel",
+    "paralyzed": "paralisado",
+    "petrified": "petrificado",
+    "poisoned": "envenenado",
+    "prone": "caido",
+    "restrained": "contido",
+    "stunned": "atordoado",
+    "unconscious": "inconsciente",
+}
 
 
 def _chave(valor: str) -> str:
@@ -26,6 +60,7 @@ def validar_condicao(condicao: str) -> None:
 @dataclass
 class EstadoCondicoes:
     """Condições, imunidades, durações e níveis de Exaustão de uma criatura."""
+
     ativas: set[str] = field(default_factory=set)
     imunidades: set[str] = field(default_factory=set)
     duracoes: dict[str, int | str] = field(default_factory=dict)
@@ -80,9 +115,7 @@ class EstadoCondicoes:
         self.duracoes.pop(c, None)
         return {"resultado": "removida", "condicao": c}
 
-    def encerrar_por_salvaguarda(
-        self, condicao: str, rolagem: int, modificador: int, cd: int
-    ) -> dict[str, Any]:
+    def encerrar_por_salvaguarda(self, condicao: str, rolagem: int, modificador: int, cd: int) -> dict[str, Any]:
         """Resolve uma salvaguarda explícita para encerrar uma condição.
 
         O chamador deve invocar este método somente quando o efeito permitir
@@ -139,13 +172,17 @@ def resolver_estado_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         return {"resultado": "durações_reduzidas", "encerradas": estado.reduzir_duracoes(fatos.get("units", 1))}
     if operacao == "query":
         validar_condicao(c)
-        return {"resultado": "ativa" if c in estado.ativas else "não_ativa", "condicao": c, "nivel_exaustao": estado.exaustao}
+        return {
+            "resultado": "ativa" if c in estado.ativas else "não_ativa",
+            "condicao": c,
+            "nivel_exaustao": estado.exaustao,
+        }
     raise ValueError("Operação de condição inválida")
 
 
 def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
-    alvo = {normalizar_condicao(c) for c in fatos.get("target_conditions", fatos.get("condicoes_alvo", ())) }
-    atacante = {normalizar_condicao(c) for c in fatos.get("attacker_conditions", fatos.get("condicoes_atacante", ())) }
+    alvo = {normalizar_condicao(c) for c in fatos.get("target_conditions", fatos.get("condicoes_alvo", ()))}
+    atacante = {normalizar_condicao(c) for c in fatos.get("attacker_conditions", fatos.get("condicoes_atacante", ()))}
     acao = str(fatos.get("action", "")).lower()
     distancia_raw = fatos.get("distance")
     distancia = str(distancia_raw).lower() if distancia_raw is not None else None
@@ -154,13 +191,28 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if acao == "attack":
         incapacitantes_atacante = {"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & atacante
         if incapacitantes_atacante:
-            return {**resultado, "resultado": "bloqueado", "result": "blocked", "motivo": "atacante_incapacitado", "condicoes": sorted(incapacitantes_atacante)}
+            return {
+                **resultado,
+                "resultado": "bloqueado",
+                "result": "blocked",
+                "motivo": "atacante_incapacitado",
+                "condicoes": sorted(incapacitantes_atacante),
+            }
         if "enfeiticado" in atacante and fatos.get("alvo_e_enfeiticador", False):
-            return {**resultado, "resultado": "bloqueado", "result": "blocked", "motivo": "nao_pode_atacar_ou_afetar_enfeiticador"}
+            return {
+                **resultado,
+                "resultado": "bloqueado",
+                "result": "blocked",
+                "motivo": "nao_pode_atacar_ou_afetar_enfeiticador",
+            }
         atacante_invisivel_visto = bool(fatos.get("alvo_pode_ver_atacante", False))
         alvo_invisivel_visto = bool(fatos.get("atacante_pode_ver_alvo", False))
-        vantagem = bool({"cego", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo) or ("invisivel" in atacante and not atacante_invisivel_visto)
-        desvantagem = bool({"cego", "envenenado", "contido", "caido"} & atacante) or ("invisivel" in alvo and not alvo_invisivel_visto)
+        vantagem = bool({"cego", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo) or (
+            "invisivel" in atacante and not atacante_invisivel_visto
+        )
+        desvantagem = bool({"cego", "envenenado", "contido", "caido"} & atacante) or (
+            "invisivel" in alvo and not alvo_invisivel_visto
+        )
         if "agarrado" in atacante and not fatos.get("alvo_e_agarrador", False):
             desvantagem = True
         if "amedrontado" in atacante and fatos.get("fonte_no_campo_de_visao", True):
@@ -183,39 +235,66 @@ def resolver_efeitos_condicao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         resultado["resultado"] = "normal" if vantagem == desvantagem else "vantagem" if vantagem else "desvantagem"
         resultado["result"] = resultado["resultado"]
         distancia_m = fatos.get("distancia_m", fatos.get("distance_m"))
-        resultado["acerto_critico_automatico"] = bool({"paralisado", "inconsciente"} & alvo and distancia_m is not None and float(distancia_m) <= 1.5)
+        resultado["acerto_critico_automatico"] = bool(
+            {"paralisado", "inconsciente"} & alvo and distancia_m is not None and float(distancia_m) <= 1.5
+        )
         return resultado
 
     incapacitado = {"incapacitado", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo
-    resultado.update({
-        "pode_mover": not bool({"agarrado", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo),
-        "deslocamento": 0 if {"agarrado", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo else "normal",
-        "pode_realizar_acoes": not bool(incapacitado),
-        "pode_realizar_reacoes": not bool(incapacitado),
-        # Incapacitado, isoladamente, não impede a fala; Paralisado,
-        # Petrificado e Inconsciente impedem. Atordoado permite fala vacilante.
-        "pode_falar": not bool({"paralisado", "petrificado", "inconsciente"} & alvo),
-        "fala_vacilante": "atordoado" in alvo,
-        "pode_ver": "cego" not in alvo,
-        "pode_ouvir": "surdo" not in alvo,
-        "falha_automaticamente_teste_que_exige_visao": "cego" in alvo,
-        "falha_automaticamente_teste_que_exige_audicao": "surdo" in alvo,
-        "encerra_concentracao": bool(incapacitado),
-        "desvantagem_salvaguardas": False,
-        "desvantagem_salvaguarda_destreza": "contido" in alvo,
-        "desvantagem_testes_habilidade": ("envenenado" in alvo) or ("amedrontado" in alvo and fatos.get("fonte_no_campo_de_visao", True)),
-        "falha_salvaguardas_forca_destreza": bool({"paralisado", "petrificado", "atordoado", "inconsciente"} & alvo),
-    })
+    resultado.update(
+        {
+            "pode_mover": not bool(
+                {"agarrado", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo
+            ),
+            "deslocamento": (
+                0
+                if {"agarrado", "contido", "paralisado", "petrificado", "atordoado", "inconsciente"} & alvo
+                else "normal"
+            ),
+            "pode_realizar_acoes": not bool(incapacitado),
+            "pode_realizar_reacoes": not bool(incapacitado),
+            # Incapacitado, isoladamente, não impede a fala; Paralisado,
+            # Petrificado e Inconsciente impedem. Atordoado permite fala vacilante.
+            "pode_falar": not bool({"paralisado", "petrificado", "inconsciente"} & alvo),
+            "fala_vacilante": "atordoado" in alvo,
+            "pode_ver": "cego" not in alvo,
+            "pode_ouvir": "surdo" not in alvo,
+            "falha_automaticamente_teste_que_exige_visao": "cego" in alvo,
+            "falha_automaticamente_teste_que_exige_audicao": "surdo" in alvo,
+            "encerra_concentracao": bool(incapacitado),
+            "desvantagem_salvaguardas": False,
+            "desvantagem_salvaguarda_destreza": "contido" in alvo,
+            "desvantagem_testes_habilidade": ("envenenado" in alvo)
+            or ("amedrontado" in alvo and fatos.get("fonte_no_campo_de_visao", True)),
+            "falha_salvaguardas_forca_destreza": bool(
+                {"paralisado", "petrificado", "atordoado", "inconsciente"} & alvo
+            ),
+        }
+    )
     if "petrificado" in alvo:
-        resultado.update({"resistencia_todos_danos": True, "imune_envenenado_e_doenca": True, "pode_falar": False, "peso_multiplicado": 10, "envelhecimento_suspenso": True})
+        resultado.update(
+            {
+                "resistencia_todos_danos": True,
+                "imune_envenenado_e_doenca": True,
+                "pode_falar": False,
+                "peso_multiplicado": 10,
+                "envelhecimento_suspenso": True,
+            }
+        )
     if "inconsciente" in alvo:
         resultado.update({"tambem_caido": True, "derruba_objetos_empunhados": True, "desatento_ao_ambiente": True})
-    if "agarrado" in alvo and (fatos.get("agarrador_incapacitado", False) or fatos.get("distancia_agarrador_m") is not None and float(fatos["distancia_agarrador_m"]) > float(fatos.get("alcance_agarrador_m", 1.5))):
+    if "agarrado" in alvo and (
+        fatos.get("agarrador_incapacitado", False)
+        or fatos.get("distancia_agarrador_m") is not None
+        and float(fatos["distancia_agarrador_m"]) > float(fatos.get("alcance_agarrador_m", 1.5))
+    ):
         resultado["agarrado_termina"] = True
     if "amedrontado" in alvo:
         resultado["não_pode_se_aproximar_da_fonte"] = True
     if "enfeiticado" in alvo:
-        resultado.update({"não_pode_atacar_o_enfeiticador": True, "não_pode_afetar_o_enfeiticador_com_efeito_nocivo": True})
+        resultado.update(
+            {"não_pode_atacar_o_enfeiticador": True, "não_pode_afetar_o_enfeiticador_com_efeito_nocivo": True}
+        )
         if fatos.get("atacante_e_enfeiticador", False):
             resultado["vantagem_em_testes_sociais_contra_alvo"] = True
     if "invisivel" in alvo:

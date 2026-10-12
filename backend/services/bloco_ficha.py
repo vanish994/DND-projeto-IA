@@ -4,6 +4,7 @@ Valores calculados pelo servidor para exibição da ficha. Nada aqui é inventad
 pelo cliente: os números saem do catálogo oficial somados aos modificadores já
 validados pelo Rule Engine.
 """
+
 from __future__ import annotations
 
 from rule_engine.ability_checks import PERICIAS
@@ -11,19 +12,40 @@ from rule_engine.catalog import CATALOGO_ARMADURAS, CATALOGO_ARMAS
 
 # Armas simples do catálogo; as demais do CATALOGO_ARMAS são marciais.
 ARMAS_SIMPLES = {
-    "Clava", "Clava Grande", "Adaga", "Dardo", "Machadinha", "Martelo Leve", "Maça",
-    "Cajado", "Funda", "Azagaia", "Arco Curto", "Besta Leve",
+    "Clava",
+    "Clava Grande",
+    "Adaga",
+    "Dardo",
+    "Machadinha",
+    "Martelo Leve",
+    "Maça",
+    "Cajado",
+    "Funda",
+    "Azagaia",
+    "Arco Curto",
+    "Besta Leve",
 }
 
 # Proficiências específicas concedidas por classe que não usam o nome da arma.
 ALIAS_PROFICIENCIA_ARMA = {
-    "Besta de Mão": "bestas_de_mao", "Espada Longa": "espadas_longas",
-    "Rapieira": "rapieiras", "Espada Curta": "espadas_curtas",
-    "Adaga": "adagas", "Dardo": "dardos", "Funda": "fundas",
-    "Cajado": "cajados", "Besta Leve": "bestas_leves", "Clava": "clavas",
-    "Clava Grande": "clavas_grandes", "Machadinha": "machadinhas",
-    "Azagaia": "azagaias", "Martelo Leve": "martelos_leves", "Maça": "macas",
-    "Cimitarra": "cimitarras", "Foice": "foices", "Lança": "lancas",
+    "Besta de Mão": "bestas_de_mao",
+    "Espada Longa": "espadas_longas",
+    "Rapieira": "rapieiras",
+    "Espada Curta": "espadas_curtas",
+    "Adaga": "adagas",
+    "Dardo": "dardos",
+    "Funda": "fundas",
+    "Cajado": "cajados",
+    "Besta Leve": "bestas_leves",
+    "Clava": "clavas",
+    "Clava Grande": "clavas_grandes",
+    "Machadinha": "machadinhas",
+    "Azagaia": "azagaias",
+    "Martelo Leve": "martelos_leves",
+    "Maça": "macas",
+    "Cimitarra": "cimitarras",
+    "Foice": "foices",
+    "Lança": "lancas",
 }
 
 # Atributo de conjuração por classe, conforme declarado pelo próprio motor:
@@ -73,13 +95,22 @@ def resolver_arma_ficha(personagem: dict, nome_arma: str | None) -> dict:
     if not nome_arma:
         sinal_negativo = "\u2212"
         return {
-            "nome": None, "desarmado": True, "catalogo": False, "proficiente": True,
-            "atributo": "forca", "modificador": forca, "ataque": proficiencia + forca,
-            "dado": None, "modificador_dano": forca,
+            "nome": None,
+            "desarmado": True,
+            "catalogo": False,
+            "proficiente": True,
+            "atributo": "forca",
+            "modificador": forca,
+            "ataque": proficiencia + forca,
+            "dado": None,
+            "modificador_dano": forca,
             "expressao_dano": "1 {} {}".format("+" if forca >= 0 else sinal_negativo, abs(forca)),
-            "dano_medio": max(0, 1 + forca), "tipo": "contundente",
-            "alcance_pes": ALCANCE_CORPO_A_CORPO_PES, "propriedades": [],
-            "a_distancia": False, "arremesso": False,
+            "dano_medio": max(0, 1 + forca),
+            "tipo": "contundente",
+            "alcance_pes": ALCANCE_CORPO_A_CORPO_PES,
+            "propriedades": [],
+            "a_distancia": False,
+            "arremesso": False,
         }
     arma = CATALOGO_ARMAS.get(nome_arma)
     if arma is None:
@@ -89,22 +120,31 @@ def resolver_arma_ficha(personagem: dict, nome_arma: str | None) -> dict:
     atributo = "destreza" if "municao" in conjunto or ("acuidade" in conjunto and destreza > forca) else "forca"
     modificador = destreza if atributo == "destreza" else forca
     a_distancia = "municao" in conjunto
-    alcance_pes = pes(arma.get("alcance", 0)) if a_distancia or "arremesso" in conjunto else (
-        ALCANCE_EXTENSAO_PES if "extensao" in conjunto else ALCANCE_CORPO_A_CORPO_PES
+    alcance_pes = (
+        pes(arma.get("alcance", 0))
+        if a_distancia or "arremesso" in conjunto
+        else (ALCANCE_EXTENSAO_PES if "extensao" in conjunto else ALCANCE_CORPO_A_CORPO_PES)
     )
     quantidade, lados = (int(parte) for parte in str(arma["dano"]).lower().split("d"))
     dano_medio = int(quantidade * (lados + 1) / 2) + modificador
     sinal = "+" if modificador >= 0 else "−"
     return {
-        "nome": nome_arma, "desarmado": False, "catalogo": True,
+        "nome": nome_arma,
+        "desarmado": False,
+        "catalogo": True,
         "proficiente": proficiente_com_arma(personagem, nome_arma),
-        "atributo": atributo, "modificador": modificador,
+        "atributo": atributo,
+        "modificador": modificador,
         "ataque": proficiencia + modificador,
-        "dado": arma["dano"], "modificador_dano": modificador,
+        "dado": arma["dano"],
+        "modificador_dano": modificador,
         "expressao_dano": f"{arma['dano']} {sinal} {abs(modificador)}",
-        "dano_medio": max(0, dano_medio), "tipo": arma["tipo"],
-        "alcance_pes": alcance_pes, "propriedades": propriedades,
-        "a_distancia": a_distancia, "arremesso": "arremesso" in conjunto,
+        "dano_medio": max(0, dano_medio),
+        "tipo": arma["tipo"],
+        "alcance_pes": alcance_pes,
+        "propriedades": propriedades,
+        "a_distancia": a_distancia,
+        "arremesso": "arremesso" in conjunto,
     }
 
 
@@ -139,10 +179,14 @@ def bloco_salvaguardas(personagem: dict) -> list[dict]:
     for atributo in ("forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"):
         base = int(mods.get(atributo, 0))
         proficiente = atributo in proficientes
-        linhas.append({
-            "atributo": atributo, "proficiente": proficiente,
-            "modificador": base, "total": base + (proficiencia if proficiente else 0),
-        })
+        linhas.append(
+            {
+                "atributo": atributo,
+                "proficiente": proficiente,
+                "modificador": base,
+                "total": base + (proficiencia if proficiente else 0),
+            }
+        )
     return linhas
 
 
@@ -154,10 +198,15 @@ def bloco_pericias(personagem: dict) -> list[dict]:
     for pericia, atributo in PERICIAS.items():
         base = int(mods.get(atributo, 0))
         proficiente = pericia in proficientes
-        linhas.append({
-            "pericia": pericia, "atributo": atributo, "proficiente": proficiente,
-            "modificador": base, "total": base + (proficiencia if proficiente else 0),
-        })
+        linhas.append(
+            {
+                "pericia": pericia,
+                "atributo": atributo,
+                "proficiente": proficiente,
+                "modificador": base,
+                "total": base + (proficiencia if proficiente else 0),
+            }
+        )
     linhas.sort(key=lambda linha: (-int(linha["proficiente"]), linha["pericia"]))
     return linhas
 
@@ -170,8 +219,10 @@ def bloco_conjuracao(personagem: dict) -> dict | None:
     proficiencia = int(personagem.get("bonus_proficiencia") or 2)
     modificador = int(mods.get(atributo, 0))
     return {
-        "atributo": atributo, "modificador": modificador,
-        "cd": 8 + proficiencia + modificador, "ataque": proficiencia + modificador,
+        "atributo": atributo,
+        "modificador": modificador,
+        "cd": 8 + proficiencia + modificador,
+        "ataque": proficiencia + modificador,
     }
 
 
@@ -190,7 +241,8 @@ def bloco_ficha(personagem: dict) -> dict:
         "bonus_proficiencia": int(personagem.get("bonus_proficiencia") or 2),
         "arma": resolver_arma_ficha(personagem, equipamento.get("arma")),
         "armadura": {
-            "nome": equipamento.get("armadura"), "escudo": bool(equipamento.get("escudo")),
+            "nome": equipamento.get("armadura"),
+            "escudo": bool(equipamento.get("escudo")),
             "categoria": armadura["categoria"] if armadura else None,
             "ca_base": armadura["ca"] if armadura else None,
         },

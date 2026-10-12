@@ -1,4 +1,5 @@
 """Injeção de dependências do backend: estado da app e substituição por dublês."""
+
 import unittest
 
 try:
@@ -6,6 +7,7 @@ try:
 
     from backend import app as backend_app
     from backend.dependencies import Recursos, obter_mj, obter_repositorio
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover - backend opcional fora do CI
     DEPENDENCIAS = False
@@ -17,11 +19,16 @@ class RepositorioFalso:
 
     def listar(self, jogador):
         self.listagens.append(jogador)
-        return [{
-            "id": "c-mock", "titulo": "Campanha mockada",
-            "criada_em": "2026-01-01T00:00:00", "atualizada_em": "2026-01-01T00:00:00",
-            "ultima_mensagem": None, "total_mensagens": 0,
-        }]
+        return [
+            {
+                "id": "c-mock",
+                "titulo": "Campanha mockada",
+                "criada_em": "2026-01-01T00:00:00",
+                "atualizada_em": "2026-01-01T00:00:00",
+                "ultima_mensagem": None,
+                "total_mensagens": 0,
+            }
+        ]
 
 
 class MJFalso:

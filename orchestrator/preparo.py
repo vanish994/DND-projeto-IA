@@ -8,6 +8,7 @@ Regra de fronteira: aqui não se decide regra. Quando o dado oficial já existe
 no Rule Engine, o preparo apenas monta os fatos e deixa o motor resolver.
 Quando falta, devolve ``bloqueado`` com o motivo — nunca um palpite.
 """
+
 from __future__ import annotations
 
 from typing import Any, Mapping
@@ -16,12 +17,11 @@ from rule_engine import RuleEngine
 from rule_engine.bestiary import consultar_monstro
 from rule_engine.casting import atributo_de_conjuracao
 from rule_engine.damage import aplicar_defesas_monstro
+from rule_engine.species import HERANCA_DRACONICA, bloco_heranca_draconica
 from rule_engine.spellcasting import normalizar_nome_magia
 from rule_engine.spells import mecanica_de_magia, obter_magia
-from rule_engine.species import HERANCA_DRACONICA, bloco_heranca_draconica
 
 from .rolagens import normalizar_rolagem
-
 
 ATAQUE_DE_SOPRO_FERRAMENTA = "Ataque de Sopro"
 
@@ -40,6 +40,7 @@ def modificador_do_atributo(personagem: Mapping[str, Any], atributo: str) -> int
 def normalizar_texto(valor: Any) -> str:
     """Compara nomes de mesa sem acento, caixa ou espaço duplicado."""
     import unicodedata
+
     texto = unicodedata.normalize("NFKD", str(valor or "").casefold())
     texto = "".join(c for c in texto if not unicodedata.combining(c))
     return " ".join(texto.replace("_", " ").split())
@@ -48,10 +49,12 @@ def normalizar_texto(valor: Any) -> str:
 # Nomes com que mesa e ficha costumam chamar o traço do Draconato. O traço
 # não é arma do catálogo: ele resolve por salvaguarda de Destreza em área.
 NOMES_ATAQUE_DE_SOPRO = (
-    "arma de sopro", "ataque de sopro", "sopro", "sopro de dragao", "sopro do dragao",
+    "arma de sopro",
+    "ataque de sopro",
+    "sopro",
+    "sopro de dragao",
+    "sopro do dragao",
 )
-
-
 
 
 def preparar_ataque_de_magia(
@@ -73,7 +76,8 @@ def preparar_ataque_de_magia(
     circulo = magia.get("circulo")
     if circulo is None:
         return {
-            "resultado": "bloqueado", "motivo": "magia_sem_circulo_confirmado_no_catalogo",
+            "resultado": "bloqueado",
+            "motivo": "magia_sem_circulo_confirmado_no_catalogo",
             "magia": magia["nome"],
         }
 
@@ -87,8 +91,10 @@ def preparar_ataque_de_magia(
     registradas = {normalizar_nome_magia(n) for n in registradas}
     if not registradas:
         return {
-            "resultado": "bloqueado", "motivo": "magia_nao_registrada_na_ficha",
-            "magia": nome_canonico, "dica": "Registre o truque ou a magia na ficha antes de conjurar.",
+            "resultado": "bloqueado",
+            "motivo": "magia_nao_registrada_na_ficha",
+            "magia": nome_canonico,
+            "dica": "Registre o truque ou a magia na ficha antes de conjurar.",
         }
     if chave_magia not in registradas:
         return {"resultado": "bloqueado", "motivo": "magia_nao_registrada_na_ficha", "magia": nome_canonico}
@@ -97,27 +103,32 @@ def preparar_ataque_de_magia(
     mecanica = mecanica_de_magia(nome_canonico, nivel_personagem=nivel)
     if not mecanica:
         return {
-            "resultado": "bloqueado", "motivo": "magia_sem_mecanica_estruturada_no_catalogo",
+            "resultado": "bloqueado",
+            "motivo": "magia_sem_mecanica_estruturada_no_catalogo",
             "magia": nome_canonico,
             "dica": "O catálogo ainda não tem dados de dano para esta magia; não narre dano oficial.",
         }
     if str(mecanica.get("tipo")) != "ataque_magico":
         return {
-            "resultado": "bloqueado", "motivo": "magia_nao_resolve_por_jogada_de_ataque",
-            "magia": nome_canonico, "tipo_de_mecanica": mecanica.get("tipo"),
+            "resultado": "bloqueado",
+            "motivo": "magia_nao_resolve_por_jogada_de_ataque",
+            "magia": nome_canonico,
+            "tipo_de_mecanica": mecanica.get("tipo"),
             "dica": "Esta magia não usa jogada de ataque; resolva pelo efeito próprio dela.",
         }
 
     atributo = atributo_de_conjuracao(engine, personagem)
     if not atributo:
         return {
-            "resultado": "bloqueado", "motivo": "atributo_de_conjuracao_ausente_na_ficha",
+            "resultado": "bloqueado",
+            "motivo": "atributo_de_conjuracao_ausente_na_ficha",
             "classe": personagem.get("classe"),
         }
     modificador = modificador_do_atributo(personagem, atributo)
     if modificador is None:
         return {
-            "resultado": "bloqueado", "motivo": "atributo_de_conjuracao_sem_valor_na_ficha",
+            "resultado": "bloqueado",
+            "motivo": "atributo_de_conjuracao_sem_valor_na_ficha",
             "atributo": atributo,
         }
     bonus_proficiencia = int(personagem.get("bonus_proficiencia", 2 + (nivel - 1) // 4))
@@ -148,6 +159,7 @@ def preparar_ataque_de_magia(
         }
     }
 
+
 def preparar_dano_de_magia(
     engine: RuleEngine,
     facts: dict[str, Any],
@@ -171,13 +183,16 @@ def preparar_dano_de_magia(
         return {"resultado": "bloqueado", "motivo": "personagem_ausente_ou_nao_identificado"}
     if personagem is not None:
         conjuracao = personagem.get("conjuracao") or {}
-        registradas = conjuracao.get("truques") if circulo == 0 else (
-            conjuracao.get("magias_preparadas") or conjuracao.get("magias")
+        registradas = (
+            conjuracao.get("truques")
+            if circulo == 0
+            else (conjuracao.get("magias_preparadas") or conjuracao.get("magias"))
         )
         registradas = {normalizar_nome_magia(x) for x in (registradas or [])}
         if normalizar_nome_magia(nome_canonico) not in registradas:
             return {
-                "resultado": "bloqueado", "motivo": "magia_nao_registrada_na_ficha",
+                "resultado": "bloqueado",
+                "motivo": "magia_nao_registrada_na_ficha",
                 "magia": nome_canonico,
             }
 
@@ -191,7 +206,10 @@ def preparar_dano_de_magia(
         aumento = usado - circulo
         if aumento_informado is not None and int(aumento_informado) != aumento:
             raise ValueError("espaço e aumento divergentes")
-        if circulo > 0 and int(((personagem.get("conjuracao") or {}).get("espacos_totais") or {}).get(str(usado), 0)) < 1:
+        if (
+            circulo > 0
+            and int(((personagem.get("conjuracao") or {}).get("espacos_totais") or {}).get(str(usado), 0)) < 1
+        ):
             return {"resultado": "bloqueado", "motivo": "circulo_indisponivel_na_ficha"}
     except (TypeError, ValueError):
         return {"resultado": "bloqueado", "motivo": "espaco_de_magia_invalido"}
@@ -200,15 +218,18 @@ def preparar_dano_de_magia(
     mecanica = mecanica_de_magia(nome_canonico, nivel_personagem=nivel, aumento=aumento)
     if not mecanica:
         return {
-            "resultado": "bloqueado", "motivo": "magia_sem_mecanica_estruturada_no_catalogo",
+            "resultado": "bloqueado",
+            "motivo": "magia_sem_mecanica_estruturada_no_catalogo",
             "magia": nome_canonico,
             "dica": "O catálogo ainda não tem dano para esta magia; não narre dano oficial.",
         }
     expressao = mecanica.get("dados_dano") or mecanica.get("dados_dano_base")
     if not expressao:
         return {
-            "resultado": "bloqueado", "motivo": "magia_sem_dano_no_catalogo",
-            "magia": nome_canonico, "tipo_de_mecanica": mecanica.get("tipo"),
+            "resultado": "bloqueado",
+            "motivo": "magia_sem_dano_no_catalogo",
+            "magia": nome_canonico,
+            "tipo_de_mecanica": mecanica.get("tipo"),
         }
 
     fatos = {
@@ -231,6 +252,7 @@ def preparar_dano_de_magia(
             fatos["magia_atributo"] = atributo
         fatos["character_id"] = personagem.get("id")
     return {"fatos": fatos}
+
 
 def resolver_ataque_de_sopro(
     engine: RuleEngine,
@@ -280,14 +302,23 @@ def resolver_ataque_de_sopro(
         modificador_alvo = int((alvo.get("modificadores") or {}).get(atributo_save, 0))
 
     semente = str(facts.get("seed") or "")
-    salvaguarda = engine.evaluate({
-        "type": "saving_throw", "ability": atributo_save, "modifier": modificador_alvo,
-        "dc": int(sopro["cd"]), "seed": f"{semente}:sopro" if semente else None,
-    }).outcome
-    dano_rolado = engine.evaluate({
-        "type": "damage", "damage_expression": str(sopro["dado"]), "damage_modifier": 0,
-        "seed": f"{semente}:sopro-dano" if semente else None,
-    }).outcome
+    salvaguarda = engine.evaluate(
+        {
+            "type": "saving_throw",
+            "ability": atributo_save,
+            "modifier": modificador_alvo,
+            "dc": int(sopro["cd"]),
+            "seed": f"{semente}:sopro" if semente else None,
+        }
+    ).outcome
+    dano_rolado = engine.evaluate(
+        {
+            "type": "damage",
+            "damage_expression": str(sopro["dado"]),
+            "damage_modifier": 0,
+            "seed": f"{semente}:sopro-dano" if semente else None,
+        }
+    ).outcome
     dano = int(dano_rolado.get("total", 0))
     sucesso = salvaguarda.get("result") == "success"
     if sucesso:
@@ -303,9 +334,14 @@ def resolver_ataque_de_sopro(
         "heranca_draconica": bloco["nome"],
         "tipo_dano": sopro["tipo_dano"],
         "formas": list(sopro["formas"]),
-        "salvaguarda": {"atributo": atributo_save, "cd": int(sopro["cd"]),
-                        "rolagem": salvaguarda.get("roll"), "total": salvaguarda.get("total"),
-                        "sucesso": sucesso, "resultado": salvaguarda.get("result")},
+        "salvaguarda": {
+            "atributo": atributo_save,
+            "cd": int(sopro["cd"]),
+            "rolagem": salvaguarda.get("roll"),
+            "total": salvaguarda.get("total"),
+            "sucesso": sucesso,
+            "resultado": salvaguarda.get("result"),
+        },
         "dano": int(defesas["dano"]),
         "dano_bruto": int(defesas["dano_bruto"]),
         "defesas_dano": defesas,

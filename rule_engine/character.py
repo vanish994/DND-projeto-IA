@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
-from .class_progression import caracteristicas_no_nivel, subclasses_da_classe
 from .backgrounds import ANTECEDENTES, aplicar_aumentos_antecedente
 from .catalog import INSTRUMENTOS_MUSICAIS, KITS_DE_JOGOS
-from .feats import DARK_GIFT_FEATS, FEATS, ORIGIN_FEATS
+from .class_progression import caracteristicas_no_nivel, subclasses_da_classe
+from .feats import DARK_GIFT_FEATS, FEATS
 from .species import bloco_heranca_draconica, escolha_de_especie, normalizar_escolha
-
 
 ESPECIES = {
     "aasimar": {"tamanho": "pequeno_ou_medio", "deslocamento": 9},
@@ -63,26 +62,76 @@ ATRIBUTOS = {"forca", "destreza", "constituicao", "inteligencia", "sabedoria", "
 # em Tasha's Cauldron of Everything, usada pelo projeto.
 PERICIAS_CLASSE_OPCOES = {
     "barbaro": {"adestrar_animais", "atletismo", "intimidacao", "natureza", "percepcao", "sobrevivencia"},
-    "bardo": set("acrobacia adestrar_animais arcanismo atletismo atuacao enganacao furtividade historia intuicao intimidacao investigacao medicina natureza percepcao persuasao prestidigitacao religiao sobrevivencia".split()),
+    "bardo": set(
+        "acrobacia adestrar_animais arcanismo atletismo atuacao enganacao furtividade historia intuicao intimidacao investigacao medicina natureza percepcao persuasao prestidigitacao religiao sobrevivencia".split()
+    ),
     "clerigo": {"historia", "intuicao", "medicina", "persuasao", "religiao"},
-    "druida": {"arcanismo", "adestrar_animais", "intuicao", "medicina", "natureza", "percepcao", "religiao", "sobrevivencia"},
-    "guerreiro": {"acrobacia", "adestrar_animais", "atletismo", "historia", "intuicao", "intimidacao", "percepcao", "sobrevivencia"},
+    "druida": {
+        "arcanismo",
+        "adestrar_animais",
+        "intuicao",
+        "medicina",
+        "natureza",
+        "percepcao",
+        "religiao",
+        "sobrevivencia",
+    },
+    "guerreiro": {
+        "acrobacia",
+        "adestrar_animais",
+        "atletismo",
+        "historia",
+        "intuicao",
+        "intimidacao",
+        "percepcao",
+        "sobrevivencia",
+    },
     "monge": {"acrobacia", "atletismo", "historia", "intuicao", "religiao", "furtividade"},
     "paladino": {"atletismo", "intuicao", "intimidacao", "medicina", "persuasao", "religiao"},
-    "guardiao": {"adestrar_animais", "atletismo", "intuicao", "investigacao", "natureza", "percepcao", "furtividade", "sobrevivencia"},
-    "ladino": {"acrobacia", "atletismo", "enganacao", "intuicao", "intimidacao", "investigacao", "percepcao", "persuasao", "prestidigitacao", "furtividade"},
+    "guardiao": {
+        "adestrar_animais",
+        "atletismo",
+        "intuicao",
+        "investigacao",
+        "natureza",
+        "percepcao",
+        "furtividade",
+        "sobrevivencia",
+    },
+    "ladino": {
+        "acrobacia",
+        "atletismo",
+        "enganacao",
+        "intuicao",
+        "intimidacao",
+        "investigacao",
+        "percepcao",
+        "persuasao",
+        "prestidigitacao",
+        "furtividade",
+    },
     "feiticeiro": {"arcanismo", "enganacao", "intuicao", "intimidacao", "persuasao", "religiao"},
     "bruxo": {"arcanismo", "enganacao", "historia", "intimidacao", "investigacao", "natureza", "religiao"},
     "mago": {"arcanismo", "historia", "intuicao", "investigacao", "medicina", "religiao"},
     "artifice": {"arcanismo", "historia", "investigacao", "medicina", "natureza", "percepcao", "prestidigitacao"},
 }
 FERRAMENTAS_ARTESAO = {
-    "Suprimentos de Alquimista", "Suprimentos de Cervejeiro", "Suprimentos de Calígrafo",
-    "Ferramentas de Carpinteiro", "Ferramentas de Cartógrafo", "Ferramentas de Sapateiro",
-    "Utensílios de Cozinheiro", "Ferramentas de Vidreiro", "Ferramentas de Joalheiro",
-    "Ferramentas de Coureiro", "Ferramentas de Pedreiro", "Suprimentos de Pintor",
-    "Ferramentas de Oleiro", "Ferramentas de Ferreiro",
-    "Ferramentas de Tecelão", "Ferramentas de Entalhador",
+    "Suprimentos de Alquimista",
+    "Suprimentos de Cervejeiro",
+    "Suprimentos de Calígrafo",
+    "Ferramentas de Carpinteiro",
+    "Ferramentas de Cartógrafo",
+    "Ferramentas de Sapateiro",
+    "Utensílios de Cozinheiro",
+    "Ferramentas de Vidreiro",
+    "Ferramentas de Joalheiro",
+    "Ferramentas de Coureiro",
+    "Ferramentas de Pedreiro",
+    "Suprimentos de Pintor",
+    "Ferramentas de Oleiro",
+    "Ferramentas de Ferreiro",
+    "Ferramentas de Tecelão",
+    "Ferramentas de Entalhador",
 }
 # Opções de ferramenta que alguns antecedentes deixam em aberto.
 CATEGORIAS_FERRAMENTA_ANTECEDENTE = {
@@ -135,31 +184,87 @@ def equipamento_antecedente_resolvido(antecedente: Any, ferramenta: str | None =
 
 
 QUANTIDADE_PERICIAS_CLASSE = {
-    "barbaro": 2, "bardo": 3, "clerigo": 2, "druida": 2, "guerreiro": 2,
-    "monge": 2, "paladino": 2, "guardiao": 3, "ladino": 4,
-    "feiticeiro": 2, "bruxo": 2, "mago": 2, "artifice": 2,
+    "barbaro": 2,
+    "bardo": 3,
+    "clerigo": 2,
+    "druida": 2,
+    "guerreiro": 2,
+    "monge": 2,
+    "paladino": 2,
+    "guardiao": 3,
+    "ladino": 4,
+    "feiticeiro": 2,
+    "bruxo": 2,
+    "mago": 2,
+    "artifice": 2,
 }
 PROFICIENCIAS_SALVAGUARDA_CLASSE = {
-    "barbaro": ["forca", "constituicao"], "bardo": ["destreza", "carisma"],
-    "clerigo": ["sabedoria", "carisma"], "druida": ["inteligencia", "sabedoria"],
-    "guerreiro": ["forca", "constituicao"], "monge": ["forca", "destreza"],
-    "paladino": ["sabedoria", "carisma"], "guardiao": ["forca", "destreza"],
-    "ladino": ["destreza", "inteligencia"], "feiticeiro": ["constituicao", "carisma"],
-    "bruxo": ["sabedoria", "carisma"], "mago": ["inteligencia", "sabedoria"],
+    "barbaro": ["forca", "constituicao"],
+    "bardo": ["destreza", "carisma"],
+    "clerigo": ["sabedoria", "carisma"],
+    "druida": ["inteligencia", "sabedoria"],
+    "guerreiro": ["forca", "constituicao"],
+    "monge": ["forca", "destreza"],
+    "paladino": ["sabedoria", "carisma"],
+    "guardiao": ["forca", "destreza"],
+    "ladino": ["destreza", "inteligencia"],
+    "feiticeiro": ["constituicao", "carisma"],
+    "bruxo": ["sabedoria", "carisma"],
+    "mago": ["inteligencia", "sabedoria"],
     "artifice": ["constituicao", "inteligencia"],
 }
 PROFICIENCIAS_CLASSE = {
-    "artifice": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples"], "ferramentas": ["Ferramentas de Ladrão", "Ferramentas de Funileiro", "um tipo de Ferramentas de Artesão"]},
+    "artifice": {
+        "armaduras": ["leves", "medias", "escudos"],
+        "armas": ["simples"],
+        "ferramentas": ["Ferramentas de Ladrão", "Ferramentas de Funileiro", "um tipo de Ferramentas de Artesão"],
+    },
     "barbaro": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
-    "bardo": {"armaduras": ["leves"], "armas": ["simples", "bestas_de_mao", "espadas_longas", "rapieiras", "espadas_curtas"], "ferramentas": []},
+    "bardo": {
+        "armaduras": ["leves"],
+        "armas": ["simples", "bestas_de_mao", "espadas_longas", "rapieiras", "espadas_curtas"],
+        "ferramentas": [],
+    },
     "clerigo": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples"], "ferramentas": []},
-    "druida": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples", "clavas", "adagas", "dardos", "azagaias", "macas", "cajados", "cimitarras", "foices", "fundas", "lancas"], "ferramentas": []},
-    "guerreiro": {"armaduras": ["leves", "medias", "pesadas", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
+    "druida": {
+        "armaduras": ["leves", "medias", "escudos"],
+        "armas": [
+            "simples",
+            "clavas",
+            "adagas",
+            "dardos",
+            "azagaias",
+            "macas",
+            "cajados",
+            "cimitarras",
+            "foices",
+            "fundas",
+            "lancas",
+        ],
+        "ferramentas": [],
+    },
+    "guerreiro": {
+        "armaduras": ["leves", "medias", "pesadas", "escudos"],
+        "armas": ["simples", "marciais"],
+        "ferramentas": [],
+    },
     "monge": {"armaduras": [], "armas": ["simples", "espadas_curtas"], "ferramentas": []},
-    "paladino": {"armaduras": ["leves", "medias", "pesadas", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
+    "paladino": {
+        "armaduras": ["leves", "medias", "pesadas", "escudos"],
+        "armas": ["simples", "marciais"],
+        "ferramentas": [],
+    },
     "guardiao": {"armaduras": ["leves", "medias", "escudos"], "armas": ["simples", "marciais"], "ferramentas": []},
-    "ladino": {"armaduras": ["leves"], "armas": ["simples", "bestas_de_mao", "espadas_longas", "rapieiras", "espadas_curtas"], "ferramentas": ["Ferramentas de Ladrão"]},
-    "feiticeiro": {"armaduras": [], "armas": ["adagas", "dardos", "fundas", "cajados", "bestas_leves"], "ferramentas": []},
+    "ladino": {
+        "armaduras": ["leves"],
+        "armas": ["simples", "bestas_de_mao", "espadas_longas", "rapieiras", "espadas_curtas"],
+        "ferramentas": ["Ferramentas de Ladrão"],
+    },
+    "feiticeiro": {
+        "armaduras": [],
+        "armas": ["adagas", "dardos", "fundas", "cajados", "bestas_leves"],
+        "ferramentas": [],
+    },
     "bruxo": {"armaduras": ["leves"], "armas": ["simples"], "ferramentas": []},
     "mago": {"armaduras": [], "armas": ["adagas", "dardos", "fundas", "cajados", "bestas_leves"], "ferramentas": []},
 }
@@ -285,12 +390,23 @@ def criar_personagem(fatos: Mapping[str, Any]) -> Personagem:
     if not str(fatos.get("name", "")).strip():
         raise ValueError("O personagem precisa de um nome")
     escolha_origem = str(fatos.get("background_feat") or ANTECEDENTES.get(antecedente, {}).get("talento", ""))
-    escolhas = {"iniciado_em_magia": escolha_origem.split(":", 1)[1]} if escolha_origem.startswith("iniciado_em_magia:") else {}
+    escolhas = (
+        {"iniciado_em_magia": escolha_origem.split(":", 1)[1]}
+        if escolha_origem.startswith("iniciado_em_magia:")
+        else {}
+    )
     return Personagem(
-        nome=str(fatos["name"]).strip(), especie=especie, classe=classe, nivel=nivel,
-        atributos=atributos, antecedente=antecedente,
-        subclasse=subclasse, talentos=talentos, escolhas_talentos=escolhas,
-        pericias_classe=pericias_classe, ferramenta_artesao=ferramenta_artesao,
+        nome=str(fatos["name"]).strip(),
+        especie=especie,
+        classe=classe,
+        nivel=nivel,
+        atributos=atributos,
+        antecedente=antecedente,
+        subclasse=subclasse,
+        talentos=talentos,
+        escolhas_talentos=escolhas,
+        pericias_classe=pericias_classe,
+        ferramenta_artesao=ferramenta_artesao,
         heranca_draconica=heranca_draconica,
         ferramenta_antecedente=ferramenta_antecedente,
         equipamento_antecedente=equipamento_antecedente,
@@ -376,7 +492,17 @@ def ficha_personagem(personagem: Personagem) -> dict[str, Any]:
         "proficiencias_salvaguarda": list(PROFICIENCIAS_SALVAGUARDA_CLASSE[personagem.classe]),
         "proficiencias_classe": {
             **dict(PROFICIENCIAS_CLASSE.get(personagem.classe, {})),
-            **({"ferramentas": ["Ferramentas de Ladrão", "Ferramentas de Funileiro", *([personagem.ferramenta_artesao] if personagem.ferramenta_artesao else [])]} if personagem.classe == "artifice" else {}),
+            **(
+                {
+                    "ferramentas": [
+                        "Ferramentas de Ladrão",
+                        "Ferramentas de Funileiro",
+                        *([personagem.ferramenta_artesao] if personagem.ferramenta_artesao else []),
+                    ]
+                }
+                if personagem.classe == "artifice"
+                else {}
+            ),
         },
         "ferramenta_artesao": personagem.ferramenta_artesao,
         "heranca_draconica": (
@@ -425,11 +551,18 @@ def resolver_multiclasse(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if classe not in CLASSES:
         raise ValueError("Classe inválida para multiclasse")
     requisitos = {
-        "barbaro": {"forca": 13}, "guerreiro": {"forca": 13, "destreza": 13},
-        "paladino": {"forca": 13, "carisma": 13}, "guardiao": {"destreza": 13, "sabedoria": 13},
-        "monge": {"destreza": 13, "sabedoria": 13}, "ladino": {"destreza": 13},
-        "bardo": {"carisma": 13}, "clerigo": {"sabedoria": 13}, "druida": {"sabedoria": 13},
-        "feiticeiro": {"carisma": 13}, "bruxo": {"carisma": 13}, "mago": {"inteligencia": 13},
+        "barbaro": {"forca": 13},
+        "guerreiro": {"forca": 13, "destreza": 13},
+        "paladino": {"forca": 13, "carisma": 13},
+        "guardiao": {"destreza": 13, "sabedoria": 13},
+        "monge": {"destreza": 13, "sabedoria": 13},
+        "ladino": {"destreza": 13},
+        "bardo": {"carisma": 13},
+        "clerigo": {"sabedoria": 13},
+        "druida": {"sabedoria": 13},
+        "feiticeiro": {"carisma": 13},
+        "bruxo": {"carisma": 13},
+        "mago": {"inteligencia": 13},
         "artifice": {"inteligencia": 13},
     }[classe]
     valido = all(atributos[nome] >= valor for nome, valor in requisitos.items())

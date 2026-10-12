@@ -3,6 +3,7 @@
 Todo payload aceito ou devolvido pelo backend tem schema explícito aqui; os
 serviços trabalham com os dicts canônicos da persistência e do Rule Engine.
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field

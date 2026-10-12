@@ -3,8 +3,8 @@
 Toda ficha passa pelo Rule Engine (``resolver_ficha``); nada é calculado no
 cliente. As funções públicas são os casos de uso chamados pelas rotas.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 from backend.erros import ErroDeValidacao, ErroDominio, NaoEncontrado
 from backend.persistencia import RepositorioCampanhas
@@ -17,11 +17,9 @@ from backend.schemas import (
 from backend.services.bloco_ficha import com_bloco
 from rule_engine import (
     ANTECEDENTES,
-    criar_personagem as criar_personagem_no_motor,
-    ficha_personagem,
-    gerar_atributos_compra_pontos,
-    gerar_atributos_matriz_padrao,
 )
+from rule_engine import criar_personagem as criar_personagem_no_motor
+from rule_engine import ficha_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao
 from rule_engine.catalog import CATALOGO_ARMADURAS, CATALOGO_ARMAS
 from rule_engine.character import escolha_ferramenta_do_antecedente
 from rule_engine.species import escolha_de_especie
@@ -52,22 +50,36 @@ def resolver_ficha(dados: NovoPersonagem) -> tuple[dict, dict]:
             base = dict(dados.atributos)
             if sorted(base.values()) != sorted(gerar_atributos_matriz_padrao().values()):
                 raise ValueError("A matriz padrão usa exatamente 15, 14, 13, 12, 10 e 8")
-        personagem = criar_personagem_no_motor({
-            "name": dados.nome,
-            "species": dados.especie,
-            "class": dados.classe,
-            "level": dados.nivel,
-            "subclass": dados.subclasse,
-            "ability_scores": base,
-            "background": dados.antecedente,
-            "background_increases": dados.aumentos_antecedente,
-            "background_feat": dados.talento_antecedente,
-            **({"class_skill_proficiencies": dados.pericias_classe} if dados.pericias_classe is not None else {}),
-            **({"artisan_tool_proficiency": dados.ferramenta_artesao} if dados.ferramenta_artesao is not None else {}),
-            **({"heranca_draconica": dados.heranca_draconica} if dados.heranca_draconica is not None else {}),
-            **({"ferramenta_antecedente": dados.ferramenta_antecedente} if dados.ferramenta_antecedente is not None else {}),
-            **({"equipamento_antecedente": dados.equipamento_antecedente} if dados.equipamento_antecedente is not None else {}),
-        })
+        personagem = criar_personagem_no_motor(
+            {
+                "name": dados.nome,
+                "species": dados.especie,
+                "class": dados.classe,
+                "level": dados.nivel,
+                "subclass": dados.subclasse,
+                "ability_scores": base,
+                "background": dados.antecedente,
+                "background_increases": dados.aumentos_antecedente,
+                "background_feat": dados.talento_antecedente,
+                **({"class_skill_proficiencies": dados.pericias_classe} if dados.pericias_classe is not None else {}),
+                **(
+                    {"artisan_tool_proficiency": dados.ferramenta_artesao}
+                    if dados.ferramenta_artesao is not None
+                    else {}
+                ),
+                **({"heranca_draconica": dados.heranca_draconica} if dados.heranca_draconica is not None else {}),
+                **(
+                    {"ferramenta_antecedente": dados.ferramenta_antecedente}
+                    if dados.ferramenta_antecedente is not None
+                    else {}
+                ),
+                **(
+                    {"equipamento_antecedente": dados.equipamento_antecedente}
+                    if dados.equipamento_antecedente is not None
+                    else {}
+                ),
+            }
+        )
     except (KeyError, TypeError, ValueError) as exc:
         raise ErroDeValidacao(str(exc).strip("'\"")) from exc
     if personagem.antecedente not in ANTECEDENTES:
@@ -99,25 +111,41 @@ def validar_conjuracao(personagem: dict, truques: list[str], preparadas: list[st
             validar_escolhas_artifice(
                 int(personagem.get("nivel", 1)),
                 int((personagem.get("atributos") or {}).get("inteligencia", 10)),
-                truques, preparadas, espacos_totais,
+                truques,
+                preparadas,
+                espacos_totais,
                 subclasse=personagem.get("subclasse") or personagem.get("subclass"),
             )
         except ValueError as exc:
             raise ErroDeValidacao(str(exc)) from exc
 
 
-def aplicar_conjuracao(repo, jogador: str, campanha_id: str, personagem: dict, truques: list[str], preparadas: list[str], espacos_totais: dict) -> dict:
+def aplicar_conjuracao(
+    repo,
+    jogador: str,
+    campanha_id: str,
+    personagem: dict,
+    truques: list[str],
+    preparadas: list[str],
+    espacos_totais: dict,
+) -> dict:
     """Grava magias e espaços sem zerar os espaços já gastos se a progressão não mudou."""
     espacos = {str(circulo): int(total) for circulo, total in espacos_totais.items()}
     ficha = {k: v for k, v in personagem.items() if k not in _CAMPOS_PERSISTENCIA}
     anterior = personagem.get("conjuracao") or {}
     restantes_anteriores = anterior.get("espacos_restantes") or {}
     if anterior.get("espacos_totais") == espacos and restantes_anteriores:
-        restantes = {c: max(0, min(total, int(restantes_anteriores.get(c, total)))) for c, total in espacos.items() if total > 0}
+        restantes = {
+            c: max(0, min(total, int(restantes_anteriores.get(c, total)))) for c, total in espacos.items() if total > 0
+        }
     else:
         restantes = {c: total for c, total in espacos.items() if total > 0}
-    ficha["conjuracao"] = {"truques": truques, "magias_preparadas": preparadas,
-                           "espacos_totais": espacos, "espacos_restantes": restantes}
+    ficha["conjuracao"] = {
+        "truques": truques,
+        "magias_preparadas": preparadas,
+        "espacos_totais": espacos,
+        "espacos_restantes": restantes,
+    }
     atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], ficha)
     if atualizado is None:
         raise NaoEncontrado("Personagem não encontrado")
@@ -131,7 +159,9 @@ def criar_personagem(repo: RepositorioCampanhas, jogador: str, campanha_id: str,
     if dados.magias_iniciais:
         truques = list(dict.fromkeys(dados.magias_iniciais.truques))
         preparadas = list(dict.fromkeys(dados.magias_iniciais.magias_preparadas))
-        if len(truques) != len(dados.magias_iniciais.truques) or len(preparadas) != len(dados.magias_iniciais.magias_preparadas):
+        if len(truques) != len(dados.magias_iniciais.truques) or len(preparadas) != len(
+            dados.magias_iniciais.magias_preparadas
+        ):
             raise ErroDeValidacao("Não repita magias na ficha")
         validar_conjuracao(ficha, truques, preparadas, dados.magias_iniciais.espacos_totais)
         escolhas = (truques, preparadas, dados.magias_iniciais.espacos_totais)
@@ -141,7 +171,9 @@ def criar_personagem(repo: RepositorioCampanhas, jogador: str, campanha_id: str,
     return com_bloco(personagem)
 
 
-def substituir_personagem(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str, dados: NovoPersonagem) -> dict:
+def substituir_personagem(
+    repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str, dados: NovoPersonagem
+) -> dict:
     personagem_ou_404(repo, jogador, campanha_id, personagem_id)
     exigir_escolhas_de_criacao(dados)
     entrada, ficha = resolver_ficha(dados)
@@ -156,7 +188,13 @@ def ajustar_pv(repo: RepositorioCampanhas, jogador: str, campanha_id: str, perso
     return com_bloco(atualizado)
 
 
-def atualizar_proficiencias(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str, dados: AtualizarProficienciasPersonagem) -> dict:
+def atualizar_proficiencias(
+    repo: RepositorioCampanhas,
+    jogador: str,
+    campanha_id: str,
+    personagem_id: str,
+    dados: AtualizarProficienciasPersonagem,
+) -> dict:
     personagem = personagem_ou_404(repo, jogador, campanha_id, personagem_id)
     entrada = dict(personagem.get("entrada") or {})
     entrada["pericias_classe"] = dados.pericias_classe
@@ -175,15 +213,19 @@ def atualizar_proficiencias(repo: RepositorioCampanhas, jogador: str, campanha_i
     for chave in ("conjuracao", "equipamento"):
         if personagem.get(chave):
             nova_ficha[chave] = personagem[chave]
-    atualizado = repo.atualizar_personagem(
-        jogador, campanha_id, personagem_id, entrada=nova_entrada, ficha=nova_ficha
-    )
+    atualizado = repo.atualizar_personagem(jogador, campanha_id, personagem_id, entrada=nova_entrada, ficha=nova_ficha)
     if atualizado is None:
         raise NaoEncontrado("Personagem não encontrado")
     return com_bloco(atualizado)
 
 
-def atualizar_equipamento(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str, dados: AtualizarEquipamentoPersonagem) -> dict:
+def atualizar_equipamento(
+    repo: RepositorioCampanhas,
+    jogador: str,
+    campanha_id: str,
+    personagem_id: str,
+    dados: AtualizarEquipamentoPersonagem,
+) -> dict:
     personagem = personagem_ou_404(repo, jogador, campanha_id, personagem_id)
     if dados.arma is not None and dados.arma not in CATALOGO_ARMAS:
         raise ErroDeValidacao("Arma não encontrada no catálogo")
@@ -208,14 +250,18 @@ def atualizar_equipamento(repo: RepositorioCampanhas, jogador: str, campanha_id:
     return com_bloco(atualizado)
 
 
-def atualizar_magias(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str, dados: AtualizarMagiasPersonagem) -> dict:
+def atualizar_magias(
+    repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str, dados: AtualizarMagiasPersonagem
+) -> dict:
     personagem = personagem_ou_404(repo, jogador, campanha_id, personagem_id)
     truques = list(dict.fromkeys(dados.truques))
     preparadas = list(dict.fromkeys(dados.magias_preparadas))
     if len(truques) != len(dados.truques) or len(preparadas) != len(dados.magias_preparadas):
         raise ErroDeValidacao("Não repita magias na ficha")
     validar_conjuracao(personagem, truques, preparadas, dados.espacos_totais)
-    return com_bloco(aplicar_conjuracao(repo, jogador, campanha_id, personagem, truques, preparadas, dados.espacos_totais))
+    return com_bloco(
+        aplicar_conjuracao(repo, jogador, campanha_id, personagem, truques, preparadas, dados.espacos_totais)
+    )
 
 
 def descanso_longo(repo: RepositorioCampanhas, jogador: str, campanha_id: str, personagem_id: str) -> dict:

@@ -1,0 +1,7 @@
+# Ferramentas de qualidade (lint/format/cobertura). Instale com:
+#   pip install -r requirements-dev.txt
+black>=24,<27
+isort>=5.13,<7
+ruff>=0.6,<1
+pytest>=8,<9
+pytest-cov>=5,<8

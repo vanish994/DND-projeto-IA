@@ -3,6 +3,7 @@
 Concentra constantes de ambiente/identidade lidas no startup, para que rotas e
 serviços não espalhem leitura de variáveis de ambiente.
 """
+
 from __future__ import annotations
 
 import os

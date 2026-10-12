@@ -7,6 +7,7 @@ gravadas. O Rule Engine calcula; este módulo aplica o resultado ao estado.
 Nada aqui inventa regra: ``consumir_espaco`` e ``resumo_autoritativo`` apenas
 refletem o que a ficha e o motor já determinam.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -102,9 +103,9 @@ def resumo_autoritativo(grupo: list[dict[str, Any]]) -> str:
         "informações que já constam aqui. Se um dado não estiver registrado, trate-o como desconhecido "
         "e pergunte ao jogador antes de fixá-lo como fato. Não invente escolhas, espaços, magias, "
         "proficiências, equipamento ou características ausentes; toda alteração mecânica exige "
-        "resolução do motor antes de narrar o efeito.\n"
-        + "\n".join(linhas)
+        "resolução do motor antes de narrar o efeito.\n" + "\n".join(linhas)
     )
+
 
 def consumir_espaco(personagem: dict[str, Any], slot: str) -> dict[str, Any]:
     """Gasta um espaço de magia na ficha e descreve a alteração aplicada.

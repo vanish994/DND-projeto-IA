@@ -5,7 +5,6 @@ from __future__ import annotations
 from math import ceil, sqrt
 from typing import Any, Mapping, Sequence
 
-
 TAMANHOS = {
     "minúsculo": 0,
     "pequeno": 1,
@@ -44,8 +43,12 @@ def espaco_por_tamanho(tamanho: str | int) -> int:
 
 
 def resolver_alcance(
-    distancia: float, *, alcance: float, alcance_maximo: float | None = None,
-    ataque_a_distancia: bool = False, alcance_estendido: bool = False,
+    distancia: float,
+    *,
+    alcance: float,
+    alcance_maximo: float | None = None,
+    ataque_a_distancia: bool = False,
+    alcance_estendido: bool = False,
 ) -> dict[str, Any]:
     """Verifica alcance normal, máximo e Desvantagem além do alcance normal."""
     distancia = float(distancia)
@@ -57,7 +60,8 @@ def resolver_alcance(
         return {"resultado": "fora_de_alcance", "distancia": distancia, "alcance_maximo": maximo}
     desvantagem = bool(ataque_a_distancia and distancia > alcance and not alcance_estendido)
     return {
-        "resultado": "dentro_do_alcance", "distancia": distancia,
+        "resultado": "dentro_do_alcance",
+        "distancia": distancia,
         "desvantagem_por_alcance": desvantagem,
     }
 
@@ -83,7 +87,8 @@ def resolver_linha_de_visao(*, bloqueada: bool = False, cobertura: str = "nenhum
 def resolver_ataque_geometria(fatos: Mapping[str, Any]) -> dict[str, Any]:
     """Combina distância, alcance, linha de visão e cobertura antes do ataque."""
     alcance = resolver_alcance(
-        fatos["distance"], alcance=fatos["range"],
+        fatos["distance"],
+        alcance=fatos["range"],
         alcance_maximo=fatos.get("maximum_range"),
         ataque_a_distancia=bool(fatos.get("ranged_attack", False)),
         alcance_estendido=bool(fatos.get("extended_range", False)),
@@ -100,7 +105,8 @@ def resolver_ataque_geometria(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if cobertura["resultado"] == "bloqueado":
         return {"tipo": "geometria_ataque", "resultado": "bloqueado", "motivo": cobertura["motivo"]}
     return {
-        "tipo": "geometria_ataque", "resultado": "permitido",
+        "tipo": "geometria_ataque",
+        "resultado": "permitido",
         "desvantagem_por_alcance": alcance["desvantagem_por_alcance"],
         "bonus_ca_por_cobertura": cobertura["bonus_ca"],
     }
@@ -116,7 +122,9 @@ def resolver_queda(distancia: float, *, rolagens: Sequence[int] | None = None) -
     if any(valor < 1 or valor > 6 for valor in rolagens):
         raise ValueError("Dados de queda devem estar entre 1 e 6")
     resultado: dict[str, Any] = {
-        "tipo": "queda", "distancia": distancia, "dados_d6": dados,
+        "tipo": "queda",
+        "distancia": distancia,
+        "dados_d6": dados,
         "condicao": "caido" if distancia > 0 else None,
     }
     if rolagens:

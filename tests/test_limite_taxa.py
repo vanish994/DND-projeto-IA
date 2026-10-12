@@ -5,13 +5,14 @@ from unittest import mock
 try:
     from fastapi import HTTPException
     from fastapi.testclient import TestClient
-    from sqlalchemy.pool import StaticPool
     from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
 
     from backend import app as backend_app
     from backend import dependencies as backend_dependencies
     from backend.limite_taxa import LimitadorTaxa, limitador_padrao
     from backend.persistencia import RepositorioCampanhas
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover
     DEPENDENCIAS = False
@@ -119,8 +120,9 @@ class LimiteNasRotasDoMJTests(unittest.TestCase):
     def test_limite_e_por_jogador(self):
         for _ in range(2):
             self.client.post("/v1/mj/mensagem", json={"sessao_id": "s1", "mensagem": "oi"}, headers=self.cabecalho)
-        r = self.client.post("/v1/mj/mensagem", json={"sessao_id": "s2", "mensagem": "oi"},
-                             headers={"X-Jogador-Id": "outro-jogador"})
+        r = self.client.post(
+            "/v1/mj/mensagem", json={"sessao_id": "s2", "mensagem": "oi"}, headers={"X-Jogador-Id": "outro-jogador"}
+        )
         self.assertEqual(r.status_code, 200, r.text)
 
 

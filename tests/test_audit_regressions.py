@@ -1,4 +1,5 @@
 """Regressões para progressão por classe e alvos de Bolha Ácida."""
+
 import unittest
 
 from rule_engine.class_progression import caracteristicas_no_nivel

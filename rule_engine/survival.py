@@ -38,7 +38,10 @@ class EstadoVital:
 
 
 def ajustar_dano(
-    dano: int, *, resistente: bool = False, vulneravel: bool = False,
+    dano: int,
+    *,
+    resistente: bool = False,
+    vulneravel: bool = False,
     imune: bool = False,
 ) -> int:
     """Aplica ajustes e depois Resistência e Vulnerabilidade, nessa ordem."""
@@ -53,10 +56,16 @@ def ajustar_dano(
 
 
 def aplicar_dano(
-    estado: EstadoVital, dano: int, *, critico: bool = False,
-    dano_ajustado: bool = False, tipo_dano: str | None = None,
-    origem: str | None = None, resistencias: Iterable[str] = (),
-    vulnerabilidades: Iterable[str] = (), imunidades: Iterable[str] = (),
+    estado: EstadoVital,
+    dano: int,
+    *,
+    critico: bool = False,
+    dano_ajustado: bool = False,
+    tipo_dano: str | None = None,
+    origem: str | None = None,
+    resistencias: Iterable[str] = (),
+    vulnerabilidades: Iterable[str] = (),
+    imunidades: Iterable[str] = (),
 ) -> dict[str, Any]:
     """Aplica dano, absorvendo PV temporários e tratando 0 PV."""
     if dano_ajustado:
@@ -74,8 +83,10 @@ def aplicar_dano(
     restante = dano - absorvido
     estado.pv_atuais = max(0, estado.pv_atuais - restante)
     resultado: dict[str, Any] = {
-        "dano_total": dano, "dano_absorvido_pv_temporarios": absorvido,
-        "pv_atuais": estado.pv_atuais, "pv_temporarios": estado.pv_temporarios,
+        "dano_total": dano,
+        "dano_absorvido_pv_temporarios": absorvido,
+        "pv_atuais": estado.pv_atuais,
+        "pv_temporarios": estado.pv_temporarios,
     }
     if tipo_dano is not None:
         resultado["tipo_dano"] = tipo_dano
@@ -141,8 +152,10 @@ def salvaguarda_contra_morte(estado: EstadoVital, rolagem: int) -> dict[str, Any
         estado.morto = True
         return {"resultado": resultado, "estado": "morto", "falhas": estado.salvaguardas_falha}
     return {
-        "resultado": resultado, "estado": "inconsciente",
-        "sucessos": estado.salvaguardas_sucesso, "falhas": estado.salvaguardas_falha,
+        "resultado": resultado,
+        "estado": "inconsciente",
+        "sucessos": estado.salvaguardas_sucesso,
+        "falhas": estado.salvaguardas_falha,
     }
 
 
@@ -163,10 +176,17 @@ def adicionar_exaustao(estado: EstadoVital, niveis: int = 1) -> dict[str, Any]:
     estado.exaustao = min(6, estado.exaustao + max(0, int(niveis)))
     if estado.exaustao >= 6:
         estado.morto = True
-    return {"exaustao": estado.exaustao, "morto": estado.morto, "modificador_d20": -2 * estado.exaustao, "deslocamento_reduzido_m": 1.5 * estado.exaustao}
+    return {
+        "exaustao": estado.exaustao,
+        "morto": estado.morto,
+        "modificador_d20": -2 * estado.exaustao,
+        "deslocamento_reduzido_m": 1.5 * estado.exaustao,
+    }
 
 
-def descanso_curto(estado: EstadoVital, rolagens_dados_vida: Iterable[int], modificador_constituicao: int = 0) -> dict[str, Any]:
+def descanso_curto(
+    estado: EstadoVital, rolagens_dados_vida: Iterable[int], modificador_constituicao: int = 0
+) -> dict[str, Any]:
     """Gasta Dados de Vida durante um Descanso Curto."""
     if estado.pv_atuais <= 0 or estado.morto:
         raise ValueError("É preciso ter pelo menos 1 PV para um Descanso Curto")
@@ -179,7 +199,13 @@ def descanso_curto(estado: EstadoVital, rolagens_dados_vida: Iterable[int], modi
     if estado.dados_vida_maximos > 0:
         estado.dados_vida_disponiveis = int(estado.dados_vida_disponiveis or 0) - len(rolagens)
     resultado = curar(estado, recuperado)
-    resultado.update({"dados_de_vida_gastos": len(rolagens), "descanso": "curto", "dados_vida_disponiveis": estado.dados_vida_disponiveis})
+    resultado.update(
+        {
+            "dados_de_vida_gastos": len(rolagens),
+            "descanso": "curto",
+            "dados_vida_disponiveis": estado.dados_vida_disponiveis,
+        }
+    )
     return resultado
 
 
@@ -195,8 +221,10 @@ def descanso_longo(estado: EstadoVital) -> dict[str, Any]:
     estado.salvaguardas_sucesso = 0
     estado.salvaguardas_falha = 0
     return {
-        "descanso": "longo", "pv_atuais": estado.pv_atuais,
-        "pv_temporarios": estado.pv_temporarios, "exaustao": estado.exaustao,
+        "descanso": "longo",
+        "pv_atuais": estado.pv_atuais,
+        "pv_temporarios": estado.pv_temporarios,
+        "exaustao": estado.exaustao,
         "dados_vida_disponiveis": estado.dados_vida_disponiveis,
     }
 
@@ -214,14 +242,16 @@ def resolver_descanso(fatos: Mapping[str, Any]) -> dict[str, Any]:
     if tipo == "curto":
         if duracao < 1 or interrompido:
             return {"descanso": "curto", "resultado": "interrompido_ou_invalido"}
-        resultado = descanso_curto(
-            estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0)
-        )
+        resultado = descanso_curto(estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0))
     elif tipo == "longo":
         if interrompido:
             if duracao >= 1:
-                resultado = descanso_curto(estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0))
-                resultado.update({"descanso": "curto", "resultado": "beneficios_de_descanso_curto_antes_da_interrupcao"})
+                resultado = descanso_curto(
+                    estado, fatos.get("hit_dice_rolls", []), fatos.get("constitution_modifier", 0)
+                )
+                resultado.update(
+                    {"descanso": "curto", "resultado": "beneficios_de_descanso_curto_antes_da_interrupcao"}
+                )
                 return resultado
             return {"descanso": "longo", "resultado": "interrompido_antes_de_uma_hora"}
         if duracao < 8:

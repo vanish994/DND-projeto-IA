@@ -77,11 +77,26 @@ def resolver_invocacao(fatos: dict) -> dict:
         base.update({"ataques_adicionais": 2})
     elif nome == "punicao_mistica":
         circulo = int(fatos.get("circulo_espaco", 1))
-        base.update({"dano_energetico": 8 * (circulo + 1), "pode_impor_caido": fatos.get("tamanho_alvo", "Medio") in {"Miúdo", "Pequeno", "Médio", "Grande", "miudo", "pequeno", "medio", "grande"}})
+        base.update(
+            {
+                "dano_energetico": 8 * (circulo + 1),
+                "pode_impor_caido": fatos.get("tamanho_alvo", "Medio")
+                in {"Miúdo", "Pequeno", "Médio", "Grande", "miudo", "pequeno", "medio", "grande"},
+            }
+        )
     elif nome == "sorvedouro_de_vida":
-        base.update({"dano_extra": "1d6", "tipos_dano": ["necrótico", "psíquico", "radiante"], "cura_por_dado_vida": True})
+        base.update(
+            {"dano_extra": "1d6", "tipos_dano": ["necrótico", "psíquico", "radiante"], "cura_por_dado_vida": True}
+        )
     elif nome == "investimento_do_mestre_da_corrente":
-        base.update({"deslocamento_voo_ou_natacao": 12, "ataque_familiar_acao_bonus": True, "resistencia_familiar_reacao": True, "dano_familiar": ["necrótico", "radiante"]})
+        base.update(
+            {
+                "deslocamento_voo_ou_natacao": 12,
+                "ataque_familiar_acao_bonus": True,
+                "resistencia_familiar_reacao": True,
+                "dano_familiar": ["necrótico", "radiante"],
+            }
+        )
     elif nome == "presente_dos_protetores":
         base.update({"nomes_permitidos": max(1, _mod(carisma)), "pv_ao_cair": 1, "recarga": "descanso_longo"})
     elif nome == "vigor_infero":
@@ -91,23 +106,60 @@ def resolver_invocacao(fatos: dict) -> dict:
     elif nome == "visao_da_bruxa":
         base.update({"visao_verdadeira_m": 9})
     elif nome == "presente_das_profundezas":
-        base.update({"respira_agua": True, "deslocamento_natacao_igual_ao_deslocamento": True, "respirar_na_agua_sem_espaco": True})
+        base.update(
+            {
+                "respira_agua": True,
+                "deslocamento_natacao_igual_ao_deslocamento": True,
+                "respirar_na_agua_sem_espaco": True,
+            }
+        )
     elif nome == "pacto_da_lamina":
-        base.update({"atributo_ataque_dano": "carisma", "foco_conjuracao": True, "tipos_dano_alternativos": ["necrótico", "psíquico", "radiante"]})
+        base.update(
+            {
+                "atributo_ataque_dano": "carisma",
+                "foco_conjuracao": True,
+                "tipos_dano_alternativos": ["necrótico", "psíquico", "radiante"],
+            }
+        )
     elif nome == "pacto_do_tomo":
         base.update({"truques": 3, "rituais_1_circulo": 2, "foco_conjuracao": True, "magias_de_qualquer_lista": True})
     elif nome == "olhar_de_duas_mentes":
-        base.update({"acao": "bonus", "alcance_m": 18, "duracao": "ate_fim_do_proximo_turno", "mantem_com_acao_bonus": True})
+        base.update(
+            {"acao": "bonus", "alcance_m": 18, "duracao": "ate_fim_do_proximo_turno", "mantem_com_acao_bonus": True}
+        )
     elif nome == "uno_com_as_sombras":
         base.update({"requer": "meia_luz_ou_escuridao", "invisivel": True})
-    elif nome in {"armadura_de_sombras", "mascara_das_muitas_faces", "mestre_das_infindaveis_formas", "passo_ascendente", "salto_sobrenatural", "visoes_de_reinos_distantes", "visoes_nebulosas", "lamento_das_sepulturas"}:
+    elif nome in {
+        "armadura_de_sombras",
+        "mascara_das_muitas_faces",
+        "mestre_das_infindaveis_formas",
+        "passo_ascendente",
+        "salto_sobrenatural",
+        "visoes_de_reinos_distantes",
+        "visoes_nebulosas",
+        "lamento_das_sepulturas",
+    }:
         base["conjuracao_sem_espaco"] = True
     elif nome == "mente_mistica":
         base["vantagem_concentracao_constituicao"] = True
     elif nome == "licoes_dos_grandes_antigos":
         base["escolhe_talento_de_origem"] = True
     elif nome == "pacto_da_corrente":
-        base.update({"convocar_familiar_sem_espaco": True, "formas_especiais": ["cobra_peconhenta", "diabrete", "esfinge_maravilhosa", "esqueleto", "pseudodragao", "quasit", "slaad_girino", "sprite"]})
+        base.update(
+            {
+                "convocar_familiar_sem_espaco": True,
+                "formas_especiais": [
+                    "cobra_peconhenta",
+                    "diabrete",
+                    "esfinge_maravilhosa",
+                    "esqueleto",
+                    "pseudodragao",
+                    "quasit",
+                    "slaad_girino",
+                    "sprite",
+                ],
+            }
+        )
     elif nome == "presente_das_profundezas":
         base["recarga"] = "descanso_longo"
     return base

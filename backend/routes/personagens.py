@@ -3,12 +3,13 @@
 As rotas apenas traduzem HTTP ↔ serviços (``personagem_service``,
 ``condicoes_service``, ``bloco_ficha``).
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Response
 
-from backend.erros import NaoEncontrado
 from backend.dependencies import obter_jogador, obter_repositorio
+from backend.erros import NaoEncontrado
 from backend.persistencia import RepositorioCampanhas
 from backend.schemas import (
     AtualizarCondicaoPersonagem,

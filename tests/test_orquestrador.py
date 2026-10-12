@@ -6,6 +6,7 @@ no estado canônico e devolve o resultado. Estes testes cobrem as seis
 responsabilidades, e em especial a que o projeto não pode perder: recusar em
 vez de inventar, e nunca duplicar efeito no estado.
 """
+
 import unittest
 
 from orchestrator import Acao, OrquestradorAcoes, resumo_autoritativo
@@ -14,10 +15,17 @@ from rule_engine import build_default_engine
 
 def feiticeiro(**extra):
     ficha = {
-        "id": "p1", "nome": "Vanish", "classe": "feiticeiro", "nivel": 3,
+        "id": "p1",
+        "nome": "Vanish",
+        "classe": "feiticeiro",
+        "nivel": 3,
         "atributos": {"carisma": 16, "constituicao": 14, "destreza": 14},
-        "conjuracao": {"truques": ["Raio de Fogo"], "magias_preparadas": ["Bola de Fogo"],
-                       "espacos_totais": {"3": 2}, "espacos_restantes": {"3": 2}},
+        "conjuracao": {
+            "truques": ["Raio de Fogo"],
+            "magias_preparadas": ["Bola de Fogo"],
+            "espacos_totais": {"3": 2},
+            "espacos_restantes": {"3": 2},
+        },
     }
     ficha.update(extra)
     return ficha
@@ -25,9 +33,13 @@ def feiticeiro(**extra):
 
 def guerreiro(**extra):
     ficha = {
-        "id": "g1", "nome": "Bruno", "classe": "guerreiro", "nivel": 1,
+        "id": "g1",
+        "nome": "Bruno",
+        "classe": "guerreiro",
+        "nivel": 1,
         "atributos": {"forca": 16, "destreza": 12, "constituicao": 14},
-        "bonus_proficiencia": 2, "pericias": ["atletismo"],
+        "bonus_proficiencia": 2,
+        "pericias": ["atletismo"],
     }
     ficha.update(extra)
     return ficha
@@ -37,15 +49,24 @@ class ContratoDaAcaoTests(unittest.TestCase):
     """Responsabilidade 1: interpretar o pedido estruturado do MJ."""
 
     def test_traducao_das_tres_ferramentas(self):
-        sugerir = Acao.de_ferramenta("sugerir_monstros", {"tipos": ["beast"], "nd_min": "1/4", "nd_max": "1", "limite": 3})
+        sugerir = Acao.de_ferramenta(
+            "sugerir_monstros", {"tipos": ["beast"], "nd_min": "1/4", "nd_max": "1", "limite": 3}
+        )
         self.assertEqual((sugerir.tipo, sugerir.parametros["operacao"]), ("bestiary", "sugerir"))
 
         consultar = Acao.de_ferramenta("consultar_monstro", {"nome": "Goblin"})
         self.assertEqual((consultar.tipo, consultar.parametros["operacao"]), ("bestiary", "bloco_completo"))
 
-        regra = Acao.de_ferramenta("resolver_regra", {"fatos": {
-            "type": "attack", "character_id": "p1", "target_name": "Goblin",
-        }})
+        regra = Acao.de_ferramenta(
+            "resolver_regra",
+            {
+                "fatos": {
+                    "type": "attack",
+                    "character_id": "p1",
+                    "target_name": "Goblin",
+                }
+            },
+        )
         self.assertEqual(regra.tipo, "attack")
         self.assertEqual(regra.personagem_id, "p1")
         self.assertEqual(regra.alvo, "Goblin")
@@ -71,38 +92,74 @@ class PrecondicoesTests(unittest.TestCase):
     def test_personagem_ausente_bloqueia_sem_rolagem(self):
         rolagens = []
         resultado = self.orquestrador.executar_ferramenta(
-            "resolver_regra", {"fatos": {"type": "ability_check", "skill": "atletismo", "dc": 10}},
-            [], on_rolagem=rolagens.append,
+            "resolver_regra",
+            {"fatos": {"type": "ability_check", "skill": "atletismo", "dc": 10}},
+            [],
+            on_rolagem=rolagens.append,
         )
         self.assertEqual(resultado.status, "bloqueado")
         self.assertEqual(resultado.motivo, "personagem_ausente_ou_nao_identificado")
         self.assertEqual(rolagens, [])
 
     def test_alvo_fora_do_bestiario_bloqueia(self):
-        resultado = self.orquestrador.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "attack", "weapon": "Espada Longa", "target_name": "Dragão Inventado",
-        }}, [guerreiro()])
+        resultado = self.orquestrador.executar_ferramenta(
+            "resolver_regra",
+            {
+                "fatos": {
+                    "type": "attack",
+                    "weapon": "Espada Longa",
+                    "target_name": "Dragão Inventado",
+                }
+            },
+            [guerreiro()],
+        )
         self.assertEqual(resultado.motivo, "monstro_desconhecido_no_bestiario")
         self.assertEqual(resultado.dados["alvo"], "Dragão Inventado")
 
     def test_arma_fora_do_catalogo_bloqueia(self):
-        resultado = self.orquestrador.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "attack", "weapon": "Lâmina do Infinito", "target_name": "Goblin",
-        }}, [guerreiro()])
+        resultado = self.orquestrador.executar_ferramenta(
+            "resolver_regra",
+            {
+                "fatos": {
+                    "type": "attack",
+                    "weapon": "Lâmina do Infinito",
+                    "target_name": "Goblin",
+                }
+            },
+            [guerreiro()],
+        )
         self.assertEqual(resultado.motivo, "arma_nao_encontrada_no_catalogo")
 
     def test_sem_proficiencia_na_arma_bloqueia(self):
         mago = {"id": "m1", "classe": "mago", "nivel": 1, "atributos": {"forca": 10, "destreza": 10}}
-        resultado = self.orquestrador.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "attack", "weapon": "Espada Longa", "target_name": "Goblin",
-        }}, [mago])
+        resultado = self.orquestrador.executar_ferramenta(
+            "resolver_regra",
+            {
+                "fatos": {
+                    "type": "attack",
+                    "weapon": "Espada Longa",
+                    "target_name": "Goblin",
+                }
+            },
+            [mago],
+        )
         self.assertEqual(resultado.motivo, "personagem_sem_proficiencia_na_arma")
 
     def test_ca_do_alvo_vem_do_bestiario_e_nao_do_modelo(self):
-        resultado = self.orquestrador.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "attack", "weapon": "Espada Longa", "target_name": "Goblin",
-            "modifier": 99, "target_ac": 999, "seed": "1",
-        }}, [guerreiro()])
+        resultado = self.orquestrador.executar_ferramenta(
+            "resolver_regra",
+            {
+                "fatos": {
+                    "type": "attack",
+                    "weapon": "Espada Longa",
+                    "target_name": "Goblin",
+                    "modifier": 99,
+                    "target_ac": 999,
+                    "seed": "1",
+                }
+            },
+            [guerreiro()],
+        )
         self.assertEqual(resultado.dados["target_ac"], 15)  # CA oficial do Goblin
         self.assertEqual(resultado.dados["modifier"], 3 + 2)
         self.assertEqual(resultado.dados["modifier_source"], "ficha_autoritativa")
@@ -142,8 +199,14 @@ class EstadoTests(unittest.TestCase):
         self.assertEqual(ficha["conjuracao"]["espacos_restantes"], {"3": 2})
 
     def test_conjuracao_bloqueada_nao_altera_estado(self):
-        ficha = feiticeiro(conjuracao={"truques": [], "magias_preparadas": ["Curar Ferimentos"],
-                                       "espacos_totais": {"1": 2}, "espacos_restantes": {"1": 2}})
+        ficha = feiticeiro(
+            conjuracao={
+                "truques": [],
+                "magias_preparadas": ["Curar Ferimentos"],
+                "espacos_totais": {"1": 2},
+                "espacos_restantes": {"1": 2},
+            }
+        )
         resultado = self._conjurar(ficha)
         self.assertEqual(resultado.motivo, "magia_nao_escolhida_na_ficha")
         self.assertEqual(resultado.alteracoes, [])
@@ -159,10 +222,15 @@ class EstadoTests(unittest.TestCase):
         self.assertEqual(self.aplicadas[-1]["de"], 1)
 
     def test_espaco_maior_e_consumido_no_nivel_certo(self):
-        ficha = feiticeiro(nivel=9, conjuracao={
-            "truques": [], "magias_preparadas": ["Bola de Fogo"],
-            "espacos_totais": {"3": 1, "5": 1}, "espacos_restantes": {"3": 1, "5": 1},
-        })
+        ficha = feiticeiro(
+            nivel=9,
+            conjuracao={
+                "truques": [],
+                "magias_preparadas": ["Bola de Fogo"],
+                "espacos_totais": {"3": 1, "5": 1},
+                "espacos_restantes": {"3": 1, "5": 1},
+            },
+        )
         resultado = self._conjurar(ficha, espaco=5)
         self.assertEqual(resultado.dados["resultado"], "conjurada")
         self.assertEqual(resultado.dados["espaco_usado"], 5)
@@ -186,8 +254,10 @@ class RolagensTests(unittest.TestCase):
 
     def test_teste_de_habilidade_anuncia_a_rolagem_do_motor(self):
         resultado = self.orquestrador.executar_ferramenta(
-            "resolver_regra", {"fatos": {"type": "ability_check", "skill": "atletismo", "dc": 12}},
-            [guerreiro()], on_rolagem=self.coletadas.append,
+            "resolver_regra",
+            {"fatos": {"type": "ability_check", "skill": "atletismo", "dc": 12}},
+            [guerreiro()],
+            on_rolagem=self.coletadas.append,
         )
         self.assertEqual(len(resultado.rolagens), 1)
         rolagem = resultado.rolagens[0]
@@ -197,13 +267,28 @@ class RolagensTests(unittest.TestCase):
         self.assertEqual(self.coletadas, resultado.rolagens)
 
     def test_sopro_registra_salvaguarda_e_dano(self):
-        draconato = {"id": "d1", "nome": "Vex", "classe": "guerreiro", "nivel": 5, "especie": "draconato",
-                     "heranca_draconica": "vermelho", "atributos": {"forca": 16, "constituicao": 15}}
+        draconato = {
+            "id": "d1",
+            "nome": "Vex",
+            "classe": "guerreiro",
+            "nivel": 5,
+            "especie": "draconato",
+            "heranca_draconica": "vermelho",
+            "atributos": {"forca": 16, "constituicao": 15},
+        }
         resultado = self.orquestrador.executar_ferramenta(
             "resolver_regra",
-            {"fatos": {"type": "attack", "character_id": "d1", "weapon": "Ataque de Sopro",
-                       "target_name": "Goblin", "seed": "7"}},
-            [draconato], on_rolagem=self.coletadas.append,
+            {
+                "fatos": {
+                    "type": "attack",
+                    "character_id": "d1",
+                    "weapon": "Ataque de Sopro",
+                    "target_name": "Goblin",
+                    "seed": "7",
+                }
+            },
+            [draconato],
+            on_rolagem=self.coletadas.append,
         )
         self.assertEqual(resultado.dados["resultado"], "resolvido")
         self.assertEqual([r["tipo"] for r in resultado.rolagens], ["salvaguarda", "dano"])
@@ -212,10 +297,16 @@ class RolagensTests(unittest.TestCase):
     def test_sopro_sem_heranca_bloqueia_sem_rolagem(self):
         resultado = self.orquestrador.executar_ferramenta(
             "resolver_regra",
-            {"fatos": {"type": "attack", "character_id": "d1", "weapon": "Ataque de Sopro",
-                       "target_name": "Goblin"}},
-            [{"id": "d1", "classe": "guerreiro", "nivel": 5, "especie": "draconato",
-              "atributos": {"constituicao": 15}}],
+            {"fatos": {"type": "attack", "character_id": "d1", "weapon": "Ataque de Sopro", "target_name": "Goblin"}},
+            [
+                {
+                    "id": "d1",
+                    "classe": "guerreiro",
+                    "nivel": 5,
+                    "especie": "draconato",
+                    "atributos": {"constituicao": 15},
+                }
+            ],
         )
         self.assertEqual(resultado.status, "bloqueado")
         self.assertEqual(resultado.motivo, "ataque_de_sopro_exige_draconato_com_heranca_draconica_na_ficha")
@@ -239,9 +330,17 @@ class ResumoAutoritativoTests(unittest.TestCase):
     def test_espacos_restantes_aparecem_apos_o_gasto(self):
         ficha = feiticeiro()
         orquestrador = OrquestradorAcoes(build_default_engine())
-        orquestrador.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "spell", "character_id": "p1", "magia": "Bola de Fogo",
-        }}, [ficha])
+        orquestrador.executar_ferramenta(
+            "resolver_regra",
+            {
+                "fatos": {
+                    "type": "spell",
+                    "character_id": "p1",
+                    "magia": "Bola de Fogo",
+                }
+            },
+            [ficha],
+        )
         self.assertIn("espaços restantes={'3': 1}", resumo_autoritativo([ficha]))
 
 

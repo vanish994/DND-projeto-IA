@@ -1,0 +1,44 @@
+# Configuração das ferramentas de estilo, lint e cobertura do repositório.
+# Instale as ferramentas com: pip install -r requirements-dev.txt
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "docs"]
+
+[tool.ruff.lint]
+# Erros reais (pyflakes + pycodestyle de erro) + avisos; a largura de linha é
+# responsabilidade do black (E501 fora). Regras de estilo mais opinativas
+# (UP/B/SIM/PL...) ficam para um rollout incremental futuro.
+select = ["E4", "E7", "E9", "F", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Imports de guarda de dependências opcionais (try/except ImportError) parecem
+# "não usados" ao lint, mas são o contrato de skip da suíte.
+"tests/*" = ["F401"]
+# Imports tardios intencionais: dados carregados após a montagem do catálogo
+# (bestiary.py/spells.py) e bootstrap de sys.path antes dos imports nos scripts.
+"rule_engine/bestiary.py" = ["E402"]
+"rule_engine/spells.py" = ["E402"]
+"scripts/*" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+branch = true
+source = ["backend", "orchestrator", "integrations", "rule_engine"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

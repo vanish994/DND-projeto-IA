@@ -1,9 +1,9 @@
 """Casos de uso de campanha: acesso a campanhas e contexto autoritativo do MJ."""
+
 from __future__ import annotations
 
 from backend.erros import NaoEncontrado
 from backend.persistencia import RepositorioCampanhas
-
 from orchestrator import resumo_autoritativo
 
 

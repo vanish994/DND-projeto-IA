@@ -17,7 +17,13 @@ class FeatCoverageTests(unittest.TestCase):
         self.assertNotIn("motivo", result)
 
     def test_partial_feat_effects_are_not_reported_as_fully_resolved(self):
-        for feat in ("sortudo", "conjurador_ritualista", "lider_inspirador", "dadiva_da_velocidade", "dadiva_da_resistencia_a_energia"):
+        for feat in (
+            "sortudo",
+            "conjurador_ritualista",
+            "lider_inspirador",
+            "dadiva_da_velocidade",
+            "dadiva_da_resistencia_a_energia",
+        ):
             with self.subTest(feat=feat):
                 result = resolver_talento({"talento": feat, "nivel": 19, "caracteristica_conjuracao": True})
                 self.assertEqual(result["resultado"], "nao_implementado")

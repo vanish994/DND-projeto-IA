@@ -2,6 +2,7 @@
 
 Tudo aqui é leitura do Rule Engine; nada é estimado no cliente.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
@@ -23,10 +24,10 @@ from rule_engine.character import (
     escolha_ferramenta_do_antecedente,
 )
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
+from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA
 from rule_engine.spellcasters import CASTING_ABILITY, resolver_progressao_conjuracao
 from rule_engine.spellcasting import listar_magias_artifice, progresso_artifice
 from rule_engine.spells import listar_magias, suporte_magia
-from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA
 
 router = APIRouter()
 
@@ -43,10 +44,14 @@ def catalogo_personagens() -> dict:
         "quantidade_pericias_classe": dict(QUANTIDADE_PERICIAS_CLASSE),
         "ferramentas_artesao": sorted(FERRAMENTAS_ARTESAO),
         "escolhas_especie": {
-            especie: {"rotulo": escolha["rotulo"], "nota": escolha["nota"], "opcoes": [
-                {"chave": chave, "nome": dados["nome"], "dano": dados["dano"]}
-                for chave, dados in escolha["opcoes"].items()
-            ]}
+            especie: {
+                "rotulo": escolha["rotulo"],
+                "nota": escolha["nota"],
+                "opcoes": [
+                    {"chave": chave, "nome": dados["nome"], "dano": dados["dano"]}
+                    for chave, dados in escolha["opcoes"].items()
+                ],
+            }
             for especie, escolha in ESCOLHAS_ESPECIE.items()
         },
         "heranca_draconica": HERANCA_DRACONICA,
@@ -105,15 +110,20 @@ def catalogo_conjuracao(
         except ValueError as exc:
             raise ErroDeValidacao(str(exc)) from exc
         return {**progresso, "validacao_escolhas": True}
-    progresso = resolver_progressao_conjuracao({
-        "classe": classe_normalizada,
-        "nivel": nivel,
-        "inteligencia": inteligencia,
-        "sabedoria": sabedoria,
-        "carisma": carisma,
-    })
+    progresso = resolver_progressao_conjuracao(
+        {
+            "classe": classe_normalizada,
+            "nivel": nivel,
+            "inteligencia": inteligencia,
+            "sabedoria": sabedoria,
+            "carisma": carisma,
+        }
+    )
     if progresso.get("resultado") != "resolvido":
-        return {"resultado": "nao_implementado", "motivo": progresso.get("motivo") or "progressao_de_conjuracao_ainda_nao_validada_para_esta_classe"}
+        return {
+            "resultado": "nao_implementado",
+            "motivo": progresso.get("motivo") or "progressao_de_conjuracao_ainda_nao_validada_para_esta_classe",
+        }
     espacos = {str(indice + 1): total for indice, total in enumerate(progresso["espacos"]) if total}
     return {
         "resultado": "resolvido",

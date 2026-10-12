@@ -2,17 +2,18 @@
 
 As rotas apenas traduzem HTTP ↔ serviços (``campanha_service``, ``mj_service``).
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Response
 
-from backend.erros import NaoEncontrado
 from backend.dependencies import (
     limitar_chamadas_mj,
     obter_jogador,
     obter_mj,
     obter_repositorio,
 )
+from backend.erros import NaoEncontrado
 from backend.persistencia import RepositorioCampanhas
 from backend.schemas import (
     AtualizarCampanha,
@@ -81,7 +82,11 @@ def apagar_campanha(
     return Response(status_code=204)
 
 
-@router.post("/v1/campanhas/{campanha_id}/mensagens", response_model=RespostaCampanha, dependencies=[Depends(limitar_chamadas_mj)])
+@router.post(
+    "/v1/campanhas/{campanha_id}/mensagens",
+    response_model=RespostaCampanha,
+    dependencies=[Depends(limitar_chamadas_mj)],
+)
 def enviar_mensagem_campanha(
     campanha_id: str,
     pedido: MensagemCampanha,

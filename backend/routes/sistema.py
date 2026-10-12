@@ -1,4 +1,5 @@
 """Rota de saúde do serviço."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter

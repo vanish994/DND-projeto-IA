@@ -20,6 +20,7 @@ class SpellCoverageTests(unittest.TestCase):
 
     def test_unknown_spell_levels_are_not_misclassified_as_cantrips(self):
         from rule_engine import listar_magias
+
         unknown = next(nome for nome, magia in MAGIAS.items() if magia["circulo"] is None)
         result = resolver_magia({"magia": unknown})
         self.assertEqual(result["resultado"], "nao_implementado")
@@ -114,8 +115,6 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertEqual(result["motivo"], "componentes_ausentes")
 
 
-
-
 class MagiasSalvaguardaEControleTests(unittest.TestCase):
     """Magias do PHB 2024 modeladas em 'mecanica' estruturada (texto oficial)."""
 
@@ -207,18 +206,21 @@ class TruquesEPrimeiroCirculoTests(unittest.TestCase):
 
     def test_cantrip_dice_scale_with_character_level(self):
         from rule_engine.spells import mecanica_de_magia
+
         self.assertEqual(mecanica_de_magia("chicote de espinhos", nivel_personagem=5)["dados_dano"], "2d6")
         self.assertEqual(mecanica_de_magia("chicote de espinhos", nivel_personagem=17)["dados_dano"], "4d6")
         self.assertEqual(mecanica_de_magia("raio de gelo", nivel_personagem=11)["dados_dano"], "3d8")
 
     def test_eldritch_blast_like_beams_scale_targets_not_dice(self):
         from rule_engine.spells import mecanica_de_magia
+
         mec = mecanica_de_magia("raio místico", nivel_personagem=11)
         self.assertEqual(mec["dados_dano"], "1d10")
         self.assertEqual(mec["alvos"], 3)
 
     def test_acudir_range_doubles_at_5_11_17(self):
         from rule_engine.spells import mecanica_de_magia
+
         self.assertEqual(mecanica_de_magia("acudir os moribundos", nivel_personagem=5)["alcance_m"], 9)
         self.assertEqual(mecanica_de_magia("acudir os moribundos", nivel_personagem=17)["alcance_m"], 36)
 
@@ -281,6 +283,7 @@ class MagiasForaDoPHB2024Tests(unittest.TestCase):
 
     def test_passos_longos_is_listed_for_artificer_but_has_no_effect_yet(self):
         from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS
+
         self.assertEqual(ARTIFICER_SPELL_LEVELS["Passos Longos"], 1)
         self.assertEqual(resolver_magia({"magia": "passos longos"})["resultado"], "nao_implementado")
 
@@ -294,6 +297,7 @@ class ArtificerListaBase2024Tests(unittest.TestCase):
 
     def test_base_list_matches_2024_additions(self):
         from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS as A
+
         self.assertEqual(A["Mãos Mágicas"], 0)
         self.assertEqual(A["Golpe Certeiro"], 0)
         self.assertEqual(A["Elementalismo"], 0)
@@ -303,11 +307,13 @@ class ArtificerListaBase2024Tests(unittest.TestCase):
 
     def test_subclass_spells_are_not_in_base_list(self):
         from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS as A
+
         self.assertNotIn("Onda Trovejante", A)
         self.assertNotIn("Transmutar Rocha", A)
 
     def test_subclass_spells_are_always_prepared_by_level(self):
         from rule_engine.spellcasting import magias_sempre_preparadas
+
         self.assertIn("Onda Trovejante", magias_sempre_preparadas("Armeiro", 3))
         self.assertNotIn("Relâmpago", magias_sempre_preparadas("Armeiro", 5))
         self.assertIn("Relâmpago", magias_sempre_preparadas("Armeiro", 9))
@@ -315,6 +321,7 @@ class ArtificerListaBase2024Tests(unittest.TestCase):
 
     def test_subclass_spell_cannot_be_chosen_as_prepared(self):
         from rule_engine.spellcasting import validar_escolhas_artifice
+
         with self.assertRaisesRegex(ValueError, "sempre preparada"):
             validar_escolhas_artifice(3, 16, ["Luz"], ["Alarme", "Onda Trovejante"], {"1": 2}, subclasse="Armeiro")
 
@@ -322,11 +329,13 @@ class ArtificerListaBase2024Tests(unittest.TestCase):
 class CatalogoPHB2024LimpezaTests(unittest.TestCase):
     def test_fragmentos_de_texto_nao_entram_no_catalogo(self):
         from rule_engine.spells import MAGIAS
+
         for nome in ["você", "m", "r", "se", "use", "nenhuma", "o mal", "círculo ou"]:
             self.assertNotIn(nome, MAGIAS)
 
     def test_nomes_de_2014_resolvem_para_nome_do_phb_2024(self):
         from rule_engine.spells import obter_magia
+
         self.assertEqual(obter_magia("Revificar")["nome"], "Revivificar")
         self.assertEqual(obter_magia("Ver Invisibilidade")["nome"], "Ver o Invisível")
         self.assertEqual(obter_magia("Liberdade de Movimento")["nome"], "Movimentação Livre")
@@ -335,11 +344,13 @@ class CatalogoPHB2024LimpezaTests(unittest.TestCase):
 
     def test_catalogo_sem_circulo_restringe_a_2014_e_bloqueadas(self):
         from rule_engine.spells import MAGIAS
+
         sem = sorted(v["nome"] for v in MAGIAS.values() if v.get("circulo") is None and "alias_de" not in v)
         self.assertEqual(sem, ["Animar Mortos", "Sorvedouro de Vida", "Véu da Natureza"])
 
     def test_bencao_mantem_componente_do_phb_2024(self):
         from rule_engine.spells import resolver_magia
+
         r = resolver_magia({"magia": "benção", "espaco": 2})
         self.assertEqual(r["resultado"], "conjurada")
         self.assertEqual(r["mecanica"]["alvos"], 4)
@@ -348,12 +359,14 @@ class CatalogoPHB2024LimpezaTests(unittest.TestCase):
 
     def test_magias_de_fontes_fora_do_phb_2024_sao_bloqueadas(self):
         from rule_engine.spells import resolver_magia
+
         for nome in ["Sorvedouro de Vida", "Véu da Natureza"]:
             with self.subTest(magia=nome):
                 self.assertEqual(resolver_magia({"magia": nome})["motivo"], "fora_do_phb_2024")
 
     def test_prestidigitacao_arcana_tem_mecanica_de_utilidade(self):
         from rule_engine.spells import resolver_magia
+
         r = resolver_magia({"magia": "Prestidigitação Arcana"})
         self.assertEqual(r["resultado"], "conjurada")
         self.assertEqual(r["mecanica"]["max_efeitos_nao_instantaneos"], 3)
@@ -365,6 +378,7 @@ class ArtificerSubclasseCirculosTests(unittest.TestCase):
     def test_circulos_de_subclasse_conferidos_no_phb_2024(self):
         from rule_engine.spellcasting import ARTIFICER_SUBCLASS_SPELLS, circulo_magia_subclasse
         from rule_engine.spells import obter_magia
+
         for sub, tabela in ARTIFICER_SUBCLASS_SPELLS.items():
             for nivel, nomes in tabela.items():
                 for nome in nomes:
@@ -375,10 +389,12 @@ class ArtificerSubclasseCirculosTests(unittest.TestCase):
 
     def test_destruicao_banidora_e_banishing_smite(self):
         from rule_engine.spellcasting import circulo_magia_subclasse
+
         self.assertEqual(circulo_magia_subclasse("Destruição Banidora"), 5)
 
     def test_magias_pendentes_nao_entram_nas_listas(self):
-        from rule_engine.spellcasting import ARTIFICER_SUBCLASS_SPELLS, ARTIFICER_SPELL_LEVELS
+        from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS, ARTIFICER_SUBCLASS_SPELLS
+
         todas = {n for t in ARTIFICER_SUBCLASS_SPELLS.values() for ns in t.values() for n in ns}
         for pendente in ["Golpe Brilhante", "Servo Homúnculo", "Passagem", "Smite Banidor", "Nuvem Mortal"]:
             self.assertNotIn(pendente, todas)

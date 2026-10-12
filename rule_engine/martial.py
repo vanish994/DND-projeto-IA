@@ -25,7 +25,13 @@ def resolver_ataque_extra(fatos: dict) -> dict:
 def resolver_maestria_arma(fatos: dict) -> dict:
     classe = str(fatos["classe"]).lower()
     nivel = int(fatos["nivel"])
-    limites = {"guerreiro": (3, 4, 5, 6), "barbaro": (2, 3, 4, 4), "paladino": (2, 3, 4, 4), "guardiao": (2, 3, 4, 4), "ladino": (2, 2, 2, 2)}
+    limites = {
+        "guerreiro": (3, 4, 5, 6),
+        "barbaro": (2, 3, 4, 4),
+        "paladino": (2, 3, 4, 4),
+        "guardiao": (2, 3, 4, 4),
+        "ladino": (2, 2, 2, 2),
+    }
     tabela = limites.get(classe, (0, 0, 0, 0))
     quantidade = tabela[0] if nivel < 4 else tabela[1] if nivel < 10 else tabela[2] if nivel < 16 else tabela[3]
     escolhidas = list(fatos.get("armas", []))
@@ -42,12 +48,21 @@ def resolver_furia(fatos: dict) -> dict:
             return {"resultado": "bloqueado", "motivo": "armadura_pesada_ou_incapacitado"}
         max_usos = 2 if nivel < 3 else 3 if nivel < 6 else 4 if nivel < 12 else 5 if nivel < 17 else 6
         dano = 2 if nivel < 9 else 3 if nivel < 16 else 4
-        return {"resultado": "ativada", "caracteristica": "furia", "usos_maximos": max_usos,
-                "dano_adicional": dano, "resistencias": ["contundente", "cortante", "perfurante"],
-                "vantagem_forca": True, "concentracao": False}
+        return {
+            "resultado": "ativada",
+            "caracteristica": "furia",
+            "usos_maximos": max_usos,
+            "dano_adicional": dano,
+            "resistencias": ["contundente", "cortante", "perfurante"],
+            "vantagem_forca": True,
+            "concentracao": False,
+        }
     if acao == "dano":
-        return {"resultado": "resolvido", "dano_adicional": 2 if nivel < 9 else 3 if nivel < 16 else 4,
-                "resistencias": ["contundente", "cortante", "perfurante"]}
+        return {
+            "resultado": "resolvido",
+            "dano_adicional": 2 if nivel < 9 else 3 if nivel < 16 else 4,
+            "resistencias": ["contundente", "cortante", "perfurante"],
+        }
     return {"resultado": "encerrada", "caracteristica": "furia"}
 
 
@@ -59,7 +74,7 @@ def dados_ataque_furtivo(nivel: int) -> int:
 
 def resolver_ataque_furtivo(fatos: dict) -> dict:
     nivel = int(fatos["nivel"])
-    elegivel = (bool(fatos.get("vantagem", False)) or bool(fatos.get("aliado_adjacente", False)))
+    elegivel = bool(fatos.get("vantagem", False)) or bool(fatos.get("aliado_adjacente", False))
     arma_valida = bool(fatos.get("acuidade_ou_distancia", False))
     if not elegivel or not arma_valida or fatos.get("ja_usou_no_turno", False):
         return {"resultado": "bloqueado", "motivo": "requisitos_ataque_furtivo"}
@@ -87,16 +102,19 @@ def resolver_foco_monge(fatos: dict) -> dict:
         "passo_do_vento": ["desengajar", "correr", "salto_dobrado"],
         "torrente_de_golpes": ["dois_ataques_desarmados" if nivel < 10 else "tres_ataques_desarmados"],
     }
-    return {"resultado": "resolvido", "foco_maximo": foco_maximo, "custo": custo,
-            "efeitos": efeitos.get(acao, [])}
+    return {"resultado": "resolvido", "foco_maximo": foco_maximo, "custo": custo, "efeitos": efeitos.get(acao, [])}
 
 
 def resolver_defletir_ataques(fatos: dict) -> dict:
     nivel = int(fatos["nivel"])
     reducao = int(fatos.get("rolagem_d10", 0)) + int(fatos.get("modificador_destreza", 0)) + nivel
     dano = int(fatos.get("dano", 0))
-    return {"resultado": "resolvido", "reducao": reducao, "dano_restante": max(0, dano - reducao),
-            "pode_redirecionar": dano <= reducao and int(fatos.get("foco_disponivel", 0)) >= 1}
+    return {
+        "resultado": "resolvido",
+        "reducao": reducao,
+        "dano_restante": max(0, dano - reducao),
+        "pode_redirecionar": dano <= reducao and int(fatos.get("foco_disponivel", 0)) >= 1,
+    }
 
 
 def resolver_esquiva_sobrenatural(fatos: dict) -> dict:
@@ -105,5 +123,8 @@ def resolver_esquiva_sobrenatural(fatos: dict) -> dict:
 
 def resolver_evasao(fatos: dict) -> dict:
     if fatos.get("incapacitado", False):
-        return {"resultado": "normal", "dano_final": int(fatos["dano"]) if not fatos.get("sucesso", False) else int(fatos["dano"]) // 2}
+        return {
+            "resultado": "normal",
+            "dano_final": int(fatos["dano"]) if not fatos.get("sucesso", False) else int(fatos["dano"]) // 2,
+        }
     return {"resultado": "resolvido", "dano_final": 0 if fatos.get("sucesso", False) else int(fatos["dano"]) // 2}

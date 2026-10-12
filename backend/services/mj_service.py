@@ -1,10 +1,10 @@
 """Casos de uso da conversa com o MJ: chamada ao provedor e troca persistida."""
+
 from __future__ import annotations
 
-from copy import deepcopy
 import inspect
 import logging
-
+from copy import deepcopy
 
 from backend import config
 from backend.erros import ConflitoDeOperacao, ErroDeProvedor
@@ -25,11 +25,20 @@ def diagnostico_erro_provedor(exc: Exception) -> tuple[str, int | None]:
     if tipo == "PermissionDeniedError" or status == 403:
         return ("O provedor negou acesso ao modelo. Confira a conta, permissões e modelo configurado.", status or 403)
     if status == 402:
-        return ("O saldo de créditos do TokenHarbor parece insuficiente ou expirou. Abra o painel Billing para conferir a carteira e, se necessário, adicione créditos; depois tente novamente.", 402)
+        return (
+            "O saldo de créditos do TokenHarbor parece insuficiente ou expirou. Abra o painel Billing para conferir a carteira e, se necessário, adicione créditos; depois tente novamente.",
+            402,
+        )
     if tipo == "RateLimitError" or status == 429:
-        return ("O provedor atingiu um limite ou não tem cota disponível. Aguarde e confira os créditos/limites da conta.", status or 429)
+        return (
+            "O provedor atingiu um limite ou não tem cota disponível. Aguarde e confira os créditos/limites da conta.",
+            status or 429,
+        )
     if tipo == "NotFoundError" or status == 404:
-        return ("O modelo ou endpoint configurado não foi encontrado. Confira DEEPSEEK_MODEL e TOKENHARBOR_BASE_URL no Render.", status or 404)
+        return (
+            "O modelo ou endpoint configurado não foi encontrado. Confira DEEPSEEK_MODEL e TOKENHARBOR_BASE_URL no Render.",
+            status or 404,
+        )
     if tipo in {"APITimeoutError", "TimeoutError"}:
         return ("O provedor demorou demais para responder. Tente novamente em instantes.", status)
     if tipo in {"APIConnectionError", "ConnectionError"}:
@@ -51,10 +60,15 @@ def chamar_mj(mj: DeepSeekMJ, texto: str, historico: list[dict], **extras) -> st
 
 
 def responder(
-    mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str,
+    mj: DeepSeekMJ,
+    repo: RepositorioCampanhas,
+    jogador: str,
+    campanha_id: str,
+    texto: str,
     operacao_id: str | None = None,
 ) -> tuple[str, list[dict]]:
     """Repete o resultado confirmado sem executar ferramentas novamente."""
+
     def resultado_confirmado():
         if not operacao_id:
             return None
@@ -91,7 +105,8 @@ def responder(
 
     def salvar_estado_personagem(personagem: dict) -> None:
         ficha = {
-            k: v for k, v in personagem.items()
+            k: v
+            for k, v in personagem.items()
             if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}
         }
         # As ferramentas podem continuar trabalhando com a ficha em memória,
@@ -104,8 +119,11 @@ def responder(
         # Só envia o que o MJ em uso aceita: adaptadores antigos e dublês de teste
         # continuam funcionando com a assinatura reduzida.
         resposta = chamar_mj(
-            mj, texto, historico,
-            personagens=personagens, on_character_update=salvar_estado_personagem,
+            mj,
+            texto,
+            historico,
+            personagens=personagens,
+            on_character_update=salvar_estado_personagem,
             on_roll=registrar_rolagem,
         )
     except Exception as exc:
@@ -117,17 +135,25 @@ def responder(
         detalhe, status_provedor = diagnostico_erro_provedor(exc)
         logger.exception(
             "Falha na chamada do provedor do MJ: tipo=%s status_provedor=%s",
-            type(exc).__name__, status_provedor,
+            type(exc).__name__,
+            status_provedor,
         )
         raise ErroDeProvedor(detalhe) from exc
     try:
         confirmado = repo.registrar_troca(
-            jogador, campanha_id, texto, resposta, rolagens,
-            atualizacoes_ficha=atualizacoes_pendentes, fichas_esperadas=fichas_esperadas,
+            jogador,
+            campanha_id,
+            texto,
+            resposta,
+            rolagens,
+            atualizacoes_ficha=atualizacoes_pendentes,
+            fichas_esperadas=fichas_esperadas,
             operacao_id=operacao_id,
         )
     except OperacaoIncompativel as exc:
         raise ConflitoDeOperacao(str(exc)) from exc
     except ConflitoEstadoCampanha as exc:
-        raise ConflitoDeOperacao("A ficha mudou enquanto o MJ respondia. Esta resposta não foi aplicada; tente novamente com o estado atualizado.") from exc
+        raise ConflitoDeOperacao(
+            "A ficha mudou enquanto o MJ respondia. Esta resposta não foi aplicada; tente novamente com o estado atualizado."
+        ) from exc
     return confirmado["resposta"], confirmado["rolagens"]

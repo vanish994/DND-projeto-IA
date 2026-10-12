@@ -7,6 +7,7 @@ instala o único ponto que as converte em resposta HTTP — com o mesmo formato
 O limite de taxa continua levantando ``HTTPException`` (429 com header
 ``Retry-After``): é infraestrutura de proteção da rota, não regra de domínio.
 """
+
 from __future__ import annotations
 
 from typing import Any

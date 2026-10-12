@@ -4,6 +4,7 @@ O DeepSeek conduz a conversa, a narrativa e as decisões de apresentação.
 O Rule Engine é a autoridade exclusiva para mecânicas de D&D chamadas por
 ferramentas. Este módulo não envia a história inteira ao motor.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,6 @@ from orchestrator.rolagens import (  # noqa: F401  (reexportado para compatibili
     normalizar_rolagem,
 )
 from rule_engine import build_default_engine
-
 
 PROMPT_NORMATIVO = """Você é o Mestre de Jogo (MJ) da campanha.
 
@@ -238,7 +238,6 @@ class DeepSeekMJ:
             if on_roll is not None:
                 on_roll(rolagem)
 
-
     def _tool(
         self,
         name: str,
@@ -258,8 +257,7 @@ class DeepSeekMJ:
             args,
             personagens,
             on_alteracao=(
-                (lambda ficha, alteracao: on_character_update(ficha))
-                if on_character_update is not None else None
+                (lambda ficha, alteracao: on_character_update(ficha)) if on_character_update is not None else None
             ),
             # A instância sempre guarda as rolagens da última resposta; o
             # callback, quando existe, é quem as leva à interface.
@@ -318,12 +316,17 @@ class DeepSeekMJ:
             for chamada in chamadas:
                 funcao = chamada.function
                 resultado = self._tool(
-                    funcao.name, json.loads(funcao.arguments), personagens,
-                    on_character_update, on_roll,
+                    funcao.name,
+                    json.loads(funcao.arguments),
+                    personagens,
+                    on_character_update,
+                    on_roll,
                 )
-                mensagens.append({
-                    "role": "tool",
-                    "tool_call_id": chamada.id,
-                    "content": json.dumps(resultado, ensure_ascii=False),
-                })
+                mensagens.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": chamada.id,
+                        "content": json.dumps(resultado, ensure_ascii=False),
+                    }
+                )
         raise RuntimeError("O MJ excedeu o limite de chamadas de ferramentas")

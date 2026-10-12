@@ -1,4 +1,5 @@
 """Mapeamento centralizado: exceções de domínio viram respostas HTTP estáveis."""
+
 import unittest
 
 try:
@@ -14,6 +15,7 @@ try:
         ServicoIndisponivel,
         registrar_tratadores_de_erro,
     )
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover - backend opcional fora do CI
     DEPENDENCIAS = False
@@ -114,6 +116,7 @@ class ContratoHttpPreservadoTests(unittest.TestCase):
 
     def tearDown(self):
         from backend import app as backend_app
+
         backend_app.app.dependency_overrides.clear()
 
     def test_campanha_inexistente_responde_404_com_detail(self):

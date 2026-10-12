@@ -16,6 +16,7 @@ chama ``engine.evaluate`` e relata o que o motor decidiu. Toda decisão
 mecânica continua em ``rule_engine``; se algo não está implementado, o
 resultado é ``bloqueado`` com motivo — nunca um palpite.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -46,38 +47,74 @@ from .preparo import (
 )
 from .rolagens import normalizar_rolagem
 
-
 ATRIBUTOS = ("forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma")
 
 # Aliases que o modelo costuma usar para atributos e perícias.
 ALIASES_ATRIBUTO = {
-    "str": "forca", "strength": "forca", "for": "forca",
-    "dex": "destreza", "dexterity": "destreza", "des": "destreza",
-    "con": "constituicao", "constitution": "constituicao",
-    "int": "inteligencia", "intelligence": "inteligencia",
-    "wis": "sabedoria", "wisdom": "sabedoria", "sab": "sabedoria",
-    "cha": "carisma", "charisma": "carisma", "car": "carisma",
+    "str": "forca",
+    "strength": "forca",
+    "for": "forca",
+    "dex": "destreza",
+    "dexterity": "destreza",
+    "des": "destreza",
+    "con": "constituicao",
+    "constitution": "constituicao",
+    "int": "inteligencia",
+    "intelligence": "inteligencia",
+    "wis": "sabedoria",
+    "wisdom": "sabedoria",
+    "sab": "sabedoria",
+    "cha": "carisma",
+    "charisma": "carisma",
+    "car": "carisma",
 }
 
 ALIASES_PERICIA = {
-    "athletics": "atletismo", "acrobatics": "acrobacia", "animal_handling": "adestrar_animais",
-    "lidar_com_animais": "adestrar_animais", "sleight_of_hand": "prestidigitacao",
-    "stealth": "furtividade", "arcana": "arcanismo", "history": "historia",
-    "insight": "intuicao", "intimidation": "intimidacao", "investigation": "investigacao",
-    "medicine": "medicina", "nature": "natureza", "perception": "percepcao",
-    "performance": "atuacao", "persuasion": "persuasao", "religion": "religiao",
-    "survival": "sobrevivencia", "deception": "enganacao",
+    "athletics": "atletismo",
+    "acrobatics": "acrobacia",
+    "animal_handling": "adestrar_animais",
+    "lidar_com_animais": "adestrar_animais",
+    "sleight_of_hand": "prestidigitacao",
+    "stealth": "furtividade",
+    "arcana": "arcanismo",
+    "history": "historia",
+    "insight": "intuicao",
+    "intimidation": "intimidacao",
+    "investigation": "investigacao",
+    "medicine": "medicina",
+    "nature": "natureza",
+    "perception": "percepcao",
+    "performance": "atuacao",
+    "persuasion": "persuasao",
+    "religion": "religiao",
+    "survival": "sobrevivencia",
+    "deception": "enganacao",
 }
 
 # Chaves que o preparo derivou da ficha/catálogo e que o MJ deve receber de
 # volta junto do resultado para narrar exatamente o que foi usado.
 CHAVES_DERIVADAS = (
-    "character_id", "proficiency_applied", "modifier_source", "weapon",
-    "weapon_damage", "damage_type", "damage_modifier", "attack_ability",
-    "target_name", "magia", "spell_attack", "spell_attack_ability",
-    "magia_tipo_dano", "magia_alcance_m", "escala_truque", "aumento",
-    "magia_salvaguarda", "magia_sucesso_metade", "magia_area",
-    "cd_magia", "magia_atributo",
+    "character_id",
+    "proficiency_applied",
+    "modifier_source",
+    "weapon",
+    "weapon_damage",
+    "damage_type",
+    "damage_modifier",
+    "attack_ability",
+    "target_name",
+    "magia",
+    "spell_attack",
+    "spell_attack_ability",
+    "magia_tipo_dano",
+    "magia_alcance_m",
+    "escala_truque",
+    "aumento",
+    "magia_salvaguarda",
+    "magia_sucesso_metade",
+    "magia_area",
+    "cd_magia",
+    "magia_atributo",
 )
 
 
@@ -124,9 +161,7 @@ class OrquestradorAcoes:
 
         if acao.ferramenta == "resolver_regra":
             if str(fatos.get("type", "")).strip().lower() in TIPOS_MAGIA_DE_AREA:
-                return self._executar_magia_de_area(
-                    fatos, personagens, on_alteracao, on_rolagem
-                )
+                return self._executar_magia_de_area(fatos, personagens, on_alteracao, on_rolagem)
             pronto = self._preparar(fatos, personagens)
             if isinstance(pronto, ResultadoAcao):
                 # Recusa ou resolução direta (ex.: Ataque de Sopro): as rolagens
@@ -143,9 +178,7 @@ class OrquestradorAcoes:
 
         self._pos_processar_resolucao(fatos, resultado)
 
-        alteracoes = self._aplicar_estado(
-            fatos, resultado, personagem_magia, slot_a_consumir, on_alteracao
-        )
+        alteracoes = self._aplicar_estado(fatos, resultado, personagem_magia, slot_a_consumir, on_alteracao)
         rolagens = self._coletar_rolagens(fatos, resultado, personagens, on_rolagem)
         return ResultadoAcao(resolucao.status, resultado, alteracoes, rolagens)
 
@@ -158,17 +191,13 @@ class OrquestradorAcoes:
         on_rolagem: Callable[[dict[str, Any]], None] | None = None,
     ) -> ResultadoAcao:
         """Conveniência para o adaptador do MJ: ferramenta + argumentos → ação."""
-        return self.executar(
-            Acao.de_ferramenta(nome, argumentos), personagens, on_alteracao, on_rolagem
-        )
+        return self.executar(Acao.de_ferramenta(nome, argumentos), personagens, on_alteracao, on_rolagem)
 
     # ------------------------------------------------------------------
     # Pré-condições e preparo (responsabilidades 1 e 3)
     # ------------------------------------------------------------------
     @staticmethod
-    def _personagem(
-        personagem_id: Any, personagens: list[dict[str, Any]] | None
-    ) -> dict[str, Any] | None:
+    def _personagem(personagem_id: Any, personagens: list[dict[str, Any]] | None) -> dict[str, Any] | None:
         """Localiza a ficha; sem id e com um único personagem, usa essa ficha."""
         grupo = personagens or []
         ficha = next((p for p in grupo if p.get("id") == personagem_id), None)
@@ -176,9 +205,7 @@ class OrquestradorAcoes:
             ficha = grupo[0]
         return ficha
 
-    def _preparar(
-        self, fatos: dict[str, Any], personagens: list[dict[str, Any]] | None
-    ) -> _Preparo | ResultadoAcao:
+    def _preparar(self, fatos: dict[str, Any], personagens: list[dict[str, Any]] | None) -> _Preparo | ResultadoAcao:
         """Encaminha a ação ao subsistema correto e monta os fatos do motor."""
         tipo = fatos.get("type")
         if tipo == "class_feature":
@@ -204,12 +231,14 @@ class OrquestradorAcoes:
         if ficha is None:
             return ResultadoAcao.bloqueado("personagem_ausente_ou_nao_identificado")
         nivel = int(ficha.get("nivel", 1) or 1)
-        fatos.update({
-            "classe": ficha.get("classe", ""),
-            "nivel": ficha.get("nivel", 1),
-            "character_id": ficha["id"],
-            "modifier_source": "ficha_autoritativa",
-        })
+        fatos.update(
+            {
+                "classe": ficha.get("classe", ""),
+                "nivel": ficha.get("nivel", 1),
+                "character_id": ficha["id"],
+                "modifier_source": "ficha_autoritativa",
+            }
+        )
         for atributo in ATRIBUTOS:
             fatos.pop(atributo, None)
             if atributo in (ficha.get("atributos") or {}):
@@ -256,17 +285,14 @@ class OrquestradorAcoes:
         # resolve por salvaguarda de Destreza, com CD e dano do traço.
         arma_normalizada = normalizar_texto(nome_arma)
         if arma_normalizada in {normalizar_texto(x) for x in NOMES_ATAQUE_DE_SOPRO} or (
-            "sopro" in arma_normalizada
-            and any(palavra in arma_normalizada for palavra in ("arma", "ataque"))
+            "sopro" in arma_normalizada and any(palavra in arma_normalizada for palavra in ("arma", "ataque"))
         ):
             sopro = resolver_ataque_de_sopro(self.engine, fatos, ficha, personagens)
             resultado_sopro = sopro.get("resultado")
             if isinstance(resultado_sopro, str):
                 # O preparo recusou (herança ausente, alvo desconhecido...).
                 return ResultadoAcao("bloqueado", dict(sopro))
-            return ResultadoAcao(
-                "resolvido", dict(resultado_sopro), [], list(sopro.get("rolagens") or [])
-            )
+            return ResultadoAcao("resolvido", dict(resultado_sopro), [], list(sopro.get("rolagens") or []))
 
         nome_canonico = next((k for k in CATALOGO_ARMAS if k.casefold() == nome_arma.casefold()), None)
         arma = CATALOGO_ARMAS.get(nome_canonico) if nome_canonico else None
@@ -299,17 +325,19 @@ class OrquestradorAcoes:
 
         nivel = max(1, int(ficha.get("nivel", 1) or 1))
         bonus_proficiencia = int(ficha.get("bonus_proficiencia", 2 + (nivel - 1) // 4))
-        fatos.update({
-            "modifier": modificador_atributo + bonus_proficiencia,
-            "character_id": ficha.get("id"),
-            "proficiency_applied": bonus_proficiencia,
-            "modifier_source": "ficha_autoritativa",
-            "weapon": nome_canonico,
-            "weapon_damage": arma["dano"],
-            "damage_type": arma["tipo"],
-            "damage_modifier": modificador_atributo,
-            "attack_ability": atributo_ataque,
-        })
+        fatos.update(
+            {
+                "modifier": modificador_atributo + bonus_proficiencia,
+                "character_id": ficha.get("id"),
+                "proficiency_applied": bonus_proficiencia,
+                "modifier_source": "ficha_autoritativa",
+                "weapon": nome_canonico,
+                "weapon_damage": arma["dano"],
+                "damage_type": arma["tipo"],
+                "damage_modifier": modificador_atributo,
+                "attack_ability": atributo_ataque,
+            }
+        )
 
         alvo_nome = str(fatos.get("target_name", fatos.get("alvo", ""))).strip()
         if not alvo_nome:
@@ -338,8 +366,18 @@ class OrquestradorAcoes:
         prof_classe = PROFICIENCIAS_CLASSE.get(classe, {}).get("armas", [])
         # Mesma classificação usada pelo combate tático do backend.
         simples = {
-            "clava", "clava grande", "adaga", "dardo", "machadinha", "martelo leve",
-            "maça", "cajado", "funda", "azagaia", "arco curto", "besta leve",
+            "clava",
+            "clava grande",
+            "adaga",
+            "dardo",
+            "machadinha",
+            "martelo leve",
+            "maça",
+            "cajado",
+            "funda",
+            "azagaia",
+            "arco curto",
+            "besta leve",
         }
         nome_normalizado = nome_canonico.casefold()
         # Druida usa a lista específica do Livro do Jogador, não toda a categoria simples.
@@ -350,19 +388,26 @@ class OrquestradorAcoes:
         )
         if not proficiente:
             categorias = {
-                "besta de mão": "bestas_de_mao", "espada longa": "espadas_longas",
-                "rapieira": "rapieiras", "espada curta": "espadas_curtas",
-                "besta leve": "bestas_leves", "adaga": "adagas", "dardo": "dardos",
-                "funda": "fundas", "cajado": "cajados", "azagaia": "azagaias",
-                "maça": "macas", "clava": "clavas", "foice": "foices",
-                "lança": "lancas", "cimitarra": "cimitarras",
+                "besta de mão": "bestas_de_mao",
+                "espada longa": "espadas_longas",
+                "rapieira": "rapieiras",
+                "espada curta": "espadas_curtas",
+                "besta leve": "bestas_leves",
+                "adaga": "adagas",
+                "dardo": "dardos",
+                "funda": "fundas",
+                "cajado": "cajados",
+                "azagaia": "azagaias",
+                "maça": "macas",
+                "clava": "clavas",
+                "foice": "foices",
+                "lança": "lancas",
+                "cimitarra": "cimitarras",
             }
             categoria = categorias.get(nome_normalizado)
             proficiente = bool(categoria and categoria in prof_classe)
         if not proficiente:
-            return ResultadoAcao.bloqueado(
-                "personagem_sem_proficiencia_na_arma", arma=nome_canonico, classe=classe
-            )
+            return ResultadoAcao.bloqueado("personagem_sem_proficiencia_na_arma", arma=nome_canonico, classe=classe)
         return None
 
     def _preparar_dano(
@@ -398,7 +443,8 @@ class OrquestradorAcoes:
                 if informado != atributo:
                     return ResultadoAcao.bloqueado(
                         "atributo_incompativel_com_pericia",
-                        pericia=pericia, atributo_correto=atributo,
+                        pericia=pericia,
+                        atributo_correto=atributo,
                     )
             fatos["skill"] = pericia
             fatos["ability"] = atributo
@@ -409,10 +455,7 @@ class OrquestradorAcoes:
             proficiente = pericia in profs
         else:
             bruto = fatos.get("ability", fatos.get("atributo"))
-            atributo = (
-                ALIASES_ATRIBUTO.get(str(bruto).strip().lower(), str(bruto).strip().lower())
-                if bruto else ""
-            )
+            atributo = ALIASES_ATRIBUTO.get(str(bruto).strip().lower(), str(bruto).strip().lower()) if bruto else ""
             if atributo not in set(ATRIBUTOS):
                 return ResultadoAcao.bloqueado("atributo_ausente_ou_invalido")
             fatos["ability"] = atributo
@@ -422,12 +465,14 @@ class OrquestradorAcoes:
         if modificador_atributo is None:
             return ResultadoAcao.bloqueado("atributo_ausente_na_ficha", atributo=atributo)
         bonus_proficiencia = int(ficha.get("bonus_proficiencia", 2)) if proficiente else 0
-        fatos.update({
-            "modifier": modificador_atributo + bonus_proficiencia,
-            "character_id": ficha.get("id"),
-            "proficiency_applied": bonus_proficiencia,
-            "modifier_source": "ficha_autoritativa",
-        })
+        fatos.update(
+            {
+                "modifier": modificador_atributo + bonus_proficiencia,
+                "character_id": ficha.get("id"),
+                "proficiency_applied": bonus_proficiencia,
+                "modifier_source": "ficha_autoritativa",
+            }
+        )
         return _Preparo(fatos)
 
     def _preparar_salvaguarda(
@@ -439,10 +484,7 @@ class OrquestradorAcoes:
             return ResultadoAcao.bloqueado("personagem_ausente_ou_nao_identificado")
 
         bruto = fatos.get("ability", fatos.get("atributo"))
-        atributo = (
-            ALIASES_ATRIBUTO.get(str(bruto).strip().lower(), str(bruto).strip().lower())
-            if bruto else ""
-        )
+        atributo = ALIASES_ATRIBUTO.get(str(bruto).strip().lower(), str(bruto).strip().lower()) if bruto else ""
         if atributo not in set(ATRIBUTOS):
             return ResultadoAcao.bloqueado("atributo_de_salvaguarda_ausente_ou_invalido")
         modificador_atributo = self._modificador(ficha, atributo)
@@ -452,18 +494,20 @@ class OrquestradorAcoes:
         proficientes = set(ficha.get("proficiencias_salvaguarda") or [])
         proficiente = atributo in proficientes
         bonus_proficiencia = int(ficha.get("bonus_proficiencia", 2))
-        fatos.update({
-            "ability": atributo,
-            "atributo": atributo,
-            "proficiencias_salvaguarda": sorted(proficientes),
-            "proficiente": proficiente,
-            "modificador_atributo": modificador_atributo,
-            "bonus_proficiencia": bonus_proficiencia,
-            "modifier": modificador_atributo + (bonus_proficiencia if proficiente else 0),
-            "character_id": ficha.get("id"),
-            "proficiency_applied": bonus_proficiencia if proficiente else 0,
-            "modifier_source": "ficha_autoritativa",
-        })
+        fatos.update(
+            {
+                "ability": atributo,
+                "atributo": atributo,
+                "proficiencias_salvaguarda": sorted(proficientes),
+                "proficiente": proficiente,
+                "modificador_atributo": modificador_atributo,
+                "bonus_proficiencia": bonus_proficiencia,
+                "modifier": modificador_atributo + (bonus_proficiencia if proficiente else 0),
+                "character_id": ficha.get("id"),
+                "proficiency_applied": bonus_proficiencia if proficiente else 0,
+                "modifier_source": "ficha_autoritativa",
+            }
+        )
         # Com o d20 já informado, o motor usa o resolvedor completo de salvaguarda.
         # Sem ele, o tipo "saving_throw" faz o próprio motor rolar o d20 auditável.
         tem_rolagem = any(chave in fatos for chave in ("roll", "dado", "dados", "rolls"))
@@ -503,9 +547,7 @@ class OrquestradorAcoes:
                     sempre_preparada = True
                     circulo = circulo_magia_subclasse(nome_canonico)
                 else:
-                    return ResultadoAcao.bloqueado(
-                        "magia_nao_disponivel_para_artifice", magia=fatos.get("magia")
-                    )
+                    return ResultadoAcao.bloqueado("magia_nao_disponivel_para_artifice", magia=fatos.get("magia"))
         else:
             # Qualquer classe conjuradora usa o círculo do catálogo; a lista de
             # magias preparadas da própria ficha é a autoridade.
@@ -524,16 +566,18 @@ class OrquestradorAcoes:
         if circulo > circulo_maximo:
             return ResultadoAcao.bloqueado("circulo_indisponivel_para_nivel", circulo=circulo)
 
-        fatos.update({
-            "character_id": ficha.get("id"),
-            "magia": nome_canonico,
-            "spell_level": circulo,
-            "concentration_required": bool(
-                (magia.get("concentracao") if isinstance(magia, dict) else None)
-                or (ficha.get("concentracao") or {}).get("magia")
-            ),
-            "concentrating": bool((ficha.get("concentracao") or {}).get("magia")),
-        })
+        fatos.update(
+            {
+                "character_id": ficha.get("id"),
+                "magia": nome_canonico,
+                "spell_level": circulo,
+                "concentration_required": bool(
+                    (magia.get("concentracao") if isinstance(magia, dict) else None)
+                    or (ficha.get("concentracao") or {}).get("magia")
+                ),
+                "concentrating": bool((ficha.get("concentracao") or {}).get("magia")),
+            }
+        )
 
         if circulo == 0:
             # Truques não gastam espaço: o motor valida como conjuração sem espaço.
@@ -591,21 +635,15 @@ class OrquestradorAcoes:
             or ([fatos["target_name"]] if fatos.get("target_name") else [])
         )
         nomes_alvos = (
-            [str(alvo).strip() for alvo in brutos if str(alvo).strip()]
-            if isinstance(brutos, (list, tuple))
-            else []
+            [str(alvo).strip() for alvo in brutos if str(alvo).strip()] if isinstance(brutos, (list, tuple)) else []
         )
         if not nomes_alvos:
-            return ResultadoAcao.bloqueado(
-                "alvos_de_area_ausentes", dica="Informe alvos=[nomes dos monstros na área]."
-            )
+            return ResultadoAcao.bloqueado("alvos_de_area_ausentes", dica="Informe alvos=[nomes dos monstros na área].")
         monstros = []
         for nome in nomes_alvos:
             alvo = consultar_monstro(nome)
             if alvo is None:
-                return ResultadoAcao.bloqueado(
-                    "monstro_desconhecido_no_bestiario", alvo=nome
-                )
+                return ResultadoAcao.bloqueado("monstro_desconhecido_no_bestiario", alvo=nome)
             monstros.append(alvo)
 
         # 1. Conjuração: mesmo preparo do fluxo simples, sem efeito colateral.
@@ -642,8 +680,11 @@ class OrquestradorAcoes:
         if resultado_conjuracao.get("resultado") != "conjurada":
             return ResultadoAcao(resolucao.status, resultado_conjuracao, [], [])
         alteracoes = self._aplicar_estado(
-            pronto.fatos, resultado_conjuracao, personagem_magia,
-            slot_a_consumir, on_alteracao,
+            pronto.fatos,
+            resultado_conjuracao,
+            personagem_magia,
+            slot_a_consumir,
+            on_alteracao,
         )
 
         # 4. Dano: mesmo caminho do fluxo manual (catálogo → motor), rolado
@@ -659,17 +700,11 @@ class OrquestradorAcoes:
         # 5. Salvaguarda de cada alvo com o modificador do próprio bloco.
         semente = str(fatos.get("seed") or "")
         resultado_alvos = []
-        rolagens = [
-            registro
-            for registro in (normalizar_rolagem(resultado_dano, fatos_dano, personagens),)
-            if registro
-        ]
+        rolagens = [registro for registro in (normalizar_rolagem(resultado_dano, fatos_dano, personagens),) if registro]
         for indice, (nome_alvo, alvo) in enumerate(zip(nomes_alvos, monstros)):
             blocos_salva = alvo.get("salvaguardas") or {}
             modificador_alvo = int(
-                blocos_salva.get(
-                    atributo_save, (alvo.get("modificadores") or {}).get(atributo_save, 0)
-                )
+                blocos_salva.get(atributo_save, (alvo.get("modificadores") or {}).get(atributo_save, 0))
             )
             fatos_salva = {
                 "type": "saving_throw",
@@ -683,23 +718,23 @@ class OrquestradorAcoes:
             desfecho = dict(saida_salva.outcome)
             sucesso = desfecho.get("result") == "success"
             dano_alvo = dano_base // 2 if (sucesso and metade_no_sucesso) else dano_base
-            defesas = aplicar_defesas_monstro(
-                dano_alvo, str(fatos_dano.get("magia_tipo_dano", "")), alvo
+            defesas = aplicar_defesas_monstro(dano_alvo, str(fatos_dano.get("magia_tipo_dano", "")), alvo)
+            resultado_alvos.append(
+                {
+                    "nome": alvo.get("nome", nome_alvo),
+                    "salvaguarda": {
+                        "atributo": atributo_save,
+                        "cd": cd,
+                        "modificador": modificador_alvo,
+                        "rolagem": desfecho.get("roll"),
+                        "total": desfecho.get("total"),
+                        "sucesso": sucesso,
+                    },
+                    "dano_aplicado": int(defesas["dano"]),
+                    "dano_antes_das_defesas": dano_alvo,
+                    "defesas_dano": defesas,
+                }
             )
-            resultado_alvos.append({
-                "nome": alvo.get("nome", nome_alvo),
-                "salvaguarda": {
-                    "atributo": atributo_save,
-                    "cd": cd,
-                    "modificador": modificador_alvo,
-                    "rolagem": desfecho.get("roll"),
-                    "total": desfecho.get("total"),
-                    "sucesso": sucesso,
-                },
-                "dano_aplicado": int(defesas["dano"]),
-                "dano_antes_das_defesas": dano_alvo,
-                "defesas_dano": defesas,
-            })
             registro = normalizar_rolagem(desfecho, fatos_salva, personagens)
             if registro:
                 rolagens.append(registro)
@@ -752,15 +787,17 @@ class OrquestradorAcoes:
         # Dano de magia resolvido pelo motor: total e dados explícitos para o MJ
         # narrar exatamente o que a engine rolou.
         if fatos.get("type") == "damage" and resultado.get("result") == "damage" and fatos.get("magia"):
-            resultado.update({
-                "dano": int(resultado.get("total", 0)),
-                "dano_bruto": int(resultado.get("total", 0)),
-                "dados_dano": list(resultado.get("damage_dice") or []),
-                "dano_expressao": resultado.get("damage_expression"),
-                "tipo_dano": fatos.get("magia_tipo_dano"),
-                "aplicado_ao_alvo": False,
-                "nota": "Rolagem de dano apenas; requer conjuração válida e aplicação ao alvo.",
-            })
+            resultado.update(
+                {
+                    "dano": int(resultado.get("total", 0)),
+                    "dano_bruto": int(resultado.get("total", 0)),
+                    "dados_dano": list(resultado.get("damage_dice") or []),
+                    "dano_expressao": resultado.get("damage_expression"),
+                    "tipo_dano": fatos.get("magia_tipo_dano"),
+                    "aplicado_ao_alvo": False,
+                    "nota": "Rolagem de dano apenas; requer conjuração válida e aplicação ao alvo.",
+                }
+            )
 
     @staticmethod
     def _calcular_dano_de_ataque_magico(
@@ -773,25 +810,29 @@ class OrquestradorAcoes:
         """
         if not fatos.get("spell_attack") or resultado.get("result") != "hit" or not fatos.get("magia_dano"):
             return None
-        dano = engine.evaluate({
-            "type": "damage",
-            "damage_expression": str(fatos["magia_dano"]),
-            "damage_modifier": 0,
-            "critical": bool(resultado.get("critical")),
-            "seed": resultado.get("seed"),
-        }).outcome
+        dano = engine.evaluate(
+            {
+                "type": "damage",
+                "damage_expression": str(fatos["magia_dano"]),
+                "damage_modifier": 0,
+                "critical": bool(resultado.get("critical")),
+                "seed": resultado.get("seed"),
+            }
+        ).outcome
         if dano.get("result") != "damage":
             return None
         alvo = consultar_monstro(str(fatos.get("target_name", ""))) or {}
         defesas = aplicar_defesas_monstro(int(dano["total"]), str(fatos.get("magia_tipo_dano", "")), alvo)
-        resultado.update({
-            "dano": defesas["dano"],
-            "defesas_dano": defesas,
-            "dano_bruto": int(dano["total"]),
-            "dados_dano": list(dano["damage_dice"]),
-            "dano_expressao": dano.get("damage_expression"),
-            "tipo_dano": fatos.get("magia_tipo_dano"),
-        })
+        resultado.update(
+            {
+                "dano": defesas["dano"],
+                "defesas_dano": defesas,
+                "dano_bruto": int(dano["total"]),
+                "dados_dano": list(dano["damage_dice"]),
+                "dano_expressao": dano.get("damage_expression"),
+                "tipo_dano": fatos.get("magia_tipo_dano"),
+            }
+        )
         fatos_dano = {k: v for k, v in fatos.items() if k not in {"roll", "rolls", "dado", "dados", "dados_rolados"}}
         return normalizar_rolagem({**dano, "total": defesas["dano"], "defesas_dano": defesas}, fatos_dano, None)
 

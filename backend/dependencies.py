@@ -6,6 +6,7 @@ concorrentes e testes isolados não compartilham estado mutável. Os providers
 ``obter_mj`` e ``obter_repositorio`` fazem lazy init e podem ser substituídos em
 testes via ``app.dependency_overrides``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,8 +14,8 @@ from dataclasses import dataclass
 from fastapi import Depends, Header, Request
 
 from backend.config import JOGADOR_ANONIMO, PADRAO_ID
-from backend.limite_taxa import limitador_padrao
 from backend.erros import ServicoIndisponivel
+from backend.limite_taxa import limitador_padrao
 from backend.persistencia import RepositorioCampanhas
 from integrations.deepseek_mj import DeepSeekMJ
 

@@ -8,6 +8,7 @@ Este módulo é o composition root: cria a aplicação, registra as rotas e exp�
 as dependências de injeção usadas por testes e clientes (``obter_mj``,
 ``obter_repositorio``, ``obter_jogador``, ``limitar_chamadas_mj``).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -18,12 +19,12 @@ from fastapi.staticfiles import StaticFiles
 # Superfície pública de injeção de dependências do app (usada pela suíte para
 # injetar dublês via ``dependency_overrides``).
 from backend.dependencies import (  # noqa: F401
+    Recursos,
     limitar_chamadas_mj,
     obter_jogador,
     obter_mj,
     obter_repositorio,
 )
-from backend.dependencies import Recursos
 from backend.erros import registrar_tratadores_de_erro
 from backend.routes import campanhas, catalogo, personagens, sistema
 

@@ -7,23 +7,39 @@ navegador possa animar o dado sem recalcular regra alguma.
 Pertence ao Orquestrador de Ações, e não ao MJ: é uma preocupação de fluxo e
 apresentação do resultado mecânico, não de narrativa.
 """
+
 from __future__ import annotations
 
 from typing import Any, Mapping
 
-
 ROTULOS_ATRIBUTO = {
-    "forca": "Força", "destreza": "Destreza", "constituicao": "Constituição",
-    "inteligencia": "Inteligência", "sabedoria": "Sabedoria", "carisma": "Carisma",
+    "forca": "Força",
+    "destreza": "Destreza",
+    "constituicao": "Constituição",
+    "inteligencia": "Inteligência",
+    "sabedoria": "Sabedoria",
+    "carisma": "Carisma",
 }
 
 ROTULOS_PERICIA = {
-    "acrobacia": "Acrobacia", "adestrar_animais": "Adestrar Animais", "arcanismo": "Arcanismo",
-    "atletismo": "Atletismo", "atuacao": "Atuação", "enganacao": "Enganação",
-    "furtividade": "Furtividade", "historia": "História", "intuicao": "Intuição",
-    "intimidacao": "Intimidação", "investigacao": "Investigação", "medicina": "Medicina",
-    "natureza": "Natureza", "percepcao": "Percepção", "persuasao": "Persuasão",
-    "prestidigitacao": "Prestidigitação", "religiao": "Religião", "sobrevivencia": "Sobrevivência",
+    "acrobacia": "Acrobacia",
+    "adestrar_animais": "Adestrar Animais",
+    "arcanismo": "Arcanismo",
+    "atletismo": "Atletismo",
+    "atuacao": "Atuação",
+    "enganacao": "Enganação",
+    "furtividade": "Furtividade",
+    "historia": "História",
+    "intuicao": "Intuição",
+    "intimidacao": "Intimidação",
+    "investigacao": "Investigação",
+    "medicina": "Medicina",
+    "natureza": "Natureza",
+    "percepcao": "Percepção",
+    "persuasao": "Persuasão",
+    "prestidigitacao": "Prestidigitação",
+    "religiao": "Religião",
+    "sobrevivencia": "Sobrevivência",
 }
 
 # Tipos de rolagem que a interface sabe animar. Qualquer outro tipo cai em "rolagem".
@@ -197,12 +213,16 @@ def normalizar_rolagem(
 
     if valor is None:
         # Sem d20: ainda pode haver dados de dano rolagos pelo motor.
-        dados_dano = _lista_de_inteiros(_primeiro_valor(resultado, "damage_dice", "dados_dano") or fatos.get("damage_dice"))
+        dados_dano = _lista_de_inteiros(
+            _primeiro_valor(resultado, "damage_dice", "dados_dano") or fatos.get("damage_dice")
+        )
         if not dados_dano:
             return None
-        modificador_dano = _inteiro(_primeiro_valor(resultado, "damage_modifier", "modifier")) or _inteiro(
-            _primeiro_valor(fatos, "damage_modifier")
-        ) or 0
+        modificador_dano = (
+            _inteiro(_primeiro_valor(resultado, "damage_modifier", "modifier"))
+            or _inteiro(_primeiro_valor(fatos, "damage_modifier"))
+            or 0
+        )
         total_dano = _inteiro(_primeiro_valor(resultado, "total"))
         if total_dano is None:
             total_dano = sum(dados_dano) + modificador_dano
@@ -247,9 +267,13 @@ def normalizar_rolagem(
         resultado_jogada = {"hit": "acerto", "miss": "erro"}.get(veredito, "rolado")
     elif tipo in {"teste", "salvaguarda"}:
         resultado_jogada = {
-            "success": "sucesso", "sucesso": "sucesso",
-            "failure": "falha", "falha": "falha",
-            "requires_dc": "pendente", "blocked": "bloqueado", "bloqueado": "bloqueado",
+            "success": "sucesso",
+            "sucesso": "sucesso",
+            "failure": "falha",
+            "falha": "falha",
+            "requires_dc": "pendente",
+            "blocked": "bloqueado",
+            "bloqueado": "bloqueado",
         }.get(veredito, "rolado")
     else:
         resultado_jogada = "rolado"
@@ -266,7 +290,9 @@ def normalizar_rolagem(
             sucesso = False
     vantagem = bool(_primeiro_valor(dados, "advantage", "vantagem"))
     desvantagem = bool(_primeiro_valor(dados, "disadvantage", "desvantagem"))
-    critico = bool(dados.get("critical")) or (lados == 20 and valor == 20 and tipo in {"ataque", "teste", "salvaguarda"})
+    critico = bool(dados.get("critical")) or (
+        lados == 20 and valor == 20 and tipo in {"ataque", "teste", "salvaguarda"}
+    )
     alvo = str(dados.get("target_name") or dados.get("alvo") or "").strip() or None
 
     return {
@@ -302,4 +328,3 @@ def normalizar_rolagem(
         ),
         "origem": "rule_engine",
     }
-

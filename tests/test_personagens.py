@@ -10,6 +10,7 @@ try:
 
     from backend import app as backend_app
     from backend.persistencia import RepositorioCampanhas
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover
     DEPENDENCIAS = False
@@ -18,7 +19,14 @@ BASE = {"forca": 8, "destreza": 14, "constituicao": 13, "inteligencia": 15, "sab
 
 
 def fatos(**extra):
-    dados = {"name": "Vex", "species": "elfo", "class": "mago", "level": 1, "ability_scores": dict(BASE), "equipamento_antecedente": "A"}
+    dados = {
+        "name": "Vex",
+        "species": "elfo",
+        "class": "mago",
+        "level": 1,
+        "ability_scores": dict(BASE),
+        "equipamento_antecedente": "A",
+    }
     dados.update(extra)
     return dados
 
@@ -40,7 +48,9 @@ class AntecedentesTests(unittest.TestCase):
         self.assertIn("iniciado_em_magia", p.talentos)
 
     def test_tres_mais_um_e_aceito(self):
-        p = criar_personagem(fatos(background="sabio", background_increases={"inteligencia": 1, "constituicao": 1, "sabedoria": 1}))
+        p = criar_personagem(
+            fatos(background="sabio", background_increases={"inteligencia": 1, "constituicao": 1, "sabedoria": 1})
+        )
         self.assertEqual(p.atributos["sabedoria"], 13)
 
     def test_aumento_fora_do_antecedente_e_bloqueado(self):
@@ -58,16 +68,25 @@ class AntecedentesTests(unittest.TestCase):
     def test_limite_de_20(self):
         atributos = dict(BASE, inteligencia=19)
         with self.assertRaises(ValueError):
-            criar_personagem(fatos(ability_scores=atributos, background="sabio", background_increases={"inteligencia": 2, "sabedoria": 1}))
+            criar_personagem(
+                fatos(
+                    ability_scores=atributos,
+                    background="sabio",
+                    background_increases={"inteligencia": 2, "sabedoria": 1},
+                )
+            )
 
     def test_medium_espiritual_exige_dadiva_sombria(self):
         with self.assertRaises(ValueError):
             criar_personagem(fatos(background="medium_espiritual", ferramenta_antecedente="Dados"))
-        p = criar_personagem(fatos(background="medium_espiritual", background_feat="sussurros_reunidos", ferramenta_antecedente="Dados"))
+        p = criar_personagem(
+            fatos(background="medium_espiritual", background_feat="sussurros_reunidos", ferramenta_antecedente="Dados")
+        )
         self.assertIn("sussurros_reunidos", p.talentos)
 
     def test_olho_agucado_tem_efeitos_catalogados(self):
         from rule_engine.feats import FEATS
+
         efeitos = FEATS["olho_agucado"]["efeitos"]
         self.assertIn("vantagem_em_teste_de_atributo_da_acao_procurar_ou_estudar", efeitos)
         self.assertIn("usos_iguais_bonus_proficiencia_por_descanso_longo", efeitos)
@@ -75,6 +94,7 @@ class AntecedentesTests(unittest.TestCase):
 
     def test_sobrevivente_tem_efeitos_catalogados(self):
         from rule_engine.feats import FEATS
+
         efeitos = FEATS["sobrevivente"]["efeitos"]
         self.assertEqual(len(efeitos), 2)
         self.assertTrue(efeitos[0].startswith("hipervigilancia"))
@@ -89,8 +109,11 @@ class AntecedentesTests(unittest.TestCase):
 
     def test_dadiva_sombria_exige_contexto_ravenloft(self):
         from rule_engine.feats import validar_talento
+
         self.assertEqual(validar_talento({"talento": "sombra_viva"})["motivo"], "requer_campanha_ravenloft")
-        self.assertEqual(validar_talento({"talento": "sombra_viva", "campanha_ravenloft": True})["resultado"], "disponivel")
+        self.assertEqual(
+            validar_talento({"talento": "sombra_viva", "campanha_ravenloft": True})["resultado"], "disponivel"
+        )
 
     def test_escolha_da_lista_de_iniciado_em_magia_persiste(self):
         p = criar_personagem(fatos(background="sabio", background_feat="iniciado_em_magia:mago"))
@@ -134,9 +157,20 @@ class BackendPersonagensTests(unittest.TestCase):
 
     def payload(self, **extra):
         dados = {
-            "nome": "Vex", "especie": "elfo", "classe": "mago", "metodo_atributos": "matriz_padrao",
-            "atributos": {"forca": 8, "destreza": 14, "constituicao": 13, "inteligencia": 15, "sabedoria": 12, "carisma": 10},
-            "antecedente": "sabio", "aumentos_antecedente": {"inteligencia": 2, "constituicao": 1},
+            "nome": "Vex",
+            "especie": "elfo",
+            "classe": "mago",
+            "metodo_atributos": "matriz_padrao",
+            "atributos": {
+                "forca": 8,
+                "destreza": 14,
+                "constituicao": 13,
+                "inteligencia": 15,
+                "sabedoria": 12,
+                "carisma": 10,
+            },
+            "antecedente": "sabio",
+            "aumentos_antecedente": {"inteligencia": 2, "constituicao": 1},
             "equipamento_antecedente": "A",
         }
         dados.update(extra)
@@ -169,9 +203,36 @@ class BackendPersonagensTests(unittest.TestCase):
         self.assertEqual(self.client.get(self.url(f"/{p['id']}"), headers=self.h).status_code, 404)
 
     def test_validacao_pelo_motor(self):
-        r = self.client.post(self.url(), json=self.payload(atributos={"forca": 15, "destreza": 15, "constituicao": 15, "inteligencia": 15, "sabedoria": 15, "carisma": 15}), headers=self.h)
+        r = self.client.post(
+            self.url(),
+            json=self.payload(
+                atributos={
+                    "forca": 15,
+                    "destreza": 15,
+                    "constituicao": 15,
+                    "inteligencia": 15,
+                    "sabedoria": 15,
+                    "carisma": 15,
+                }
+            ),
+            headers=self.h,
+        )
         self.assertEqual(r.status_code, 422)
-        r = self.client.post(self.url(), json=self.payload(metodo_atributos="compra_pontos", atributos={"forca": 15, "destreza": 15, "constituicao": 15, "inteligencia": 10, "sabedoria": 8, "carisma": 8}), headers=self.h)
+        r = self.client.post(
+            self.url(),
+            json=self.payload(
+                metodo_atributos="compra_pontos",
+                atributos={
+                    "forca": 15,
+                    "destreza": 15,
+                    "constituicao": 15,
+                    "inteligencia": 10,
+                    "sabedoria": 8,
+                    "carisma": 8,
+                },
+            ),
+            headers=self.h,
+        )
         self.assertEqual(r.status_code, 422)
         r = self.client.post(self.url(), json=self.payload(antecedente="inexistente"), headers=self.h)
         self.assertEqual(r.status_code, 422)

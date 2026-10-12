@@ -2,12 +2,13 @@ import unittest
 
 try:
     from fastapi.testclient import TestClient
-    from sqlalchemy.pool import StaticPool
     from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
 
     from backend import app as backend_app
     from backend import config as backend_config
     from backend.persistencia import RepositorioCampanhas, normalizar_url_banco
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover - backend opcional fora do CI
     DEPENDENCIAS = False
@@ -30,9 +31,7 @@ class MJComFalha:
 @unittest.skipUnless(DEPENDENCIAS, "fastapi/sqlalchemy/httpx não instalados")
 class BackendCampanhasTests(unittest.TestCase):
     def setUp(self):
-        engine = create_engine(
-            "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-        )
+        engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
         self.repo = RepositorioCampanhas(engine=engine)
         self.mj = MJFalso()
         backend_app.app.dependency_overrides[backend_app.obter_repositorio] = lambda: self.repo
@@ -62,7 +61,9 @@ class BackendCampanhasTests(unittest.TestCase):
 
     def test_mensagens_persistem_e_alimentam_historico(self):
         cid = self.client.post("/v1/campanhas", json={}, headers=self.jogador).json()["id"]
-        r1 = self.client.post(f"/v1/campanhas/{cid}/mensagens", json={"mensagem": "Entro na taverna."}, headers=self.jogador)
+        r1 = self.client.post(
+            f"/v1/campanhas/{cid}/mensagens", json={"mensagem": "Entro na taverna."}, headers=self.jogador
+        )
         self.assertEqual(r1.status_code, 200)
         self.assertEqual(r1.json()["resposta"], "MJ: Entro na taverna.")
         self.assertEqual(r1.json()["campanha"]["total_mensagens"], 2)
@@ -71,10 +72,13 @@ class BackendCampanhasTests(unittest.TestCase):
         _, historico = self.mj.chamadas[-1]
         self.assertEqual(historico[0]["role"], "system")
         self.assertIn("nenhum personagem está cadastrado", historico[0]["content"])
-        self.assertEqual(historico[1:], [
-            {"role": "user", "content": "Entro na taverna."},
-            {"role": "assistant", "content": "MJ: Entro na taverna."},
-        ])
+        self.assertEqual(
+            historico[1:],
+            [
+                {"role": "user", "content": "Entro na taverna."},
+                {"role": "assistant", "content": "MJ: Entro na taverna."},
+            ],
+        )
 
         detalhe = self.client.get(f"/v1/campanhas/{cid}", headers=self.jogador).json()
         self.assertEqual([m["papel"] for m in detalhe["mensagens"]], ["user", "assistant", "user", "assistant"])
@@ -98,12 +102,16 @@ class BackendCampanhasTests(unittest.TestCase):
         outro = {"X-Jogador-Id": "jogador-b"}
         self.assertEqual(self.client.get("/v1/campanhas", headers=outro).json(), [])
         self.assertEqual(self.client.get(f"/v1/campanhas/{cid}", headers=outro).status_code, 404)
-        self.assertEqual(self.client.post(f"/v1/campanhas/{cid}/mensagens", json={"mensagem": "oi"}, headers=outro).status_code, 404)
+        self.assertEqual(
+            self.client.post(f"/v1/campanhas/{cid}/mensagens", json={"mensagem": "oi"}, headers=outro).status_code, 404
+        )
         self.assertEqual(self.client.delete(f"/v1/campanhas/{cid}", headers=outro).status_code, 404)
 
     def test_renomear_e_apagar(self):
         cid = self.client.post("/v1/campanhas", json={}, headers=self.jogador).json()["id"]
-        renomeada = self.client.patch(f"/v1/campanhas/{cid}", json={"titulo": "Forja do Artífice"}, headers=self.jogador)
+        renomeada = self.client.patch(
+            f"/v1/campanhas/{cid}", json={"titulo": "Forja do Artífice"}, headers=self.jogador
+        )
         self.assertEqual(renomeada.json()["titulo"], "Forja do Artífice")
         self.client.post(f"/v1/campanhas/{cid}/mensagens", json={"mensagem": "oi"}, headers=self.jogador)
         self.assertEqual(self.client.delete(f"/v1/campanhas/{cid}", headers=self.jogador).status_code, 204)
