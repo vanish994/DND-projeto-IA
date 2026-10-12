@@ -25,7 +25,7 @@ for bruto, meta in CATALOGO_MAGIAS.items():
 # Entradas de referência com círculo, componentes e efeitos precisos do PHB 2024.
 _DETALHADAS = {
     # PHB 2024, pp. 249, 324 e 340 (PDF local: páginas 255, 330 e 346).
-    "bolha ácida": (0, "evocação", "V, S", False, "Esfera de raio 1,5 m a até 18 m; Destreza evita 1d6 ácido", {"dano": "escala nos níveis 5, 11 e 17"}),
+    "bolha ácida": (0, "evocação", "V, S", False, "Escolha uma ou duas criaturas a até 18 m, cujos espaços estejam a até 1,5 m entre si; salvaguarda de Destreza evita 1d6 ácido", {"dano": "escala nos níveis 5, 11 e 17"}),
     "rajada de veneno": (0, "necromancia", "V, S", False, "Ataque mágico à distância; 1d12 dano venenoso; alcance 9 m", {"dano": "escala nos níveis 5, 11 e 17"}),
     "trovão": (0, "evocação", "S", False, "Emanação de 1,5 m; Constituição evita 1d6 trovejante; som audível a 30 m", {"dano": "escala nos níveis 5, 11 e 17"}),
     "armadura de agathys": (1, "abjuração", "V, S, M (um caco de vidro azul)", False, "5 PV temporários; 5 dano gélido ao atacante", {"pv_temporarios": "+5 por círculo", "dano_retorno": "+5 por círculo"}),
@@ -79,10 +79,10 @@ for _nome_artifice, _circulo_artifice in ARTIFICER_SPELL_LEVELS.items():
 # por rolagens, salvaguardas, aplicação de dano e atualização de estado.
 MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
     "bolha ácida": {
-        "tipo": "dano_em_area", "dados_dano_base": "1d6", "tipo_dano": "acido",
+        "tipo": "dano_multialvo", "dados_dano_base": "1d6", "tipo_dano": "acido",
         "salvaguarda": "destreza", "sucesso_metade": False, "acao": "acao",
-        "alcance_m": 18, "alcance_pes": 60,
-        "area": {"forma": "esfera", "raio_m": 1.5}, "escala_niveis": [5, 11, 17],
+        "alcance_m": 18, "alcance_pes": 60, "alvos_maximos": 2,
+        "distancia_entre_alvos_m": 1.5, "escala_niveis": [5, 11, 17],
     },
     "rajada de veneno": {
         "tipo": "ataque_magico", "dados_dano_base": "1d12", "tipo_dano": "venenoso",

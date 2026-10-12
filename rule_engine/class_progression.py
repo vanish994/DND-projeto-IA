@@ -16,15 +16,41 @@ FEATURES_BY_CLASS = {
     "artifice": {1: ["Conjuração", "Magia de Artífice"], 2: ["Replicar Item Mágico"], 3: ["Subclasse"], 6: ["Artesão de Item Mágico"], 7: ["Lampejo de Gênio"], 10: ["Adepto de Item Mágico"], 11: ["Item Armazenador de Magia"], 14: ["Artífice Avançado"], 18: ["Mestre de Item Mágico"], 20: ["Alma do Artífice"]},
 }
 
-# Marcos transversais do PHB 2024: aumento de atributo/talento nos níveis
-# indicados e Dádiva Épica no nível 19. O Artífice segue o UA adotado pelo projeto.
-for _classe in FEATURES_BY_CLASS:
-    for _nivel in (4, 8, 12, 16):
-        FEATURES_BY_CLASS[_classe].setdefault(_nivel, []).append("Aumento de Atributo ou Talento")
-    FEATURES_BY_CLASS[_classe].setdefault(19, []).append("Dádiva Épica")
-for _classe in FEATURES_BY_CLASS:
-    if "Subclasse" in FEATURES_BY_CLASS[_classe].get(3, []):
-        for _nivel in (6, 10, 14, 18):
+# Marcos de Aumento de Atributo/Talento do PHB 2024.
+# Guerreiro também recebe esses marcos nos níveis 6 e 14; Ladino no nível 10.
+# A Dádiva Épica é recebida no nível 19 pelas classes do PHB 2024.
+_ASI_LEVELS = {
+    classe: [4, 8, 12, 16, 19]
+    for classe in FEATURES_BY_CLASS
+}
+_ASI_LEVELS["guerreiro"] = [4, 6, 8, 12, 14, 16, 19]
+_ASI_LEVELS["ladino"] = [4, 8, 10, 12, 16, 19]
+
+for _classe, _niveis in _ASI_LEVELS.items():
+    for _nivel in _niveis:
+        nome = "Dádiva Épica" if _nivel == 19 else "Aumento de Atributo ou Talento"
+        FEATURES_BY_CLASS[_classe].setdefault(_nivel, []).append(nome)
+
+# Os marcos de subclasse são específicos por classe no PHB 2024.
+# O Artífice mantém a progressão de subclasse da versão adotada pelo projeto.
+_SUBCLASS_LEVELS = {
+    "barbaro": (3, 6, 10, 14),
+    "bardo": (3, 6, 14),
+    "clerigo": (3, 6, 17),
+    "druida": (3, 6, 10, 14),
+    "guerreiro": (3, 7, 10, 15, 18),
+    "monge": (3, 6, 11, 17),
+    "paladino": (3, 7, 15, 20),
+    "guardiao": (3, 7, 11, 15),
+    "ladino": (3, 9, 13, 17),
+    "feiticeiro": (3, 6, 14, 18),
+    "bruxo": (3, 6, 10, 14),
+    "mago": (3, 6, 10, 14),
+    "artifice": (3, 5, 9, 15),
+}
+for _classe, _niveis in _SUBCLASS_LEVELS.items():
+    for _nivel in _niveis:
+        if _nivel != 3:  # nível 3 já é registrado como escolha de Subclasse
             FEATURES_BY_CLASS[_classe].setdefault(_nivel, []).append("Característica de Subclasse")
 
 
