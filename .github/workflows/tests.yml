@@ -34,7 +34,8 @@ jobs:
           code=$?
           cat collect.log
           if [ $code -ne 0 ]; then
-            echo "::error title=pytest collect falhou::$(tail -c 600 collect.log | tr '\n' '|' | tr -d '\r')"
+            echo "::error title=pytest collect falhou (início do log)::$(head -c 700 collect.log | tr '\n' '|' | tr -d '\r')"
+            echo "::error title=pytest collect falhou (exceções)::$(grep -oE '[A-Za-z_.]*(Error|Exception):[^|]*' collect.log | sort -u | head -5 | tr '\n' ';')"
           fi
           exit $code
       - name: Python test suite with coverage floor
