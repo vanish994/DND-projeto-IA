@@ -5,8 +5,9 @@ As rotas apenas traduzem HTTP ↔ serviços (``personagem_service``,
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 
+from backend.erros import NaoEncontrado
 from backend.dependencies import obter_jogador, obter_repositorio
 from backend.persistencia import RepositorioCampanhas
 from backend.schemas import (
@@ -31,7 +32,7 @@ def listar_personagens(
 ) -> list[dict]:
     grupo = repo.listar_personagens(jogador, campanha_id)
     if grupo is None:
-        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+        raise NaoEncontrado("Campanha não encontrada")
     return [com_bloco(p) for p in grupo]
 
 
@@ -129,7 +130,7 @@ def apagar_personagem(
     repo: RepositorioCampanhas = Depends(obter_repositorio),
 ) -> Response:
     if not repo.apagar_personagem(jogador, campanha_id, personagem_id):
-        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+        raise NaoEncontrado("Personagem não encontrado")
     return Response(status_code=204)
 
 

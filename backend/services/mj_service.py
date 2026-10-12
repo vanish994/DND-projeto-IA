@@ -5,9 +5,9 @@ from copy import deepcopy
 import inspect
 import logging
 
-from fastapi import HTTPException
 
 from backend import config
+from backend.erros import ConflitoDeOperacao, ErroDeProvedor
 from backend.persistencia import ConflitoEstadoCampanha, OperacaoIncompativel, RepositorioCampanhas
 from backend.services.campanha_service import resumo_grupo
 from integrations.deepseek_mj import DeepSeekMJ
@@ -61,7 +61,7 @@ def responder(
         try:
             return repo.obter_operacao(jogador, campanha_id, operacao_id, texto)
         except OperacaoIncompativel as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+            raise ConflitoDeOperacao(str(exc)) from exc
 
     anterior = resultado_confirmado()
     if anterior is not None:
@@ -119,7 +119,7 @@ def responder(
             "Falha na chamada do provedor do MJ: tipo=%s status_provedor=%s",
             type(exc).__name__, status_provedor,
         )
-        raise HTTPException(status_code=502, detail=detalhe) from exc
+        raise ErroDeProvedor(detalhe) from exc
     try:
         confirmado = repo.registrar_troca(
             jogador, campanha_id, texto, resposta, rolagens,
@@ -127,7 +127,7 @@ def responder(
             operacao_id=operacao_id,
         )
     except OperacaoIncompativel as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise ConflitoDeOperacao(str(exc)) from exc
     except ConflitoEstadoCampanha as exc:
-        raise HTTPException(status_code=409, detail="A ficha mudou enquanto o MJ respondia. Esta resposta não foi aplicada; tente novamente com o estado atualizado.") from exc
+        raise ConflitoDeOperacao("A ficha mudou enquanto o MJ respondia. Esta resposta não foi aplicada; tente novamente com o estado atualizado.") from exc
     return confirmado["resposta"], confirmado["rolagens"]

@@ -4,8 +4,9 @@ As rotas apenas traduzem HTTP ↔ serviços (``campanha_service``, ``mj_service`
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 
+from backend.erros import NaoEncontrado
 from backend.dependencies import (
     limitar_chamadas_mj,
     obter_jogador,
@@ -65,7 +66,7 @@ def renomear_campanha(
 ) -> dict:
     campanha = repo.renomear(jogador, campanha_id, pedido.titulo)
     if campanha is None:
-        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+        raise NaoEncontrado("Campanha não encontrada")
     return campanha
 
 
@@ -76,7 +77,7 @@ def apagar_campanha(
     repo: RepositorioCampanhas = Depends(obter_repositorio),
 ) -> Response:
     if not repo.apagar(jogador, campanha_id):
-        raise HTTPException(status_code=404, detail="Campanha não encontrada")
+        raise NaoEncontrado("Campanha não encontrada")
     return Response(status_code=204)
 
 
@@ -103,7 +104,7 @@ def mensagem_mj(
     """Endpoint legado: a sessao_id vira o id da campanha persistida."""
     if repo.obter(jogador, pedido.sessao_id) is None:
         if repo.existe_em_outro_jogador(jogador, pedido.sessao_id):
-            raise HTTPException(status_code=404, detail="Campanha não encontrada")
+            raise NaoEncontrado("Campanha não encontrada")
         repo.criar(jogador, campanha_id=pedido.sessao_id)
     resposta, rolagens = mj_service.responder(mj, repo, jogador, pedido.sessao_id, pedido.mensagem)
     return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta, rolagens=rolagens)

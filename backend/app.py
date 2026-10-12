@@ -24,6 +24,7 @@ from backend.dependencies import (  # noqa: F401
     obter_repositorio,
 )
 from backend.dependencies import Recursos
+from backend.erros import registrar_tratadores_de_erro
 from backend.routes import campanhas, catalogo, personagens, sistema
 
 app = FastAPI(
@@ -34,6 +35,9 @@ app = FastAPI(
 
 # Container de recursos de processo (MJ e repositório), um por instância de app.
 app.state.recursos = Recursos()
+
+# Mapeamento único exceção de domínio → HTTP (backend/erros.py).
+registrar_tratadores_de_erro(app)
 
 app.include_router(sistema.router)
 app.include_router(campanhas.router)

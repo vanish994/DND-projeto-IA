@@ -4,8 +4,9 @@ Tudo aqui é leitura do Rule Engine; nada é estimado no cliente.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
+from backend.erros import ErroDeValidacao
 from backend.services.bloco_ficha import ALIAS_PROFICIENCIA_ARMA, ARMAS_SIMPLES
 from rule_engine import (
     ANTECEDENTES,
@@ -102,7 +103,7 @@ def catalogo_conjuracao(
         try:
             progresso = progresso_artifice(nivel, inteligencia)
         except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+            raise ErroDeValidacao(str(exc)) from exc
         return {**progresso, "validacao_escolhas": True}
     progresso = resolver_progressao_conjuracao({
         "classe": classe_normalizada,

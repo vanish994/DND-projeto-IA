@@ -10,10 +10,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Depends, Header, Request
 
 from backend.config import JOGADOR_ANONIMO, PADRAO_ID
 from backend.limite_taxa import limitador_padrao
+from backend.erros import ServicoIndisponivel
 from backend.persistencia import RepositorioCampanhas
 from integrations.deepseek_mj import DeepSeekMJ
 
@@ -35,7 +36,7 @@ def obter_mj(recursos: Recursos = Depends(obter_recursos)) -> DeepSeekMJ:
         try:
             recursos.mj = DeepSeekMJ()
         except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+            raise ServicoIndisponivel(str(exc)) from exc
     return recursos.mj
 
 

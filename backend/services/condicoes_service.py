@@ -4,8 +4,8 @@ from __future__ import annotations
 import secrets
 from typing import Any
 
-from fastapi import HTTPException
 
+from backend.erros import ConflitoDeOperacao, ErroDeValidacao, NaoEncontrado
 from backend.persistencia import RepositorioCampanhas
 from backend.schemas import AtualizarCondicaoPersonagem
 from rule_engine import build_default_engine
@@ -38,7 +38,7 @@ def salvar_condicoes_ficha(repo: RepositorioCampanhas, jogador: str, campanha_id
     dados["exaustao_nivel"] = estado.exaustao
     atualizado = repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], dados)
     if atualizado is None:
-        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+        raise NaoEncontrado("Personagem não encontrado")
     return atualizado
 
 
@@ -92,7 +92,7 @@ def expirar_duracoes_textuais_token(token: dict, momento: str) -> list[str]:
 
 def validar_turno_ativo(estado: dict, token_id: str) -> None:
     if estado.get("combate_ativo") and estado.get("token_ativo") != token_id:
-        raise HTTPException(status_code=409, detail={
+        raise ConflitoDeOperacao({
             "motivo": "turno_de_outra_criatura",
             "token_ativo": estado.get("token_ativo"),
             "token_solicitado": token_id,
@@ -140,19 +140,19 @@ def atualizar_condicoes(repo: RepositorioCampanhas, jogador: str, campanha_id: s
     """Aplica, remove, consulta ou avança as condições de uma ficha."""
     ficha = repo.obter_personagem(jogador, campanha_id, personagem_id)
     if ficha is None:
-        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+        raise NaoEncontrado("Personagem não encontrado")
     estado = condicoes_da_ficha(ficha)
     fatos = {"estado": estado, "operation": pedido.operacao, "units": pedido.unidades}
     if pedido.operacao != "tick":
         if not pedido.condicao:
-            raise HTTPException(status_code=422, detail="Informe a condição para aplicar, remover ou consultar")
+            raise ErroDeValidacao("Informe a condição para aplicar, remover ou consultar")
         fatos["condition"] = pedido.condicao
     if pedido.operacao == "apply":
         fatos["duration"] = pedido.duracao
     try:
         resultado = build_default_engine().evaluate({"type": "condition_state", **fatos}).outcome
     except (TypeError, ValueError, KeyError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise ErroDeValidacao(str(exc)) from exc
     if pedido.operacao in {"apply", "remove", "tick"}:
         ficha = salvar_condicoes_ficha(repo, jogador, campanha_id, ficha, estado)
         metadados = dict(ficha.get("salvaguardas_fim_condicoes") or {})
