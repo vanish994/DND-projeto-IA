@@ -205,6 +205,8 @@ class AcaoAtaqueTatico(BaseModel):
 class AcaoConjurarTatico(BaseModel):
     atacante_id: str = Field(min_length=1, max_length=80)
     alvo_id: str = Field(min_length=1, max_length=80)
+    # Segundo alvo opcional para magias multialvo como Bolha Ácida.
+    alvos_ids: list[str] = Field(default_factory=list, max_length=1)
     magia: str = Field(min_length=1, max_length=100)
     espaco: int | None = Field(default=None, ge=0, le=9)
     cobertura: str = Field(default="nenhuma", pattern="^(nenhuma|meia|tres_quartos|total)$")
@@ -2546,12 +2548,34 @@ def conjurar_no_mapa_tatico(
         dados = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
         mod = int((ficha.get("modificadores") or {}).get(atributo_conjuracao, 0))
         cura = max(0, sum(dados) + mod)
-    elif mecanica.get("tipo") == "dano_em_area":
-        # A área é centrada no alvo escolhido; resolvemos apenas quando todos
-        # os tokens atingidos têm salvaguardas deriváveis de fichas completas.
+    elif mecanica.get("tipo") in {"dano_em_area", "dano_multialvo"}:
+        # Magias multialvo usam os IDs escolhidos pelo cliente; magias de área
+        # calculam alvos a partir da geometria declarada no catálogo.
         area = mecanica.get("area") or {}
         forma = str(area.get("forma", "")).lower()
-        if forma == "emanacao":
+        if mecanica.get("tipo") == "dano_multialvo":
+            ids_alvos = list(dict.fromkeys([pedido.alvo_id, *pedido.alvos_ids]))
+            if len(ids_alvos) > int(mecanica.get("alvos_maximos", 1)):
+                raise HTTPException(status_code=422, detail={"motivo": "limite_de_alvos_excedido", "alvos_maximos": mecanica.get("alvos_maximos", 1)})
+            if conjurador["id"] in ids_alvos:
+                raise HTTPException(status_code=422, detail="O conjurador não pode ser selecionado como alvo desta magia")
+            alvos_area = []
+            for id_alvo in ids_alvos:
+                token_alvo = next((t for t in tokens if t["id"] == id_alvo), None)
+                if token_alvo is None:
+                    raise HTTPException(status_code=404, detail={"motivo": "alvo_nao_encontrado", "alvo_id": id_alvo})
+                if token_alvo["hp"] <= 0:
+                    raise HTTPException(status_code=422, detail={"motivo": "alvo_com_zero_pv", "alvo_id": id_alvo})
+                distancia_alvo = max(abs(int(conjurador["x"]) - int(token_alvo["x"])), abs(int(conjurador["y"]) - int(token_alvo["y"]))) * 5
+                alcance_pes = int(mecanica.get("alcance_pes", round(float(mecanica.get("alcance_m", 0)) * 3.28084)))
+                if distancia_alvo > alcance_pes:
+                    raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alvo_id": id_alvo, "alcance_pes": alcance_pes})
+                alvos_area.append(token_alvo)
+            if len(alvos_area) == 2:
+                separacao = max(abs(int(alvos_area[0]["x"]) - int(alvos_area[1]["x"])), abs(int(alvos_area[0]["y"]) - int(alvos_area[1]["y"]))) * 5
+                if separacao > int(round(float(mecanica.get("distancia_entre_alvos_m", 1.5)) * 3.28084)):
+                    raise HTTPException(status_code=422, detail={"motivo": "alvos_distantes_demais", "distancia_maxima_m": mecanica.get("distancia_entre_alvos_m", 1.5)})
+        elif forma == "emanacao":
             raio_casas = round(float(area.get("raio_m", 0)) / 1.5)
             alvos_area = [t for t in tokens if t["hp"] > 0
                           and t["id"] != conjurador["id"]
@@ -2789,6 +2813,7 @@ def conjurar_no_mapa_tatico(
         "ca_alvo": locals().get("ca_alvo"),
         "concentracao_alvo": concentracao_alvo if "concentracao_alvo" in locals() else None,
         "resultados_area": resultados_area if mecanica.get("tipo") == "dano_em_area" else [],
+        "resultados_alvos": resultados_area if mecanica.get("tipo") == "dano_multialvo" else [],
         "espaco_usado": espaco_usado if circulo > 0 else None,
         "espacos_restantes": restantes,
         "nota": "Efeitos sem resolução tática específica são rejeitados sem gastar espaço; as respostas incluem salvaguardas, dano e testes de concentração quando aplicáveis.",
