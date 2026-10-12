@@ -101,7 +101,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "resolver_regra",
-            "description": "Resolve fatos mecânicos usando o Rule Engine; em ability_check sem roll, o motor gera o d20 auditável.",
+            "description": "Resolve fatos mecânicos. Em attack, recebe modifier e target_ac e gera d20 auditável para hit/miss/crítico. Em initiative, gera d20 e aplica desvantagem quando surprised=true. Em ability_check sem roll, gera d20 auditável.",
             "parameters": {
                 "type": "object",
                 "properties": {
