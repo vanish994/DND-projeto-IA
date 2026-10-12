@@ -48,11 +48,16 @@ class MecanicasCorrigidasTests(unittest.TestCase):
         veneno = mecanica_de_magia('Rajada de Veneno')
         self.assertEqual(veneno['tipo'], 'ataque_magico')
         self.assertEqual(veneno['alcance_pes'], 30)
-        for nome, save, forma in [('Trovão', 'constituicao', 'emanacao'), ('Bolha Ácida', 'destreza', 'esfera')]:
-            m = mecanica_de_magia(nome)
-            self.assertEqual(m['salvaguarda'], save)
-            self.assertEqual(m['area']['forma'], forma)
-            self.assertFalse(m['sucesso_metade'])
+        trovao = mecanica_de_magia('Trovão')
+        self.assertEqual(trovao['salvaguarda'], 'constituicao')
+        self.assertEqual(trovao['area']['forma'], 'emanacao')
+        self.assertFalse(trovao['sucesso_metade'])
+        bolha = mecanica_de_magia('Bolha Ácida')
+        self.assertEqual(bolha['salvaguarda'], 'destreza')
+        self.assertEqual(bolha['tipo'], 'dano_multialvo')
+        self.assertEqual(bolha['alvos_maximos'], 2)
+        self.assertNotIn('area', bolha)
+        self.assertFalse(bolha['sucesso_metade'])
 
     def test_dano_sem_magia_registrada_bloqueado(self):
         self.ficha['conjuracao']['magias_preparadas'] = []
