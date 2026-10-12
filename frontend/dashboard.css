@@ -15,3 +15,120 @@ body.dashboard-mode .app-shell{display:none}
 .dashboard-empty,.dashboard-message{border:1px dashed #4d4635;background:#191c20;border-radius:12px;padding:22px 16px;text-align:center;color:#d0c5af;font-size:12px;line-height:1.6}.dashboard-empty strong{display:block;color:#e1e2e8;font:600 18px 'Playfair Display',serif;margin-bottom:7px}.dashboard-footer{margin-top:28px;background:#0b0e12;border-radius:12px;padding:16px;text-align:center;color:#99907c;font-size:11px;line-height:1.6}.dashboard-footer strong{display:block;color:#f2ca50;text-transform:uppercase;letter-spacing:.09em;font-size:10px;margin-bottom:5px}
 .dashboard-nav{position:fixed;z-index:20;inset:auto 0 0;background:rgba(11,14,18,.95);backdrop-filter:blur(14px);border-top:1px solid #272a2e;padding:5px 8px calc(5px + env(safe-area-inset-bottom));display:flex;justify-content:space-around}.dashboard-nav button{border:0;background:transparent;color:#99907c;font:600 10px 'Plus Jakarta Sans',sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;min-height:54px;justify-content:center;cursor:pointer}.dashboard-nav button span{font-size:20px;line-height:1;color:#f2ca50}.dashboard-nav button:focus-visible{outline:2px solid #f2ca50;outline-offset:2px}
 @media(min-width:680px){.dashboard{padding:100px 28px 40px}.dashboard-list{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-feature{padding:24px}.dashboard-nav{position:static;max-width:900px;margin:0 auto 18px;border:1px solid #272a2e;border-radius:12px}.dashboard{padding-bottom:24px}}
+
+/* Criador de personagens: aplicar o tema do dashboard também dentro do diálogo e em todas as etapas. */
+body.dashboard-mode #character-dialog,
+body.dashboard-mode #group-dialog,
+body.dashboard-mode #library-dialog {
+  width: min(760px, calc(100vw - 24px));
+  max-width: 760px;
+  max-height: min(92dvh, 900px);
+  padding: 0;
+  overflow: hidden;
+  color: #e1e2e8;
+  background: #111418;
+  border: 1px solid #4d4635;
+  border-radius: 18px;
+  box-shadow: 0 24px 80px #000b;
+}
+body.dashboard-mode #character-dialog::backdrop,
+body.dashboard-mode #group-dialog::backdrop,
+body.dashboard-mode #library-dialog::backdrop { background: #050608c9; backdrop-filter: blur(5px); }
+body.dashboard-mode #character-dialog form,
+body.dashboard-mode #character-dialog #character-form { min-width: 0; }
+body.dashboard-mode #character-dialog #character-body,
+body.dashboard-mode #group-dialog #group-body,
+body.dashboard-mode #library-dialog #library-body { box-sizing: border-box; padding: 18px; color: #e1e2e8; }
+body.dashboard-mode #character-dialog #character-stepper {
+  display: flex; gap: 8px; overflow-x: auto; list-style: none; padding: 12px 18px;
+  margin: 0; border-bottom: 1px solid #323539; background: #0b0e12;
+}
+body.dashboard-mode #character-dialog .passo {
+  display: flex; flex: 0 0 auto; align-items: center; gap: 7px; color: #99907c;
+  font-size: 11px; white-space: nowrap;
+}
+body.dashboard-mode #character-dialog .passo-marca {
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid #4d4635; background: #1d2024; color: #d0c5af; font-weight: 800;
+}
+body.dashboard-mode #character-dialog .passo[data-estado="atual"] { color: #f2ca50; font-weight: 800; }
+body.dashboard-mode #character-dialog .passo[data-estado="atual"] .passo-marca,
+body.dashboard-mode #character-dialog .passo[data-estado="feito"] .passo-marca {
+  background: #f2ca50; border-color: #f2ca50; color: #211b08;
+}
+body.dashboard-mode #character-dialog #character-summary {
+  display: flex; flex-wrap: wrap; gap: 7px; padding: 12px 18px;
+  border-bottom: 1px solid #323539; color: #d0c5af; font-size: 11px;
+}
+body.dashboard-mode #character-dialog #character-summary > span {
+  background: #272a2e; border: 1px solid #3a372d; border-radius: 999px; padding: 6px 9px;
+}
+body.dashboard-mode #character-dialog #character-summary strong { color: #f2ca50; }
+body.dashboard-mode #character-dialog #character-step {
+  padding: 18px 18px 0; margin: 0; color: #f2ca50; font-size: 12px; font-weight: 800;
+}
+body.dashboard-mode #character-dialog #character-error { margin: 10px 18px; color: #ff9b9b; }
+body.dashboard-mode #character-dialog #character-body h2,
+body.dashboard-mode #character-dialog #character-body h3,
+body.dashboard-mode #group-dialog h2,
+body.dashboard-mode #library-dialog h2 { color: #f2ca50; font-family: 'Playfair Display', Georgia, serif; }
+body.dashboard-mode #character-dialog #character-body p,
+body.dashboard-mode #character-dialog #character-body label,
+body.dashboard-mode #character-dialog #character-body small { color: #d0c5af; }
+body.dashboard-mode #character-dialog #character-body input,
+body.dashboard-mode #character-dialog #character-body select,
+body.dashboard-mode #character-dialog #character-body textarea,
+body.dashboard-mode #group-dialog select,
+body.dashboard-mode #library-dialog select {
+  box-sizing: border-box; width: 100%; min-height: 44px; padding: 11px 12px;
+  color: #e1e2e8; background: #0b0e12; border: 1px solid #4d4635; border-radius: 9px;
+}
+body.dashboard-mode #character-dialog #character-body input:focus,
+body.dashboard-mode #character-dialog #character-body select:focus,
+body.dashboard-mode #character-dialog #character-body textarea:focus {
+  outline: 2px solid #f2ca50; outline-offset: 1px;
+}
+body.dashboard-mode #character-dialog #character-body button,
+body.dashboard-mode #character-dialog #character-prev,
+body.dashboard-mode #character-dialog #character-next,
+body.dashboard-mode #group-dialog button,
+body.dashboard-mode #library-dialog button {
+  min-height: 42px; border-radius: 9px; cursor: pointer;
+}
+body.dashboard-mode #character-dialog #character-prev,
+body.dashboard-mode #character-dialog #character-next {
+  margin: 10px 6px 14px 0; padding: 10px 16px; border: 1px solid #4d4635;
+  background: #272a2e; color: #e1e2e8; font-weight: 800;
+}
+body.dashboard-mode #character-dialog #character-next {
+  background: linear-gradient(90deg,#f2ca50,#d4af37); color: #3c2f00; border-color: transparent;
+}
+body.dashboard-mode #character-dialog button:disabled { opacity: .45; cursor: not-allowed; }
+body.dashboard-mode #character-dialog .painel,
+body.dashboard-mode #character-dialog .choice-card,
+body.dashboard-mode #character-dialog .choice-item,
+body.dashboard-mode #character-dialog .cartao-escolha {
+  color: #e1e2e8; background: #1d2024; border: 1px solid #323539; border-radius: 12px;
+}
+body.dashboard-mode #character-dialog .painel { padding: 14px; margin: 0 0 12px; }
+body.dashboard-mode #character-dialog .painel-titulo { color: #f2ca50; font-weight: 800; }
+body.dashboard-mode #character-dialog .choice-list { gap: 10px; }
+body.dashboard-mode #character-dialog .choice-list > li { margin-bottom: 10px; }
+body.dashboard-mode #character-dialog .choice-list button,
+body.dashboard-mode #character-dialog #character-body button[aria-pressed="true"],
+body.dashboard-mode #character-dialog #character-body button[aria-checked="true"] {
+  color: #e1e2e8; background: #1d2024; border: 1px solid #4d4635;
+}
+body.dashboard-mode #character-dialog #character-body button[aria-pressed="true"],
+body.dashboard-mode #character-dialog #character-body button[aria-checked="true"] {
+  border-color: #f2ca50; box-shadow: 0 0 0 1px #f2ca50 inset;
+}
+@media (max-width: 600px) {
+  body.dashboard-mode #character-dialog,
+  body.dashboard-mode #group-dialog,
+  body.dashboard-mode #library-dialog { width: calc(100vw - 12px); max-height: 94dvh; border-radius: 14px; }
+  body.dashboard-mode #character-dialog #character-body { padding: 12px; }
+  body.dashboard-mode #character-dialog #character-stepper { padding: 10px 12px; }
+  body.dashboard-mode #character-dialog #character-summary { padding: 10px 12px; }
+  body.dashboard-mode #character-dialog #character-step { padding: 14px 12px 0; }
+}
