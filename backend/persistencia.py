@@ -445,7 +445,9 @@ class RepositorioCampanhas:
         registro = {
             "id": f"ficha-{uuid.uuid4().hex[:12]}",
             "jogador_id": jogador_id,
-            "nome": str(ficha.get("nome") or entrada.get("nome") or "Personagem").strip(),
+            "nome": str(
+                ficha.get("nome") or entrada.get("nome") or "Personagem"
+            ).strip(),
             "entrada": json.dumps(entrada, ensure_ascii=False),
             "ficha": json.dumps(ficha, ensure_ascii=False),
             "criado_em": agora,
@@ -453,7 +455,9 @@ class RepositorioCampanhas:
         }
         with self.engine.begin() as conn:
             conn.execute(insert(fichas_salvas).values(**registro))
-        return self.obter_ficha_salva(jogador_id, registro["id"])  # type: ignore[return-value]
+        return self.obter_ficha_salva(
+            jogador_id, registro["id"]
+        )  # type: ignore[return-value]
 
     def listar_fichas_salvas(self, jogador_id: str) -> list[dict[str, Any]]:
         with self.engine.connect() as conn:
@@ -464,7 +468,9 @@ class RepositorioCampanhas:
             ).all()
         return [self._ficha_salva(linha) for linha in linhas]
 
-    def obter_ficha_salva(self, jogador_id: str, ficha_id: str) -> dict[str, Any] | None:
+    def obter_ficha_salva(
+        self, jogador_id: str, ficha_id: str
+    ) -> dict[str, Any] | None:
         with self.engine.connect() as conn:
             linha = conn.execute(
                 select(fichas_salvas).where(
