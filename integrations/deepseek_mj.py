@@ -212,10 +212,10 @@ class DeepSeekMJ:
 
                     classe = str(personagem.get("classe", "")).strip().lower()
                     prof_classe = PROFICIENCIAS_CLASSE.get(classe, {}).get("armas", [])
+                    # Mesma classificação usada pelo combate tático do backend.
                     simples = {
                         "clava", "clava grande", "adaga", "dardo", "machadinha", "martelo leve",
-                        "maça", "cajado", "funda", "azagaia", "lança", "foice", "besta leve",
-                        "besta de mão", "besta pesada", "arco curto",
+                        "maça", "cajado", "funda", "azagaia", "arco curto", "besta leve",
                     }
                     nome_normalizado = nome_canonico.casefold()
                     # Druida usa a lista específica do Livro do Jogador, não toda a categoria simples.
@@ -277,14 +277,14 @@ class DeepSeekMJ:
                     facts["attack_ability"] = atributo_ataque
 
                     alvo_nome = str(facts.get("target_name", facts.get("alvo", ""))).strip()
-                    if facts.get("target_ac") is None and alvo_nome:
-                        alvo = consultar_monstro(alvo_nome)
-                        if alvo is None:
-                            return {"resultado": "bloqueado", "motivo": "monstro_desconhecido_no_bestiario", "alvo": alvo_nome}
-                        facts["target_ac"] = int(alvo["ca"])
-                        facts["target_name"] = alvo["nome"]
-                    if facts.get("target_ac") is None:
-                        return {"resultado": "bloqueado", "motivo": "classe_de_armadura_do_alvo_ausente"}
+                    if not alvo_nome:
+                        return {"resultado": "bloqueado", "motivo": "nome_do_alvo_ausente"}
+                    alvo = consultar_monstro(alvo_nome)
+                    if alvo is None:
+                        return {"resultado": "bloqueado", "motivo": "monstro_desconhecido_no_bestiario", "alvo": alvo_nome}
+                    # A CA vem sempre do catálogo oficial; nunca confiar numa CA fornecida pelo modelo.
+                    facts["target_ac"] = int(alvo["ca"])
+                    facts["target_name"] = alvo["nome"]
             if facts.get("type") == "ability_check":
                 grupo = personagens or []
                 personagem_id = facts.get("character_id")
