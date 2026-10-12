@@ -30,7 +30,7 @@ jobs:
       - name: Collect tests (diagnóstico de import)
         run: |
           set +e
-          pytest --collect-only -q > collect.log 2>&1
+          python -m pytest --collect-only -q > collect.log 2>&1
           code=$?
           cat collect.log
           if [ $code -ne 0 ]; then
@@ -39,7 +39,7 @@ jobs:
           fi
           exit $code
       - name: Python test suite with coverage floor
-        run: pytest -q --cov --cov-fail-under=80 2>&1 | tee pytest-ci.log
+        run: python -m pytest -q --cov --cov-fail-under=80 2>&1 | tee pytest-ci.log
       - name: Upload pytest log
         if: always()
         uses: actions/upload-artifact@v4
