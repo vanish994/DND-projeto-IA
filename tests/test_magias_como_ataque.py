@@ -6,6 +6,7 @@ conjuração da ficha, escalonar truques, rolar o dano, gastar espaços de magia
 resolver o Ataque de Sopro do Draconato por salvaguarda — sempre sem inventar
 valores fora do catálogo.
 """
+import json
 import unittest
 
 from integrations.deepseek_mj import DeepSeekMJ
@@ -397,3 +398,114 @@ class ConjurarNoMapaTaticoTests(unittest.TestCase):
         self.assertTrue(body["ataque"]["critical"])
         self.assertEqual(len(body["dados_dano"]), 2)
         self.assertEqual(body["dano"], sum(body["dados_dano"]))
+
+
+class _Ferramenta:
+    def __init__(self, nome, argumentos, identificador="call-1"):
+        self.id = identificador
+        self.function = type("Funcao", (), {"name": nome, "arguments": json.dumps(argumentos, ensure_ascii=False)})()
+
+
+class _Mensagem:
+    def __init__(self, content=None, tool_calls=None):
+        self.role = "assistant"
+        self.content = content
+        self.tool_calls = tool_calls or []
+
+
+class _Resposta:
+    def __init__(self, mensagem):
+        self.choices = [type("Escolha", (), {"message": mensagem})()]
+
+
+class _ClienteRoteirizado:
+    """Cliente de LLM falso: devolve uma lista de mensagens, uma por chamada."""
+
+    def __init__(self, mensagens):
+        self.pendentes = list(mensagens)
+        self.requisicoes = []
+        self.chat = type("Chat", (), {"completions": self})()
+
+    def create(self, **parametros):
+        self.requisicoes.append(parametros)
+        return _Resposta(self.pendentes.pop(0))
+
+
+class LacoDoMJTests(unittest.TestCase):
+    """O laço completo do MJ precisa resolver o truque como ataque, não recusar."""
+
+    def _mj(self, mensagens):
+        cliente = _ClienteRoteirizado(mensagens)
+        mj = DeepSeekMJ(client=cliente, model="teste")
+        mj.base_url = "https://api.groq.com/openai/v1"
+        mj.uses_deepseek_api = False
+        return mj, cliente
+
+    @staticmethod
+    def _resposta_do_motor(requisicao):
+        """Última mensagem de ferramenta da requisição: o que o motor devolveu."""
+        for mensagem in reversed(requisicao["messages"]):
+            if mensagem.get("role") == "tool":
+                return json.loads(mensagem["content"])
+        raise AssertionError("a requisição não levou nenhuma resposta de ferramenta")
+
+    def test_modelo_pede_truque_como_ataque_e_recebe_rolagem_do_motor(self):
+        mj, cliente = self._mj([
+            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+                "type": "attack", "character_id": "p1",
+                "magia": "Raio de Fogo", "target_name": "Awakened Shrub",
+            }})]),
+            _Mensagem(content="O Raio de Fogo crepita e atinge o arbusto desperto."),
+        ])
+        rolagens = []
+        narracao = mj.responder(
+            "Ataco o arbusto com raio de fogo", personagens=[feiticeiro()], on_roll=rolagens.append,
+        )
+        self.assertIn("Raio de Fogo", narracao)
+        # O prompt normativo ensina o caminho novo antes de o modelo responder.
+        self.assertIn("ATAQUES DE MAGIA", cliente.requisicoes[0]["messages"][0]["content"])
+        self.assertEqual(rolagens[0]["tipo"], "ataque")
+        self.assertEqual(rolagens[0]["rotulo"], "Ataque de magia: Raio De Fogo contra Awakened Shrub")
+        self.assertEqual(rolagens[0]["origem"], "rule_engine")
+        self.assertEqual(mj.ultimas_rolagens, rolagens)
+
+        # A ferramenta devolveu a CA do bestiário e o bônus de conjuração da ficha.
+        chamada_ferramenta = self._resposta_do_motor(cliente.requisicoes[1])
+        self.assertEqual(chamada_ferramenta["modifier"], 5)  # Carisma +3 e proficiência +2
+        self.assertEqual(chamada_ferramenta["target_ac"], 9)  # Awakened Shrub
+        self.assertIn(chamada_ferramenta["result"], {"hit", "miss"})
+        # Acerto rola o dano da magia; erro não rola nada além do d20.
+        if chamada_ferramenta["result"] == "hit":
+            self.assertEqual([r["tipo"] for r in rolagens], ["ataque", "dano"])
+            self.assertEqual(chamada_ferramenta["dano"], sum(chamada_ferramenta["dados_dano"]))
+            self.assertEqual(rolagens[1]["rotulo"], "Dano de Raio De Fogo")
+        else:
+            self.assertEqual([r["tipo"] for r in rolagens], ["ataque"])
+
+    def test_modelo_pede_conjuracao_e_o_motor_gasta_o_espaco(self):
+        ficha = feiticeiro(nivel=5)
+        mj, cliente = self._mj([
+            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+                "type": "spell", "character_id": "p1", "magia": "Bola de Fogo",
+            }})]),
+            _Mensagem(content="A Bola de Fogo explode sobre os inimigos."),
+        ])
+        mj.responder("Conjuro bola de fogo", personagens=[ficha])
+        chamada_ferramenta = self._resposta_do_motor(cliente.requisicoes[1])
+        self.assertEqual(chamada_ferramenta["resultado"], "conjurada")
+        self.assertEqual(chamada_ferramenta["espaco_usado"], 3)
+        self.assertEqual(ficha["conjuracao"]["espacos_restantes"], {"3": 1})
+
+    def test_modelo_pede_dano_de_magia_de_area_e_recebe_cd_da_ficha(self):
+        mj, cliente = self._mj([
+            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+                "type": "damage", "character_id": "p1", "magia": "Bola de Fogo",
+            }})]),
+            _Mensagem(content="As chamas varrem a área."),
+        ])
+        mj.responder("Quanto de dano?", personagens=[feiticeiro(nivel=5)])
+        chamada_ferramenta = self._resposta_do_motor(cliente.requisicoes[1])
+        self.assertEqual(chamada_ferramenta["dano_expressao"], "8d6")
+        self.assertEqual(chamada_ferramenta["cd_magia"], 14)
+        self.assertEqual(chamada_ferramenta["magia_salvaguarda"], "destreza")
+        self.assertEqual([r["tipo"] for r in mj.ultimas_rolagens], ["dano"])
