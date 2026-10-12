@@ -138,6 +138,21 @@ O MJ (`integrations/deepseek_mj.py`) ficou com o que é dele — provedor, promp
 histórico, laço de ferramentas e `ultimas_rolagens` — e delega a execução das
 ferramentas a essa camada.
 
+### Custo de tokens do MJ
+
+Cada rodada de ferramenta reenvia ao modelo o contexto inteiro (prompt + estado
++ histórico + schemas ≈ 5.300 tokens). Para medir de verdade — não estimar —
+
+```bash
+python scripts/medir_tokens_mj.py
+```
+
+O script roda o `DeepSeekMJ` de produção com um cliente roteirizado (sem rede)
+e mostra chamadas, entrada e saída por cenário. O prompt normativo já foi
+comprimido com base nele (7.698 → 4.717 chars, −39%, guardrails intactos e
+fixados em testes); a próxima economia estrutural é **ações compostas** no
+orquestrador (conjuração + dano + salvaguardas numa só chamada).
+
 ### Backend recomendado
 
 Para uso real, o cliente não deve falar diretamente com o TokenHarbor. O backend FastAPI mantém `TOKENHARBOR_API_KEY` no servidor, recebe mensagens do MJ e expõe o Rule Engine por trás do adaptador DeepSeek. O `run_mj.py` continua útil apenas para testes locais no terminal.

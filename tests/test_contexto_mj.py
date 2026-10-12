@@ -56,8 +56,24 @@ class ContextoMestreTests(unittest.TestCase):
         self.assertIn("Não invente nem presuma nome", contexto)
 
     def test_prompt_exige_consultar_ficha_e_motor(self):
-        self.assertIn("REGRA PRIORITÁRIA — FICHA E INÍCIO DA CAMPANHA", PROMPT_NORMATIVO)
-        self.assertIn("não simule que o motor a validou", PROMPT_NORMATIVO)
+        # Comparação sobre texto normalizado: pins de guardrail não podem
+        # quebrar por causa de uma quebra de linha no prompt.
+        normalizado = " ".join(PROMPT_NORMATIVO.split())
+        pins = (
+            "REGRA PRIORITÁRIA — FICHA E INÍCIO DA CAMPANHA",
+            "não simule que o motor a validou",
+            "Nunca invente conteúdo mecânico",
+            "nunca conte espaços de cabeça",
+            "NÃO são jogadas de ataque",
+            "Não afirme atualização de ficha sem confirmação de operação persistida",
+            "Sem personagem cadastrado, não comece com um personagem fictício",
+        )
+        for frase in pins:
+            self.assertIn(frase, normalizado, f"guardrail perdido do prompt: {frase}")
+
+    def test_prompt_economiza_tokens_sem_perder_contratos(self):
+        """O prompt ensina fluxo, não derivação: precisa caber em 5.000 chars."""
+        self.assertLess(len(PROMPT_NORMATIVO), 5000)
 
 
 if __name__ == "__main__":

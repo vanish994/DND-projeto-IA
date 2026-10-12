@@ -152,6 +152,33 @@ O MJ (`integrations/deepseek_mj.py`) mantém apenas o que é dele: provedor,
 prompt, histórico, laço de ferramentas e a lista `ultimas_rolagens`. O método
 `_tool` virou adaptador de formato para o orquestrador.
 
+### Economia de tokens do MJ: medir primeiro, depois cortar
+
+`python scripts/medir_tokens_mj.py` roda o `DeepSeekMJ` de produção com um
+cliente roteirizado (sem rede) e mede os caracteres/tokens **reais** de cada
+requisição, em quatro cenários. Não é estimativa: é o payload que sai da casa.
+
+Medições de 2026-10-12 (histórico simulado de 20 mensagens, ~3,5 chars/token):
+
+- Prompt normativo: 7.698 → 4.717 chars (−39%), mantendo todos os guardrails —
+  agora ele ensina **quando chamar cada ferramenta**; os detalhes de derivação
+  (bônus, CD, escalonamento, CA) que o orquestrador calcula saíram do prompt.
+- `resumo_autoritativo`: instruções repetidas por personagem (rodapé da linha
+  de conjuração) viraram uma única linha no cabeçalho.
+- Efeito por requisição: ~6.100 → ~5.300 tokens de entrada (−14%), pago em
+  **cada** chamada ao modelo — e o MJ chama o modelo a cada rodada de
+  ferramenta, reenviando o contexto inteiro.
+- `backend.app.HISTORICO_MAX` (env `MJ_HISTORICO_MAX`, padrão 12) já limita o
+  histórico; o contexto do estado é ~1.900 chars por grupo, não por turno.
+
+Próxima economia estrutural (maior que a do prompt): **ações compostas no
+orquestrador**. Hoje "Bola de Fogo em 2 goblins" custa 4 rodadas (spell, damage,
+2 salvaguardas) e cada rodada reenvia ~5.300 tokens. Um `type` único que
+resolve conjuração + dano + salvaguardas de área economizaria ~5.300 tokens
+por rodada evitada — e reduziria também a chance de o modelo errar a sequência.
+Guardrails do prompt são fixados em `tests/test_contexto_mj.py` sobre texto
+normalizado; qualquer compressão futura roda esse teste antes de subir.
+
 ## 4. Rolagens: contrato atual e obrigatório
 
 A CD pertence à decisão do MJ. O resultado do d20 pertence ao Rule Engine.

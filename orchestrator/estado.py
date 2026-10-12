@@ -92,9 +92,7 @@ def resumo_autoritativo(grupo: list[dict[str, Any]]) -> str:
         linhas.append(
             f"  Conjuração exatamente registrada: truques={', '.join(truques) or 'nenhum registrado'}; "
             f"magias preparadas/conhecidas={', '.join(preparadas) or 'nenhuma registrada'}; "
-            f"espaços totais={espacos or 'nenhum registrado'}; espaços restantes={restantes or 'nenhum registrado'}. "
-            "Não invente escolhas, espaços, magias, proficiências, equipamento ou características ausentes. "
-            "Valide classe, nível, disponibilidade e custo no Rule Engine antes de permitir conjurar."
+            f"espaços totais={espacos or 'nenhum registrado'}; espaços restantes={restantes or 'nenhum registrado'}."
         )
     return (
         "ESTADO AUTORITATIVO DOS PERSONAGENS DESTA CAMPANHA, consultado do banco. "
@@ -102,7 +100,9 @@ def resumo_autoritativo(grupo: list[dict[str, Any]]) -> str:
         "Nunca altere nem contradiga a ficha; não invente nome, raça/espécie, classe, nível, "
         "antecedente, atributos, proficiências, aparência ou história pessoal. Não pergunte de novo "
         "informações que já constam aqui. Se um dado não estiver registrado, trate-o como desconhecido "
-        "e pergunte ao jogador antes de fixá-lo como fato. Toda alteração mecânica exige resolução do motor.\n"
+        "e pergunte ao jogador antes de fixá-lo como fato. Não invente escolhas, espaços, magias, "
+        "proficiências, equipamento ou características ausentes; toda alteração mecânica exige "
+        "resolução do motor antes de narrar o efeito.\n"
         + "\n".join(linhas)
     )
 
