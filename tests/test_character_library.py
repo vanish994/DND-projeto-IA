@@ -56,3 +56,67 @@ def test_biblioteca_isola_fichas_por_jogador():
     assert repo.obter_ficha_salva(outro, salva["id"]) is None
     assert repo.vincular_ficha_salva(outro, campanha_outro["id"], salva["id"]) is None
     assert repo.apagar_ficha_salva(outro, salva["id"]) is False
+
+
+from backend.erros import ErroDeValidacao
+from backend.schemas import NovoPersonagem
+from backend.services.personagem_service import exigir_escolhas_de_criacao
+
+
+def dados_criacao(**alteracoes):
+    dados = {
+        "nome": "Vanish",
+        "especie": "humano",
+        "classe": "artifice",
+        "nivel": 1,
+        "metodo_atributos": "matriz_padrao",
+        "atributos": {
+            "forca": 15,
+            "destreza": 14,
+            "constituicao": 13,
+            "inteligencia": 12,
+            "sabedoria": 10,
+            "carisma": 8,
+        },
+        "antecedente": "acolito",
+        "aumentos_antecedente": {"inteligencia": 2, "sabedoria": 1},
+        "pericias_classe": ["arcanismo", "historia"],
+        "ferramenta_artesao": "Ferramentas de Carpinteiro",
+        "equipamento_antecedente": "A",
+    }
+    dados.update(alteracoes)
+    return NovoPersonagem.model_validate(dados)
+
+
+def test_criacao_rejeita_ficha_sem_pericias_de_classe():
+    dados = dados_criacao(pericias_classe=None)
+    try:
+        exigir_escolhas_de_criacao(dados)
+    except ErroDeValidacao as erro:
+        assert "exige escolher exatamente 2 perícias" in str(erro)
+    else:
+        raise AssertionError("Ficha sem perícias de classe deveria ser recusada")
+
+
+def test_criacao_rejeita_pericias_de_classe_repetidas():
+    dados = dados_criacao(pericias_classe=["arcanismo", "arcanismo"])
+    try:
+        exigir_escolhas_de_criacao(dados)
+    except ErroDeValidacao as erro:
+        assert "Não repita perícias" in str(erro)
+    else:
+        raise AssertionError("Perícias repetidas deveriam ser recusadas")
+
+
+def test_criacao_rejeita_artifice_sem_ferramenta_de_artesao():
+    dados = dados_criacao(ferramenta_artesao=None)
+    try:
+        exigir_escolhas_de_criacao(dados)
+    except ErroDeValidacao as erro:
+        assert "ferramenta de artesão" in str(erro).lower()
+    else:
+        raise AssertionError("Artífice sem ferramenta deveria ser recusado")
+
+
+def test_criacao_aceita_escolhas_obrigatorias_completas():
+    exigir_escolhas_de_criacao(dados_criacao())
