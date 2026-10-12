@@ -145,6 +145,7 @@ class RepositorioCampanhas:
         self.engine = engine
         metadata.create_all(self.engine)
         self._garantir_coluna_rolagens()
+        self._remover_tabela_mapa_tatico()
 
     def _garantir_coluna_rolagens(self) -> None:
         """Adiciona ``mensagens.rolagens`` em bancos criados antes da animação de dados.
@@ -160,6 +161,17 @@ class RepositorioCampanhas:
             return
         with self.engine.begin() as conn:
             conn.execute(text("ALTER TABLE mensagens ADD COLUMN rolagens TEXT"))
+
+    def _remover_tabela_mapa_tatico(self) -> None:
+        """Apaga ``encontros_taticos`` (estado do mapa tático, recurso removido).
+
+        Idempotente: sem efeito quando a tabela não existe. Os estados salvos
+        dos mapas são descartados junto com ela.
+        """
+        if "encontros_taticos" not in inspect(self.engine).get_table_names():
+            return
+        with self.engine.begin() as conn:
+            conn.execute(text("DROP TABLE encontros_taticos"))
 
     def _resumo(self, linha: Any, ultima: str | None, total: int) -> dict[str, Any]:
         return {

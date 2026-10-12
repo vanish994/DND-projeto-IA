@@ -1,15 +1,14 @@
 /* Animação de dados do Rule Engine.
  *
  * Toda rolagem exibida aqui vem pronta do motor (`rolagens` na resposta do
- * backend ou no retorno das ações do mapa tático). Este módulo não sorteia
+ * backend). Este módulo não sorteia
  * nenhum número: ele apenas apresenta valor, modificador, total, CD/CA e o
  * veredito que o motor já calculou.
  *
  * Uso:
  *   Dados.animar(rolagens)            -> Promise resolvida quando a animação acaba
  *   Dados.cartao(rolagens)            -> elemento com o resumo fixo das rolagens
- *   Dados.normalizarMapa(resposta)    -> registros a partir da resposta do mapa
- */
+  */
 (() => {
   'use strict';
 
@@ -141,192 +140,6 @@
   function normalizarLista(entrada, extras = {}) {
     const itens = Array.isArray(entrada) ? entrada : [entrada];
     return itens.map((item) => normalizar(item, extras)).filter(Boolean);
-  }
-
-  /** Lados do dado a partir de uma expressão como "1d8" ou "2d6 + 3". */
-  function ladosDaExpressao(expressao) {
-    const encontrado = /d\s*(\d+)/i.exec(String(expressao || ''));
-    return encontrado ? paraInteiro(encontrado[1]) : null;
-  }
-
-  function roladorDeSalvaguarda(salvaguarda, extras = {}) {
-    const valor = paraInteiro(salvaguarda.dado ?? salvaguarda.rolagem ?? salvaguarda.valor);
-    if (valor === null) return null;
-    const total = paraInteiro(salvaguarda.total);
-    const cd = paraInteiro(salvaguarda.cd ?? salvaguarda.dc);
-    const sucesso = salvaguarda.sucesso === true ? true : salvaguarda.sucesso === false ? false : null;
-    const dadosSave = listaDeInteiros(salvaguarda.rolagens || salvaguarda.dados_rolados);
-    return normalizar({
-      tipo: 'salvaguarda',
-      dado: 'd20',
-      lados: 20,
-      valor,
-      rolagens: dadosSave.length ? dadosSave : [valor],
-      modificador: total !== null ? total - valor : 0,
-      total,
-      dificuldade: cd,
-      dificuldade_tipo: 'cd',
-      resultado: extras.resultado || (sucesso === true ? 'sucesso' : sucesso === false ? 'falha' : 'rolado'),
-      sucesso,
-      rotulo: extras.rotulo || `Salvaguarda de ${nomeAtributo(extras.atributo || salvaguarda.atributo)}`,
-      personagem: extras.personagem || null,
-      alvo: extras.alvo || null,
-    }, {origem: 'rule_engine'});
-  }
-
-  /** Rótulo legível para ataques de arma, de monstro e de magia do mapa tático. */
-  function rotuloDoAtaque(resposta, alvo) {
-    const arma = String(resposta.arma || '').trim();
-    const magia = String(resposta.magia || '').trim();
-    const monstro = String(resposta.monstro || '').trim();
-    const acao = String(resposta.acao || '').trim();
-    let base;
-    // Ataque com magia (truque ou magia de ataque) é identificado como tal.
-    if (magia) base = `Ataque de magia: ${magia}${arma && arma !== magia ? ` (${arma})` : ''}`;
-    else if (monstro && acao) base = `${acao} de ${monstro}`;
-    else if (monstro) base = `Ataque de ${monstro}`;
-    else if (/^ataque/i.test(arma)) base = arma;
-    else if (arma) base = `Ataque com ${arma}`;
-    else base = 'Jogada de ataque';
-    if (alvo && !/\bcontra\b/i.test(base)) base += ` contra ${alvo}`;
-    return base;
-  }
-
-  /** Converte a resposta de /mapa-tatico/atacar, /ataque-monstro e /conjurar. */
-  function normalizarMapa(resposta, extras = {}) {
-    if (!resposta || typeof resposta !== 'object') return [];
-    if (Array.isArray(resposta.ataques_resolvidos)) {
-      return resposta.ataques_resolvidos.flatMap((item) => normalizarMapa(item, extras));
-    }
-
-    const registros = [];
-    const ataque = resposta.ataque || {};
-    const rolagens = listaDeInteiros(resposta.rolagens || ataque.rolls);
-    const valor = paraInteiro(resposta.rolagem ?? ataque.roll) ?? (rolagens.length ? rolagens[0] : null);
-    const armas = Array.isArray(ataque.damage_dice) ? ataque.damage_dice : [];
-    const nomePorId = typeof extras.nomePorId === 'function' ? extras.nomePorId : () => null;
-    const quem = (indicador) => (indicador ? nomePorId(indicador) || String(indicador) : null);
-
-    // Vantagem/desvantagem vêm da geometria do motor; com dois dados, o que fica
-    // é o maior (vantagem) ou o menor (desvantagem).
-    const estadoJogada = String((resposta.geometria || {}).estado_jogada || '').toLowerCase();
-    const temVantagem = Boolean(ataque.advantage) || estadoJogada === 'vantagem' || (rolagens.length > 1 && valor === Math.max(...rolagens));
-    const temDesvantagem = Boolean(ataque.disadvantage) || estadoJogada === 'desvantagem' || (rolagens.length > 1 && valor === Math.min(...rolagens));
-
-    if (valor !== null) {
-      registros.push(normalizar({
-        tipo: 'ataque',
-        dado: 'd20',
-        lados: 20,
-        valor,
-        rolagens: rolagens.length ? rolagens : [valor],
-        modificador: paraInteiro(resposta.bonus_ataque) || 0,
-        total: paraInteiro(ataque.total) ?? (valor !== null ? valor + (paraInteiro(resposta.bonus_ataque) || 0) : null),
-        dificuldade: paraInteiro(resposta.ca_alvo ?? ataque.target_ac),
-        dificuldade_tipo: 'ca',
-        resultado: ataque.result === 'hit' ? 'acerto' : ataque.result === 'miss' ? 'erro' : 'rolado',
-        sucesso: ataque.result === 'hit',
-        critico: Boolean(ataque.critical),
-        natural_1: ataque.reason === 'natural_1',
-        vantagem: temVantagem,
-        desvantagem: temDesvantagem,
-        rotulo: rotuloDoAtaque(resposta, extras.alvo),
-        personagem: extras.personagem || resposta.monstro || null,
-        alvo: extras.alvo || quem(resposta.alvo_id) || null,
-        motivo: ataque.reason || null,
-        seed: ataque.seed || null,
-      }, {origem: 'rule_engine'}));
-    }
-
-    const dadosDano = listaDeInteiros(resposta.dados_dano).length ? listaDeInteiros(resposta.dados_dano) : listaDeInteiros(armas);
-    const dano = paraInteiro(resposta.dano);
-    const aplicacao = resposta.defesas_dano && resposta.defesas_dano.aplicacao;
-    if (dano !== null && dano > 0) {
-      const expressao = resposta.dano_expressao || null;
-      registros.push(normalizar({
-        tipo: 'dano',
-        dado: 'dano',
-        lados: ladosDaExpressao(expressao) || 6,
-        valor: null,
-        rolagens: dadosDano,
-        modificador: paraInteiro(resposta.dano_modificador) || 0,
-        total: dano,
-        expressao: expressao || (dadosDano.length ? `${dadosDano.length}d6` : null),
-        resultado: 'dano',
-        critico: Boolean(ataque.critical),
-        rotulo: resposta.magia ? `Dano de ${resposta.magia}`
-          : resposta.arma ? `Dano de ${resposta.arma}`
-          : resposta.tipo_dano ? `Dano ${resposta.tipo_dano}` : 'Dano',
-        personagem: extras.personagem || resposta.monstro || null,
-        alvo: extras.alvo || null,
-        motivo: APLICACAO_DANO[aplicacao] || null,
-      }, {origem: 'rule_engine'}));
-    }
-
-    for (const efeito of resposta.efeitos || []) {
-      if (!efeito || typeof efeito !== 'object' || efeito.tipo !== 'salvaguarda_apos_ataque') continue;
-      const registro = roladorDeSalvaguarda(efeito, {atributo: efeito.atributo, personagem: extras.alvo || null});
-      if (registro) registros.push(registro);
-    }
-
-    for (const linha of resposta.salvaguardas_resolvidas || []) {
-      const registro = roladorDeSalvaguarda(linha, {
-        personagem: quem(linha.token_id),
-        rotulo: `Salvaguarda contra ${linha.condicao || 'o efeito'}`,
-        resultado: linha.encerrada === true ? 'sucesso' : linha.encerrada === false ? 'falha' : null,
-      });
-      if (registro) registros.push(registro);
-    }
-
-    for (const area of resposta.resultados_area || []) {
-      const extraAlvo = {personagem: area.nome || null, alvo: area.nome || null};
-      if (area.salvaguarda) {
-        const atributo = area.salvaguarda.atributo;
-        const registro = roladorDeSalvaguarda(area.salvaguarda, {
-          ...extraAlvo,
-          atributo,
-          rotulo: atributo ? null : `Salvaguarda de ${area.nome || 'criatura'}${resposta.magia ? ` contra ${resposta.magia}` : ''}`,
-        });
-        if (registro) registros.push(registro);
-      }
-      const dadosArea = listaDeInteiros(area.dados_dano);
-      if (paraInteiro(area.dano) > 0) {
-        registros.push(normalizar({
-          tipo: 'dano',
-          dado: 'dano',
-          lados: ladosDaExpressao(resposta.dano_expressao) || 6,
-          valor: null,
-          rolagens: dadosArea,
-          modificador: 0,
-          total: paraInteiro(area.dano),
-          expressao: dadosArea.length ? `${dadosArea.length}d${ladosDaExpressao(resposta.dano_expressao) || 6}` : null,
-          resultado: 'dano',
-          rotulo: resposta.magia ? `Dano de ${resposta.magia}` : 'Dano em área',
-          personagem: area.nome || null,
-          alvo: area.nome || null,
-        }, {origem: 'rule_engine'}));
-      }
-    }
-
-    return registros.filter(Boolean);
-  }
-
-  /** Uma rolagem por participante vindo de /mapa-tatico/iniciativa/iniciar. */
-  function normalizarIniciativa(iniciativa) {
-    if (!Array.isArray(iniciativa)) return [];
-    return iniciativa.map((linha) => normalizar({
-      tipo: 'iniciativa',
-      dado: 'd20',
-      lados: 20,
-      valor: paraInteiro(linha.rolagem),
-      rolagens: [paraInteiro(linha.rolagem)],
-      modificador: paraInteiro(linha.destreza) || 0,
-      total: paraInteiro(linha.total),
-      resultado: 'rolado',
-      rotulo: `Iniciativa de ${linha.nome || 'criatura'}`,
-      personagem: linha.nome || null,
-      origem: 'rule_engine',
-    })).filter(Boolean);
   }
 
   /* ------------------------------------------------------------------ *
@@ -657,7 +470,7 @@
 
   const api = {
     animar, cartao, interromper, frase, formulaDa, normalizar, normalizarLista,
-    normalizarMapa, normalizarIniciativa, vereditoDa,
+    vereditoDa,
   };
   if (typeof window !== 'undefined') {
     window.Dados = api;
