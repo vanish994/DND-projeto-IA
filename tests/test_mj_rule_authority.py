@@ -107,6 +107,39 @@ class MJRuleAuthorityTests(unittest.TestCase):
         self.assertEqual(resultado["espacos_restantes"], {"1": 1})
         self.assertEqual(atualizacoes, [{"1": 1}])
 
+    def test_artifice_conjura_magia_de_subclasse_liberada_sem_estar_na_ficha(self):
+        # Armeiro nível 3 tem Onda Trovejante como sempre preparada (fora da escolha).
+        artifice = {
+            "id": "artifice-1", "classe": "artifice", "nivel": 3, "subclasse": "Armeiro",
+            "atributos": {"inteligencia": 16},
+            "conjuracao": {
+                "truques": ["Luz", "Raio de Gelo"],
+                "magias_preparadas": ["Curar Ferimentos", "Alarme"],
+                "espacos_totais": {"1": 4, "2": 2}, "espacos_restantes": {"1": 4, "2": 2},
+            },
+        }
+        resultado = self.mj._tool("resolver_regra", {"fatos": {
+            "type": "spell", "magia": "Onda Trovejante", "character_id": "artifice-1",
+        }}, [artifice])
+        self.assertNotEqual(resultado.get("motivo"), "magia_nao_disponivel_para_artifice")
+        self.assertEqual(resultado["resultado"], "conjurada")
+
+    def test_artifice_nao_conjura_magia_de_subclasse_ainda_nao_liberada(self):
+        artifice = {
+            "id": "artifice-1", "classe": "artifice", "nivel": 3, "subclasse": "Armeiro",
+            "atributos": {"inteligencia": 16},
+            "conjuracao": {
+                "truques": ["Luz", "Raio de Gelo"],
+                "magias_preparadas": ["Curar Ferimentos", "Alarme"],
+                "espacos_totais": {"1": 4, "2": 2}, "espacos_restantes": {"1": 4, "2": 2},
+            },
+        }
+        resultado = self.mj._tool("resolver_regra", {"fatos": {
+            "type": "spell", "magia": "Relâmpago", "character_id": "artifice-1",
+        }}, [artifice])
+        self.assertEqual(resultado["resultado"], "bloqueado")
+        self.assertEqual(resultado["motivo"], "magia_nao_disponivel_para_artifice")
+
     def test_artifice_nao_conjura_sem_espacos_restantes(self):
         artifice = {
             "id": "artifice-1", "classe": "artifice", "nivel": 1,

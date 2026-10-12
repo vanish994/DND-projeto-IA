@@ -142,13 +142,14 @@ def progresso_artifice(nivel: int, inteligencia: int) -> dict[str, Any]:
 
 # Magias de subclasse do Artífice (Eberron: Forge of the Artificer). São sempre preparadas
 # a partir do nível indicado e não contam na escolha de magias preparadas.
-# Só entram nomes com cabeçalho confirmado no PHB 2024. Pendentes: Imagem Espelhada,
-# Estilhaçar, Escudo de Fogo, Muralha de Força, Tempestade de Gelo, Cone Glacial,
-# Golpe Brilhante, Nuvem Mortal, Pico Mental, Chamado do Relâmpago, Círculo de
-# Teletransporte, Escudo (Shield), Liberdade de Movimento (Freedom of Movement).
+# Só entram nomes com cabeçalho confirmado no PHB 2024 (busca em /tmp/phb.txt, NFC).
+# Pendentes (sem cabeçalho no PHB 2024; ausentes também de Forge/Ravenloft como texto):
+# Nuvem Mortal, Escudo, Imagem Espelhada, Estilhaçar, Muralha de Força, Tempestade de Gelo,
+# Cone Glacial, Pico Mental, Chamado do Relâmpago, Círculo de Teletransporte, Escudo de Fogo,
+# Golpe Brilhante, Liberdade de Movimento, Servo Homúnculo, Passagem (Armeiro 17, removida).
 ARTIFICER_SUBCLASS_SPELLS: dict[str, dict[int, list[str]]] = {
     "Armeiro": {3: ["Mísseis Mágicos", "Onda Trovejante"], 13: ["Invisibilidade Maior"],
-                9: ["Padrão Hipnótico", "Relâmpago"], 17: ["Passagem"]},
+                9: ["Padrão Hipnótico", "Relâmpago"]},
     "Artilheiro": {3: ["Onda Trovejante"], 5: ["Raio Ardente"], 9: ["Bola de Fogo", "Muralha de Vento"],
                    13: ["Muralha de Fogo"]},
     "Alquimista": {3: ["Palavra Curativa", "Raio Nauseante"], 5: ["Esfera Flamejante", "Flecha Ácida de Melf"],
@@ -174,6 +175,12 @@ def magias_sempre_preparadas(subclasse: str | None, nivel: int) -> list[str]:
             resultado.extend(n for n in tabela_sub[nivel_min] if n not in resultado)
     return resultado
 
+
+
+def magia_sempre_preparada_do_artifice(subclasse: str | None, nivel: int, nome: str) -> bool:
+    """True se a magia é de subclasse já liberada no nível do Artífice (não entra na escolha)."""
+    alvo = normalizar_nome_magia(nome)
+    return any(normalizar_nome_magia(n) == alvo for n in magias_sempre_preparadas(subclasse, nivel))
 
 
 def listar_magias_artifice(nivel: int) -> list[dict[str, Any]]:
