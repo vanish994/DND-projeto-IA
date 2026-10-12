@@ -2,7 +2,7 @@ import unittest
 
 from pydantic import ValidationError
 
-from backend.app import AcaoAvancarTurno
+from backend.schemas import AcaoAvancarTurno
 
 
 class TurnSavingThrowPayloadTests(unittest.TestCase):
@@ -33,7 +33,7 @@ class TurnSavingThrowPayloadTests(unittest.TestCase):
         self.assertEqual(request.salvaguardas, [])
 
     def test_condition_application_accepts_repeat_save_metadata(self):
-        from backend.app import AtualizarCondicaoPersonagem
+        from backend.schemas import AtualizarCondicaoPersonagem
 
         request = AtualizarCondicaoPersonagem.model_validate({
             "operacao": "apply",
@@ -45,7 +45,7 @@ class TurnSavingThrowPayloadTests(unittest.TestCase):
         self.assertEqual(request.salvaguarda_fim_turno.cd, 15)
 
     def test_condition_application_rejects_invalid_save_ability(self):
-        from backend.app import AtualizarCondicaoPersonagem
+        from backend.schemas import AtualizarCondicaoPersonagem
 
         with self.assertRaises(ValidationError):
             AtualizarCondicaoPersonagem.model_validate({

@@ -9,6 +9,7 @@ O que ele prova:
 - o espaço de magia gasto foi gravado no banco, não contado pela IA;
 - repetir a mesma operação não gasta recurso duas vezes.
 """
+import logging
 import copy
 import json
 import unittest
@@ -81,12 +82,11 @@ class FluxoCompletoTests(unittest.TestCase):
         self.personagem = self.repo.criar_personagem(
             self.jogador, self.cid, {}, copy.deepcopy(FICHA)
         )
-        self.log_disabled = backend.logger.disabled
-        backend.logger.disabled = True
+        logging.disable(logging.CRITICAL)
 
     def tearDown(self):
         backend.app.dependency_overrides.clear()
-        backend.logger.disabled = self.log_disabled
+        logging.disable(logging.NOTSET)
         self.db.dispose()
 
     def _mj(self, mensagens):

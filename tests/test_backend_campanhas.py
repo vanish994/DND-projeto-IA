@@ -6,6 +6,7 @@ try:
     from sqlalchemy import create_engine
 
     from backend import app as backend_app
+    from backend import config as backend_config
     from backend.persistencia import RepositorioCampanhas, normalizar_url_banco
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover - backend opcional fora do CI
@@ -81,13 +82,13 @@ class BackendCampanhasTests(unittest.TestCase):
 
     def test_historico_enviado_ao_mj_e_limitado(self):
         cid = self.client.post("/v1/campanhas", json={}, headers=self.jogador).json()["id"]
-        limite_original = backend_app.HISTORICO_MAX
-        backend_app.HISTORICO_MAX = 2
+        limite_original = backend_config.HISTORICO_MAX
+        backend_config.HISTORICO_MAX = 2
         try:
             for i in range(3):
                 self.client.post(f"/v1/campanhas/{cid}/mensagens", json={"mensagem": f"m{i}"}, headers=self.jogador)
         finally:
-            backend_app.HISTORICO_MAX = limite_original
+            backend_config.HISTORICO_MAX = limite_original
         _, historico = self.mj.chamadas[-1]
         self.assertEqual(historico[0]["role"], "system")
         self.assertEqual([h["content"] for h in historico[1:]], ["m1", "MJ: m1"])

@@ -1,4 +1,5 @@
 """Prova de correção dos riscos reproduzidos na auditoria, sem IA externa."""
+import logging
 import copy
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend import app as backend
 from backend.persistencia import RepositorioCampanhas, ConflitoEstadoCampanha
+from backend.routes.campanhas import _responder
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine import build_default_engine
 from rule_engine.class_features import resolver_caracteristica
@@ -49,12 +51,11 @@ class PersistenciaAtomicaTests(unittest.TestCase):
         backend.app.dependency_overrides[backend.obter_repositorio] = lambda: self.repo
         backend.app.dependency_overrides[backend.obter_mj] = lambda: self.mj
         self.client = TestClient(backend.app)
-        self.log_disabled = backend.logger.disabled
-        backend.logger.disabled = True
+        logging.disable(logging.CRITICAL)
 
     def tearDown(self):
         backend.app.dependency_overrides.clear()
-        backend.logger.disabled = self.log_disabled
+        logging.disable(logging.NOTSET)
         self.db.dispose()
 
     def enviar(self):
@@ -125,7 +126,7 @@ class PersistenciaAtomicaTests(unittest.TestCase):
             repo = RepositorioCampanhas(url)
             cid = repo.criar('auditoria-p0', 'Persistente')['id']
             p = repo.criar_personagem('auditoria-p0', cid, {}, self.ficha)
-            backend._responder(MJComFerramenta(), repo, 'auditoria-p0', cid, 'Conjuro.')
+            _responder(MJComFerramenta(), repo, 'auditoria-p0', cid, 'Conjuro.')
             repo.engine.dispose()
             reaberto = RepositorioCampanhas(url)
             try:

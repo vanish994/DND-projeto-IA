@@ -1,4 +1,5 @@
 """Resposta perdida, replay e concorrência sem novo gasto de recurso."""
+import logging
 import copy
 import tempfile
 import threading
@@ -12,6 +13,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend import app as backend
 from backend.persistencia import RepositorioCampanhas, operacoes_mj
+from backend.routes.campanhas import _responder
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine import build_default_engine
 
@@ -50,12 +52,11 @@ class IdempotenciaMJTests(unittest.TestCase):
         backend.app.dependency_overrides[backend.obter_repositorio] = lambda: self.repo
         backend.app.dependency_overrides[backend.obter_mj] = lambda: self.mj
         self.client = TestClient(backend.app)
-        self.log_disabled = backend.logger.disabled
-        backend.logger.disabled = True
+        logging.disable(logging.CRITICAL)
 
     def tearDown(self):
         backend.app.dependency_overrides.clear()
-        backend.logger.disabled = self.log_disabled
+        logging.disable(logging.NOTSET)
         self.db.dispose()
 
     def enviar(self, op='envio-1', texto='Conjuro.', jogador='jogador-idem', cid=None):
@@ -152,12 +153,12 @@ class IdempotenciaMJTests(unittest.TestCase):
             repo = RepositorioCampanhas(url)
             cid = repo.criar('jogador-idem', 'Persistente')['id']
             p = repo.criar_personagem('jogador-idem', cid, {}, copy.deepcopy(FICHA))
-            original = backend._responder(self.mj, repo, 'jogador-idem', cid, 'Conjuro.', 'op-reabrir')
+            original = _responder(self.mj, repo, 'jogador-idem', cid, 'Conjuro.', 'op-reabrir')
             repo.engine.dispose()
             reaberto = RepositorioCampanhas(url)
             try:
                 self.mj.falhar = True
-                self.assertEqual(backend._responder(self.mj, reaberto, 'jogador-idem', cid, 'Conjuro.', 'op-reabrir'), original)
+                self.assertEqual(_responder(self.mj, reaberto, 'jogador-idem', cid, 'Conjuro.', 'op-reabrir'), original)
                 self.assertEqual(self.mj.chamadas, 1)
                 self.assertEqual(reaberto.obter_personagem('jogador-idem', cid, p['id'])['conjuracao']['espacos_restantes']['1'], 1)
             finally:

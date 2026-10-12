@@ -1,6 +1,6 @@
 import unittest
 
-from backend.app import _resumo_grupo
+from backend.routes.campanhas import _resumo_grupo
 from integrations.deepseek_mj import PROMPT_NORMATIVO
 
 

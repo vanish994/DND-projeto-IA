@@ -9,6 +9,7 @@ try:
     from sqlalchemy import create_engine
 
     from backend import app as backend_app
+    from backend import dependencies as backend_dependencies
     from backend.limite_taxa import LimitadorTaxa, limitador_padrao
     from backend.persistencia import RepositorioCampanhas
     DEPENDENCIAS = True
@@ -87,8 +88,8 @@ class LimiteNasRotasDoMJTests(unittest.TestCase):
     def setUp(self):
         engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
         self.repo = RepositorioCampanhas(engine=engine)
-        self.original = backend_app._limitador_mj
-        backend_app._limitador_mj = LimitadorTaxa(maximo=2, janela_segundos=60, relogio=RelogioFalso())
+        self.original = backend_dependencies._limitador_mj
+        backend_dependencies._limitador_mj = LimitadorTaxa(maximo=2, janela_segundos=60, relogio=RelogioFalso())
         backend_app.app.dependency_overrides[backend_app.obter_repositorio] = lambda: self.repo
         backend_app.app.dependency_overrides[backend_app.obter_mj] = lambda: MJFalsoTaxa()
         self.client = TestClient(backend_app.app)
@@ -96,7 +97,7 @@ class LimiteNasRotasDoMJTests(unittest.TestCase):
 
     def tearDown(self):
         backend_app.app.dependency_overrides.clear()
-        backend_app._limitador_mj = self.original
+        backend_dependencies._limitador_mj = self.original
 
     def test_rota_legado_bloqueia_com_429(self):
         for _ in range(2):
