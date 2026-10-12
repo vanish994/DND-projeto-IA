@@ -23,6 +23,7 @@
         <h1 id="campaigns-title">Campanhas</h1>
         <p class="tagline">A aventura continua de onde sua mesa parou.</p>
       </div>
+      <button id="character-library" class="text-button" type="button">Biblioteca de personagens</button>
       <button id="new-campaign" class="primary-button" type="button">
         <svg class="button-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
         <span>Nova campanha</span>
@@ -107,6 +108,21 @@
         <button class="primary-button" type="submit">Entendi</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="library-dialog" class="sheet sheet-tall" aria-labelledby="library-title">
+    <div class="sheet-head">
+      <div class="sheet-heading">
+        <p class="eyebrow">Sua biblioteca</p>
+        <h2 id="library-title">Personagens salvos</h2>
+      </div>
+      <button id="library-close" class="text-button" type="button">Fechar</button>
+    </div>
+    <p class="painel-nota">Crie uma ficha validada uma vez e adicione uma cópia dela a qualquer campanha.</p>
+    <div id="library-body" class="sheet-body" aria-live="polite"></div>
+    <div class="sheet-actions">
+      <button id="library-new-character" class="primary-button" type="button">Criar ficha para a biblioteca</button>
+    </div>
   </dialog>
 
   <dialog id="group-dialog" class="sheet sheet-tall" aria-labelledby="group-title">
