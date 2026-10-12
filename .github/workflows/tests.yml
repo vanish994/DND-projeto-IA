@@ -13,7 +13,7 @@ jobs:
       - name: Install lint tools
         run: pip install -r requirements-dev.txt
       - name: black (format check)
-        run: black --diff --check .
+        run: black --check .
       - name: isort (import order check)
         run: isort --check-only .
       - name: ruff (lint)
