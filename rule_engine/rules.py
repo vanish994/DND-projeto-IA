@@ -46,7 +46,10 @@ from .economy import comprar_item, consultar_item, resolver_inventario, resolver
 from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
 from .class_features import resolver_caracteristica
 from .bestiary import resolver_bestiario
-from .dice import rolar_d20_auditavel, rolar_ataque_auditavel, rolar_iniciativa_auditavel
+from .dice import (
+    rolar_d20_auditavel, rolar_ataque_auditavel, rolar_iniciativa_auditavel,
+    rolar_salvaguarda_auditavel,
+)
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -204,6 +207,14 @@ def build_default_engine() -> RuleEngine:
             "modifier": int(f.get("damage_modifier", 0)),
         },
         source="D&D 2024 — dano",
+    ))
+    engine.register(Rule(
+        rule_id="saving-throw.engine-roll",
+        description="O motor gera o d20 auditável da salvaguarda; a CD pode ser definida pelo MJ.",
+        priority=80,
+        when=lambda f: f["type"] == "saving_throw" and "roll" not in f,
+        resolve=rolar_salvaguarda_auditavel,
+        source="D&D 2024 — salvaguardas; rolagem auditável do motor",
     ))
     engine.register(Rule(
         rule_id="saving-throw.natural-20",

@@ -77,3 +77,44 @@ def rolar_iniciativa_auditavel(fatos: Mapping[str, Any]) -> dict[str, Any]:
     roll = max(dados) if vantagem else min(dados) if desvantagem else dados[0]
     modifier = int(fatos.get('modifier', 0))
     return {'type': 'initiative', 'result': 'rolled', 'roll': roll, 'rolls': dados, 'die': 'd20', 'seed': str(seed), 'modifier': modifier, 'total': roll + modifier, 'surprised': bool(fatos.get('surprised', False)), 'advantage': vantagem, 'disadvantage': desvantagem, 'roll_source': 'rule_engine'}
+
+
+def rolar_salvaguarda_auditavel(fatos: Mapping[str, Any]) -> dict[str, Any]:
+    """Rola a salvaguarda no motor, com o mesmo d20 reproduzível por ``seed``.
+
+    Sem CD informada, a rolagem fica pendente (``requires_dc``) para o MJ
+    definir a dificuldade e reaproveitar a mesma semente.
+    """
+    seed = fatos.get("seed")
+    if seed is None:
+        seed = secrets.randbits(64)
+    rng = random.Random(str(seed))
+    vantagem = bool(fatos.get("advantage", fatos.get("vantagem", False)))
+    desvantagem = bool(fatos.get("disadvantage", fatos.get("desvantagem", False)))
+    if vantagem and desvantagem:
+        vantagem = desvantagem = False
+    dados = [rng.randint(1, 20) for _ in range(2 if vantagem or desvantagem else 1)]
+    roll = max(dados) if vantagem else min(dados) if desvantagem else dados[0]
+    modifier = int(fatos.get("modifier", 0))
+    total = roll + modifier
+    outcome: dict[str, Any] = {
+        "type": "saving_throw",
+        "ability": fatos.get("ability", fatos.get("atributo")),
+        "roll": roll,
+        "rolls": dados,
+        "die": "d20",
+        "seed": str(seed),
+        "modifier": modifier,
+        "total": total,
+        "advantage": vantagem,
+        "disadvantage": desvantagem,
+        "roll_source": "rule_engine",
+    }
+    dc = fatos.get("dc", fatos.get("cd"))
+    if dc is None:
+        outcome.update({"result": "requires_dc", "reason": "cd_do_mj_ausente"})
+        return outcome
+    outcome["dc"] = int(dc)
+    outcome["result"] = "success" if total >= int(dc) else "failure"
+    outcome["reason"] = "total_meets_dc" if total >= int(dc) else "total_below_dc"
+    return outcome

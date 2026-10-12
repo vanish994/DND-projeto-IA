@@ -6,6 +6,7 @@ mensagens ficam persistidas em banco (SQLite local ou Postgres via DATABASE_URL)
 """
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 import secrets
@@ -66,6 +67,7 @@ class MensagemMJ(BaseModel):
 class RespostaMJ(BaseModel):
     sessao_id: str
     resposta: str
+    rolagens: list[Rolagem] = Field(default_factory=list)
     narrativa_fora_do_motor: bool = True
 
 
@@ -90,11 +92,40 @@ class Campanha(BaseModel):
     total_mensagens: int = 0
 
 
+class Rolagem(BaseModel):
+    """Rolagem gerada pelo Rule Engine, pronta para a interface animar o dado."""
+
+    tipo: str
+    dado: str = "d20"
+    lados: int = 20
+    valor: int | None = None
+    rolagens: list[int] = Field(default_factory=list)
+    modificador: int = 0
+    total: int | None = None
+    expressao: str | None = None
+    dificuldade: int | None = None
+    dificuldade_tipo: str | None = None
+    resultado: str = "rolado"
+    sucesso: bool | None = None
+    critico: bool = False
+    natural_1: bool = False
+    vantagem: bool = False
+    desvantagem: bool = False
+    motivo: str | None = None
+    rotulo: str | None = None
+    personagem: str | None = None
+    alvo: str | None = None
+    seed: str | None = None
+    dano: dict | None = None
+    origem: str = "rule_engine"
+
+
 class Mensagem(BaseModel):
     id: int
     papel: str
     conteudo: str
     criada_em: str
+    rolagens: list[Rolagem] = Field(default_factory=list)
 
 
 class CampanhaDetalhe(Campanha):
@@ -104,6 +135,7 @@ class CampanhaDetalhe(Campanha):
 class RespostaCampanha(BaseModel):
     campanha: Campanha
     resposta: str
+    rolagens: list[Rolagem] = Field(default_factory=list)
     narrativa_fora_do_motor: bool = True
 
 
@@ -409,7 +441,21 @@ def _diagnostico_erro_provedor(exc: Exception) -> tuple[str, int | None]:
     return ("Falha temporária ao consultar o provedor. Consulte os logs do serviço no Render e tente novamente.", None)
 
 
-def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str) -> str:
+def _chamar_mj(mj: DeepSeekMJ, texto: str, historico: list[dict], **extras) -> str:
+    """Chama o MJ passando apenas os ganchos que a implementação declara aceitar."""
+    try:
+        parametros = inspect.signature(mj.responder).parameters
+    except (TypeError, ValueError):
+        parametros = {}
+    aceita_extras = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parametros.values())
+    aceitos = {nome: valor for nome, valor in extras.items() if aceita_extras or nome in parametros}
+    return mj.responder(texto, historico, **aceitos)
+
+
+def _responder(
+    mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str,
+) -> tuple[str, list[dict]]:
+    """Responde ao jogador e devolve as rolagens que o motor gerou na resposta."""
     historico = repo.historico_llm(jogador, campanha_id, HISTORICO_MAX)
     # Evita que respostas narrativas excepcionalmente longas façam a requisição
     # crescer sem limite e provoquem HTTP 413 no provedor.
@@ -427,22 +473,27 @@ def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanh
     contexto_personagem = _resumo_grupo(repo, jogador, campanha_id)
     # Contexto autoritativo sempre presente, inclusive quando a campanha ainda não tem ficha.
     historico = [{"role": "system", "content": contexto_personagem}, *historico]
+    rolagens: list[dict] = []
+
+    def registrar_rolagem(rolagem: dict) -> None:
+        rolagens.append(rolagem)
+
+    def salvar_estado_personagem(personagem: dict) -> None:
+        ficha = {
+            k: v for k, v in personagem.items()
+            if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}
+        }
+        repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], ficha)
+
     try:
         personagens = repo.listar_personagens(jogador, campanha_id) or []
-        if isinstance(mj, DeepSeekMJ):
-            def salvar_estado_personagem(personagem: dict) -> None:
-                ficha = {
-                    k: v for k, v in personagem.items()
-                    if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}
-                }
-                repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], ficha)
-
-            resposta = mj.responder(
-                texto, historico, personagens=personagens,
-                on_character_update=salvar_estado_personagem,
-            )
-        else:
-            resposta = mj.responder(texto, historico)
+        # Só envia o que o MJ em uso aceita: adaptadores antigos e dublês de teste
+        # continuam funcionando com a assinatura reduzida.
+        resposta = _chamar_mj(
+            mj, texto, historico,
+            personagens=personagens, on_character_update=salvar_estado_personagem,
+            on_roll=registrar_rolagem,
+        )
     except Exception as exc:
         detalhe, status_provedor = _diagnostico_erro_provedor(exc)
         logger.exception(
@@ -450,8 +501,8 @@ def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanh
             type(exc).__name__, status_provedor,
         )
         raise HTTPException(status_code=502, detail=detalhe) from exc
-    repo.registrar_troca(jogador, campanha_id, texto, resposta)
-    return resposta
+    repo.registrar_troca(jogador, campanha_id, texto, resposta, rolagens)
+    return resposta, rolagens
 
 
 @app.get("/v1/status")
@@ -523,8 +574,8 @@ def enviar_mensagem_campanha(
     mj: DeepSeekMJ = Depends(obter_mj),
 ) -> dict:
     _campanha_ou_404(repo, jogador, campanha_id)
-    resposta = _responder(mj, repo, jogador, campanha_id, pedido.mensagem)
-    return {"campanha": repo.obter(jogador, campanha_id), "resposta": resposta}
+    resposta, rolagens = _responder(mj, repo, jogador, campanha_id, pedido.mensagem)
+    return {"campanha": repo.obter(jogador, campanha_id), "resposta": resposta, "rolagens": rolagens}
 
 
 @app.get("/v1/catalogo/personagens")
@@ -874,8 +925,8 @@ def mensagem_mj(
         if repo.existe_em_outro_jogador(jogador, pedido.sessao_id):
             raise HTTPException(status_code=404, detail="Campanha não encontrada")
         repo.criar(jogador, campanha_id=pedido.sessao_id)
-    resposta = _responder(mj, repo, jogador, pedido.sessao_id, pedido.mensagem)
-    return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta)
+    resposta, rolagens = _responder(mj, repo, jogador, pedido.sessao_id, pedido.mensagem)
+    return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta, rolagens=rolagens)
 
 
 def _validar_turno_ativo(estado: dict, token_id: str) -> None:
@@ -1748,6 +1799,8 @@ def atacar_token_tatico(
     equipamento = ficha_atacante.get("equipamento") or {}
     nome_arma = pedido.arma or equipamento.get("arma")
     dados_arma: list[int] = []
+    # Preenchido só no acerto; a resposta precisa do campo mesmo em erro/quebra.
+    dados_dano: list[int] = []
     if nome_arma:
         arma = CATALOGO_ARMAS.get(nome_arma)
         if not arma:
@@ -1848,6 +1901,10 @@ def atacar_token_tatico(
         "arma": nome_arma or "Ataque desarmado",
         "ca_alvo": int(alvo["ac"]),
         "rolagens": [rolagem, *rolagens_extra],
+        # Dados de dano rolagos pelo motor, para a interface animar cada dado.
+        "dados_dano": dados_dano,
+        "dano_expressao": f"{len(dados_dano)}d{str((CATALOGO_ARMAS.get(nome_arma or '') or {}).get('dano', '')).split('d')[-1]}" if dados_dano else None,
+        "tipo_dano": tipo_dano_ataque,
         "fortitude": fortitude,
         "dano_bruto": dano_bruto if ataque.get("result") == "hit" else 0,
         "defesas_dano": defesas_dano,

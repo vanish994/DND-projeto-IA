@@ -3,10 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#0e1012">
+  <meta name="description" content="Mestre de Jogo com narrativa livre e mecânicas de D&D validadas pelo motor de regras.">
   <title>MJ — D&D Projeto IA</title>
   <link rel="stylesheet" href="/design-tokens.css">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/ficha.css">
+  <link rel="stylesheet" href="/dado.css">
   <link rel="stylesheet" href="/narration-theme.css">
 </head>
 <body>
@@ -14,13 +17,15 @@
     <aside class="campaigns" aria-labelledby="campaigns-title">
       <header class="campaigns-header">
         <div class="brand-mark">D&amp;D <span>PROJETO IA</span></div>
-        <button id="help-button" class="text-button" type="button">Ajuda</button>
+        <button id="help-button" class="text-button" type="button" aria-label="Como funciona a mesa">Ajuda</button>
       </header>
       <div class="campaigns-intro">
         <h1 id="campaigns-title">Campanhas</h1>
         <p class="tagline">A aventura continua de onde sua mesa parou.</p>
       </div>
-      <button id="new-campaign" class="primary-button" type="button">Nova campanha</button>
+      <button id="new-campaign" class="primary-button" type="button">
+        <span class="button-glyph" aria-hidden="true">＋</span> Nova campanha
+      </button>
       <p id="campaigns-status" class="campaigns-status" role="status"></p>
       <ul id="campaign-list" class="campaign-list" aria-label="Campanhas recentes"></ul>
     </aside>
@@ -34,22 +39,36 @@
           <p class="eyebrow">Campanha</p>
           <h2 id="campaign-title">Nenhuma campanha aberta</h2>
         </div>
-        <button id="group-button" class="text-button" type="button" disabled>Grupo</button>
-        <button id="map-button" class="text-button" type="button" disabled>Mapa tático</button>
-        <button id="options-button" class="text-button" type="button" disabled>Opções</button>
+        <div class="chat-actions">
+          <button id="group-button" class="text-button" type="button" disabled>Grupo</button>
+          <button id="map-button" class="text-button" type="button" disabled>Mapa tático</button>
+          <button id="options-button" class="icon-button" type="button" disabled aria-label="Opções da campanha">
+            <span aria-hidden="true">⋯</span>
+          </button>
+        </div>
       </header>
 
-      <div id="messages" class="messages" aria-live="polite" aria-relevant="additions">
-        <p class="empty-state">Escolha uma campanha ou crie uma nova para começar.</p>
+      <div class="conversation">
+        <div id="messages" class="messages" aria-live="polite" aria-relevant="additions" tabindex="0">
+          <p class="empty-state">Escolha uma campanha ou crie uma nova para começar.</p>
+        </div>
+        <button id="scroll-bottom" class="scroll-bottom" type="button" hidden aria-label="Ir para as mensagens mais recentes">
+          <span aria-hidden="true">↓</span>
+        </button>
       </div>
 
       <form id="chat-form" class="composer">
         <label for="message-input" class="visually-hidden">Mensagem para o MJ</label>
-        <textarea id="message-input" rows="1" maxlength="20000" placeholder="Escreva para o MJ..." disabled></textarea>
+        <textarea id="message-input" rows="1" maxlength="20000" placeholder="Escreva para o MJ…" disabled></textarea>
         <button id="send-button" class="primary-button send-button" type="submit" disabled>Enviar</button>
+        <p class="composer-hint">O motor de regras rola os dados; o MJ narra o resultado.</p>
       </form>
     </main>
   </div>
+
+  <div id="anuncios" class="visually-hidden" role="status" aria-live="polite"></div>
+
+  <div id="avisos" class="avisos" role="status" aria-live="polite"></div>
 
   <dialog id="options-dialog" class="sheet" aria-labelledby="options-title">
     <form method="dialog" id="options-form">
@@ -71,6 +90,7 @@
       <h2 id="help-title">Como funciona</h2>
       <p>O MJ narra livremente: mundo, cenas, personagens e consequências são decididos na conversa.</p>
       <p>Quando a cena envolve uma regra de D&amp;D — monstros, magias, testes, dano — o motor de regras confere o resultado oficial e rola os dados. O MJ não inventa números.</p>
+      <p>Sempre que o motor rolar um dado, a interface mostra o dado girando com o valor, o modificador, o total e a CD ou CA do alvo. Depois, o resumo fica salvo junto da mensagem.</p>
       <p>Suas campanhas ficam salvas no servidor e ligadas a este navegador. Ainda não há contas, então elas não aparecem em outros dispositivos.</p>
       <div class="sheet-actions">
         <button class="primary-button" type="submit">Entendi</button>
@@ -115,6 +135,7 @@
     </form>
   </dialog>
 
+  <script src="/dado.js"></script>
   <script src="/app.js"></script>
   <script src="/personagens.js"></script>
 </body>

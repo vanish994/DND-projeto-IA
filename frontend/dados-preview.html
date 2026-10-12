@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dado do motor — pré-visualização</title>
+  <link rel="stylesheet" href="/design-tokens.css">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/dado.css">
+  <style>
+    /* Página de demonstração: mostra a animação e o resumo sem depender do MJ. */
+    html, body { overflow: auto; }
+    body { padding: var(--space-6); }
+    .preview { max-width: 48rem; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-6); }
+    .preview h1 { font-family: var(--font-display); font-weight: 400; font-size: var(--text-3xl); line-height: 1.1; }
+    .preview p { color: var(--color-text-muted); }
+    .preview-acoes { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .preview-cartoes { display: flex; flex-direction: column; gap: var(--space-4); }
+    .preview-cartoes .message { max-width: 100%; margin: 0; }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <header>
+      <p class="eyebrow">Rule Engine</p>
+      <h1>Dado da mesa</h1>
+      <p>Cada botão dispara uma rolagem <strong>já resolvida</strong> pelo motor de regras: o valor, o modificador, o total e a CD/CA vêm prontos da API, e a interface apenas apresenta o dado com uma animação curta. Reduzir movimento no sistema (prefers-reduced-motion) remove o giro e mantém o resultado legível.</p>
+    </header>
+
+    <section aria-labelledby="acoes-titulo">
+      <h2 id="acoes-titulo" class="eyebrow">Exemplos</h2>
+      <div class="preview-acoes">
+        <button class="primary-button" type="button" data-exemplo="acerto">Ataque que acerta</button>
+        <button class="primary-button" type="button" data-exemplo="critico">Crítico</button>
+        <button class="primary-button" type="button" data-exemplo="teste">Teste com vantagem</button>
+        <button class="primary-button" type="button" data-exemplo="falha">Salvaguarda falha</button>
+        <button class="primary-button" type="button" data-exemplo="area">Magia em área</button>
+        <button class="primary-button" type="button" data-exemplo="sequencia">Rodada completa</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="cartoes-titulo">
+      <h2 id="cartoes-titulo" class="eyebrow">Resumo fixo na mensagem</h2>
+      <p>Depois da animação, o mesmo dado fica registrado abaixo da narração — e pode ser revisto no botão “Ver o dado”.</p>
+      <div class="preview-cartoes" id="cartoes"></div>
+    </section>
+  </main>
+
+  <script src="/dado.js"></script>
+  <script>
+    (() => {
+      const exemplos = {
+        acerto: [{tipo: 'ataque', dado: 'd20', lados: 20, valor: 15, rolagens: [15], modificador: 6, total: 21,
+          dificuldade: 15, dificuldade_tipo: 'ca', resultado: 'acerto', sucesso: true, rotulo: 'Ataque com Espada Longa contra Goblin',
+          personagem: 'Vex', alvo: 'Goblin', seed: '108254', dano: {expressao: '1d8', modificador: 4, tipo: 'cortante'}}],
+        critico: [{tipo: 'ataque', dado: 'd20', lados: 20, valor: 20, rolagens: [20], modificador: 6, total: 26,
+          dificuldade: 15, dificuldade_tipo: 'ca', resultado: 'acerto', sucesso: true, critico: true,
+          rotulo: 'Ataque com Machado Grande contra Ogro', personagem: 'Bram', alvo: 'Ogro'},
+          {tipo: 'dano', dado: 'd12', lados: 12, rolagens: [11, 9, 7, 4], modificador: 4, total: 35, expressao: '4d12 + 4',
+          resultado: 'dano', critico: true, rotulo: 'Dano cortante', personagem: 'Bram'}],
+        teste: [{tipo: 'teste', dado: 'd20', lados: 20, valor: 18, rolagens: [4, 18], modificador: 7, total: 25,
+          dificuldade: 20, dificuldade_tipo: 'cd', resultado: 'sucesso', sucesso: true, vantagem: true,
+          rotulo: 'Teste de Furtividade (Destreza)', personagem: 'Nyx'}],
+        falha: [{tipo: 'salvaguarda', dado: 'd20', lados: 20, valor: 6, rolagens: [6], modificador: 2, total: 8,
+          dificuldade: 15, dificuldade_tipo: 'cd', resultado: 'falha', sucesso: false,
+          rotulo: 'Salvaguarda de Constituição', personagem: 'Bram', alvo: 'Aranha Gigante'}],
+        area: [{tipo: 'salvaguarda', dado: 'd20', lados: 20, valor: 9, rolagens: [9], modificador: 3, total: 12,
+          dificuldade: 15, dificuldade_tipo: 'cd', resultado: 'falha', sucesso: false, rotulo: 'Salvaguarda de Destreza', alvo: 'Goblin'},
+          {tipo: 'dano', dado: 'd6', lados: 6, rolagens: [5, 6, 3, 2], modificador: 0, total: 16, expressao: '4d6',
+          resultado: 'dano', rotulo: 'Dano de Bola de Fogo', alvo: 'Goblin'},
+          {tipo: 'salvaguarda', dado: 'd20', lados: 20, valor: 19, rolagens: [19], modificador: 3, total: 22,
+          dificuldade: 15, dificuldade_tipo: 'cd', resultado: 'sucesso', sucesso: true, rotulo: 'Salvaguarda de Destreza', alvo: 'Nyx'}],
+        sequencia: [{tipo: 'iniciativa', dado: 'd20', lados: 20, valor: 17, rolagens: [17], modificador: 3, total: 20,
+          resultado: 'rolado', rotulo: 'Iniciativa de Vex', personagem: 'Vex'},
+          {tipo: 'ataque', dado: 'd20', lados: 20, valor: 12, rolagens: [12], modificador: 6, total: 18,
+          dificuldade: 14, dificuldade_tipo: 'ca', resultado: 'acerto', sucesso: true, rotulo: 'Ataque com Rapieira contra Goblin', personagem: 'Vex', alvo: 'Goblin'},
+          {tipo: 'dano', dado: 'd8', lados: 8, rolagens: [7], modificador: 4, total: 11, expressao: '1d8 + 4',
+          resultado: 'dano', rotulo: 'Dano perfurante', personagem: 'Vex', alvo: 'Goblin'}],
+      };
+
+      const cartoes = document.querySelector('#cartoes');
+      const narrativas = {
+        acerto: 'A lâmina encontra o ombro do goblin no instante em que ele tenta recuar.',
+        critico: 'O machado desce com peso total: o ogro cambaleia com o impacto.',
+        teste: 'Nyx desliza entre as sombras sem que a sentinela perceba.',
+        falha: 'O veneno sobe pelo braço antes que Bram consiga se soltar.',
+        area: 'A explosão consome a linha de frente; apenas Nyx escapa do pior.',
+        sequencia: 'Vex age primeiro e a rapieira acerta antes que o goblin erga o escudo.',
+      };
+
+      for (const [chave, rolagens] of Object.entries(exemplos)) {
+        const article = document.createElement('article');
+        article.className = 'message message-mj';
+        const bolha = document.createElement('div');
+        bolha.className = 'bubble';
+        const texto = document.createElement('span');
+        texto.className = 'bubble-text';
+        texto.textContent = narrativas[chave] || '';
+        bolha.append(texto, window.Dados.cartao(rolagens));
+        article.append(bolha);
+        cartoes.append(article);
+      }
+
+      document.querySelectorAll('[data-exemplo]').forEach((botao) => {
+        botao.addEventListener('click', () => window.Dados.animar(exemplos[botao.dataset.exemplo]));
+      });
+    })();
+  </script>
+</body>
+</html>

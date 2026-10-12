@@ -59,6 +59,9 @@ Três superfícies em camadas: o diálogo usa `--color-surface`, os painéis usa
 - **Ficha:** abas (Resumo, Atributos, Perícias, Equipamento e Magias) com `role="tablist"` e navegação por setas. A aba de magias só aparece quando o motor confirma conjuração para a classe.
 - **Bloco de combate:** cartões com rótulo curto, valor em serifada e nota de origem (CA, Iniciativa, Proficiência, Deslocamento, Dado de Vida e CD de magia).
 - **Chips de dados:** `d20 +5`, `1d8 + 3` e `CD 15` aparecem como chips com ícone de dado, tanto na ficha quanto no texto da narração — o texto da mensagem não é alterado, apenas marcado visualmente.
+- **Dado do motor (`frontend/dado.js` + `dado.css`):** sempre que o Rule Engine rola um d20, a camada `.dado-camada` apresenta o dado girando antes de a narração aparecer, com rótulo, fórmula (`17 + 6 = 23 contra CA 15`) e veredito (Acerto, Erro, Crítico, Sucesso, Falha). Rolagens de dano usam a bandeja `.dado-bandeja` com um dado por valor. Depois da animação, o mesmo resumo fica fixo abaixo da mensagem em `.rolagem-cartao`, com o botão “Ver o dado” para rever. Nenhum número é sorteado no navegador: valor, modificador, total, CD/CA e veredito vêm prontos do motor.
+- **Camada de dado é modal:** bloqueia clique, toque e foco no resto da tela enquanto gira. `Esc`, `Espaço`, `Enter` ou um toque fecham a camada imediatamente; passar o ponteiro sobre o painel pausa o fechamento automático, para dar tempo de ler.
+- **Pré-visualização:** `frontend/dados-preview.html` (rota `/dados-preview.html`) mostra os estados do dado — acerto, crítico, teste com vantagem, salvaguarda falha, magia em área e rodada completa — sem precisar de campanha ou chave de API.
 - **Perícias e salvaguardas:** lista com marca de proficiência (círculo âmbar), nome da perícia, atributo entre parênteses e total. A marca nunca é o único indicador: a linha traz o valor por extenso.
 - **Assistente de criação:** passos numerados com trilha de progresso, resumo das escolhas acumuladas e cartões de seleção maiores. A revisão final mostra a ficha como ela ficará antes de o motor validar.
 - **Equipamento:** listas vêm do catálogo oficial do servidor; itens sem proficiência aparecem desabilitados e identificados, porque o motor recusa o que a ficha não domina.
@@ -78,9 +81,18 @@ Nenhum valor de regra é calculado no navegador: CA, bônus de ataque, dano, sal
 
 - Alvos de toque com pelo menos 48×48 px; foco com contorno âmbar visível.
 - Status nunca depende somente da cor; texto deve acompanhar bolinhas e badges.
-- Animações decorativas são curtas e removidas com prefers-reduced-motion.
+- Animações decorativas são curtas e removidas com prefers-reduced-motion. Com movimento reduzido, o dado não gira: o resultado aparece direto, com uma pausa curta por rolagem.
+- A camada do dado é um `role="dialog"` com `aria-modal`, foco preso no botão “Continuar” e frase única em região `aria-live` (“Vex: Ataque com Espada Longa contra Goblin. d20 17 + 6 = 23 contra CA 15. Acerto”).
 - App-shell usa altura dinâmica de viewport (100dvh, fallback 100vh) e body sem scroll. Somente o histórico e listas internas rolam. O compositor fixo usa env(safe-area-inset-bottom); teclado virtual e scroll interno não podem ocultar o envio.
 - Use aria-live para novas respostas e rótulos explícitos para seletor, campo e ações.
+
+## Camadas da conversa
+
+- **Painel de campanhas:** cartão com título em serifada, data relativa, prévia da última mensagem, contagem de mensagens e ação “Retomar campanha”. A campanha aberta recebe borda âmbar e barra lateral.
+- **Conversa:** coluna de leitura de até 48 rem centralizada; mensagem do MJ em bloco editorial com filete âmbar à esquerda; mensagem do jogador em superfície elevada; indicador de digitação com três pontos pulsantes.
+- **Compositor:** campo com altura dinâmica, dica “O motor de regras rola os dados; o MJ narra o resultado” e botão de envio sempre alcançável sobre `env(safe-area-inset-bottom)`.
+- **Avisos:** erros de lista, renomear e apagar aparecem como avisos flutuantes (`#avisos`), sem interromper a leitura do histórico.
+- **Rolagem longa:** botão flutuante “↓” volta ao fim da conversa quando o histórico fica distante do rodapé.
 
 ## Referências consultadas
 
