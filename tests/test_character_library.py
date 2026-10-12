@@ -61,8 +61,6 @@ def test_biblioteca_isola_fichas_por_jogador():
     assert repo.apagar_ficha_salva(outro, salva["id"]) is False
 
 
-
-
 def dados_criacao(**alteracoes):
     dados = {
         "nome": "Vanish",
