@@ -615,15 +615,24 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(rolar.call_count, 4)
         self.assertEqual(r.json()['espacos_restantes']['1'], 2)
 
-    def test_bolha_acida_area_e_alcance(self):
+    def test_bolha_acida_seleciona_dois_alvos_proximos_e_respeita_alcance(self):
         self._registrar_truques_auditoria('Bolha Ácida')
-        self.save_encounter(enemy_x=13, enemy_y=1)
+        self.client.put(self.url, headers=self.headers, json={'tokens': [
+            {'id': 'heroi-vex', 'kind': 'hero', 'character_id': self.hero['id'], 'x': 1, 'y': 1},
+            {'id': 'inimigo-bandido', 'kind': 'enemy', 'monster_name': 'Bandit', 'x': 13, 'y': 1},
+            {'id': 'inimigo-vizinho', 'kind': 'enemy', 'monster_name': 'Bandit', 'x': 12, 'y': 1},
+        ]})
         with patch.object(backend_app.secrets, 'randbelow', return_value=0):
-            r = self._conjurar_auditoria('Bolha Ácida')
+            r = self._conjurar_auditoria('Bolha Ácida', 'inimigo-bandido', alvos_ids=['inimigo-vizinho'])
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(r.json()['resultados_area'][0]['salvaguarda']['atributo'], 'destreza')
-        self.assertEqual(r.json()['dano'], 1)
-        self.save_encounter(enemy_x=14, enemy_y=1)
+        resultados = r.json()['resultados_alvos']
+        self.assertEqual({a['alvo_id'] for a in resultados}, {'inimigo-bandido', 'inimigo-vizinho'})
+        self.assertEqual([a['salvaguarda']['atributo'] for a in resultados], ['destreza', 'destreza'])
+        self.assertEqual(r.json()['dano'], 2)
+        self.client.put(self.url, headers=self.headers, json={'tokens': [
+            {'id': 'heroi-vex', 'kind': 'hero', 'character_id': self.hero['id'], 'x': 1, 'y': 1},
+            {'id': 'inimigo-bandido', 'kind': 'enemy', 'monster_name': 'Bandit', 'x': 14, 'y': 1},
+        ]})
         self.assertEqual(self._conjurar_auditoria('Bolha Ácida').status_code, 422)
 
     def test_dano_de_area_aplica_defesas_de_personagem(self):
