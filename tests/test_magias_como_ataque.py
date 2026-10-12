@@ -211,6 +211,11 @@ class MotorDeMagiaTests(unittest.TestCase):
         self.assertEqual(resultado["salvaguarda"]["atributo"], "destreza")
         self.assertEqual(resultado["usos_por_descanso_longo"], 3)
         self.assertEqual([r["tipo"] for r in rolagens], ["salvaguarda", "dano"])
+        # A rolagem de dano anunciada mostra o total já ajustado pelas regras.
+        self.assertEqual(rolagens[1]["total"], resultado["dano"])
+        self.assertEqual(rolagens[1]["rotulo"], "Dano de Ataque de Sopro")
+        # Sem ajuste de regra o cartão não repete "· dano".
+        self.assertIsNone(rolagens[1]["motivo"])
 
     def test_ataque_de_sopro_metade_no_sucesso(self):
         alvo = {"id": "p1", "nome": "Vex", "nivel": 17, "especie": "draconato", "heranca_draconica": "vermelho",
@@ -241,13 +246,16 @@ class MotorDeMagiaTests(unittest.TestCase):
         self.assertEqual(primeiro["salvaguarda"]["rolagem"], segundo["salvaguarda"]["rolagem"])
 
     def test_sopro_de_linhagem_aplicada_contra_defesas_do_alvo(self):
-        # Goblin não tem defesa contra ígneo; a aplicação precisa ser explícita.
-        resultado, _ = self.resolver(
-            {"type": "attack", "character_id": "p1", "weapon": "Ataque de Sopro", "target_name": "Goblin", "seed": "3"},
+        # O Awakened Shrub é vulnerável a ígneo no SRD: o motor dobra o dano.
+        resultado, rolagens = self.resolver(
+            {"type": "attack", "character_id": "p1", "weapon": "Ataque de Sopro", "target_name": "Awakened Shrub", "seed": "3"},
             [draconato(heranca_draconica="latao")],
         )
-        self.assertEqual(resultado["defesas_dano"]["aplicacao"], "normal")
+        self.assertEqual(resultado["defesas_dano"]["aplicacao"], "vulnerabilidade")
         self.assertEqual(resultado["defesas_dano"]["tipo_dano"], "fire")
+        self.assertEqual(resultado["dano"], resultado["dano_bruto"] * 2)
+        self.assertEqual(rolagens[1]["total"], resultado["dano"])
+        self.assertIn("vulnerabilidade: dobro", rolagens[1]["motivo"])
 
 
 class DefesasDeDanoTests(unittest.TestCase):

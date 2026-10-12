@@ -188,6 +188,14 @@ ROTULOS_PERICIA = {
 # Tipos de rolagem que a interface sabe animar. Qualquer outro tipo cai em "rolagem".
 TIPOS_ROLAGEM = {"ataque", "iniciativa", "teste", "salvaguarda", "dano", "rolagem"}
 
+# Mesmos textos que dado.js mostra no cartão quando o motor ajusta o dano.
+MOTIVOS_APLICACAO_DANO = {
+    "imunidade": "imune ao tipo",
+    "resistencia": "resistência: metade",
+    "vulnerabilidade": "vulnerabilidade: dobro",
+    "resistencia_e_vulnerabilidade_canceladas": "resistência e vulnerabilidade se cancelam",
+}
+
 
 def _normalizar_texto(valor: Any) -> str:
     """Compara nomes de mesa sem acento, caixa ou espaço duplicado."""
@@ -258,6 +266,24 @@ def _expressao_de_dano(dados: list[int], modificador: int, lados: int) -> str:
         sinal = "+" if modificador > 0 else "−"
         expressao += f" {sinal} {abs(modificador)}"
     return expressao
+
+
+def _motivo_da_rolagem_de_dano(resultado: Mapping[str, Any]) -> str | None:
+    """Explica por que o total aplicado difere da soma dos dados.
+
+    Sem ajuste de regra (defesa, metade por salvaguarda, bloqueio), o cartão
+    mostra apenas a conta — nada de "· dano" repetindo o tipo da rolagem.
+    """
+    notas = []
+    aplicacao = str((resultado.get("defesas_dano") or {}).get("aplicacao") or "")
+    if aplicacao in MOTIVOS_APLICACAO_DANO:
+        notas.append(MOTIVOS_APLICACAO_DANO[aplicacao])
+    if resultado.get("sucesso_na_salvaguarda"):
+        notas.append("metade por salvaguarda")
+    if notas:
+        return " · ".join(notas)
+    motivo = str(resultado.get("reason") or "").strip()
+    return motivo or None
 
 
 def _rotulo_da_rolagem(tipo: str, fatos: Mapping[str, Any], alvo: str | None) -> str:
@@ -366,7 +392,7 @@ def normalizar_rolagem(
             "critico": bool(resultado.get("critical")),
             "vantagem": False,
             "desvantagem": False,
-            "motivo": str(resultado.get("reason") or "dano"),
+            "motivo": _motivo_da_rolagem_de_dano(resultado),
             "rotulo": _rotulo_da_rolagem("dano", dados, None),
             "personagem": _nome_do_personagem(personagens, dados.get("character_id")),
             "alvo": str(dados.get("target_name") or "").strip() or None,
@@ -776,9 +802,18 @@ class DeepSeekMJ:
             "seed": semente or None,
             "fonte": "Livro do Jogador 2024 — Ataque de Sopro do Draconato",
         }
+        # A rolagem anunciada mostra o dano aplicado: defesas do bloco e metade no
+        # sucesso da salvaguarda, com o motivo no cartão.
+        dano_anunciado = {
+            **dano_rolado,
+            "total": int(defesas["dano"]),
+            "defesas_dano": defesas,
+            "sucesso_na_salvaguarda": bool(sucesso),
+            "target_name": alvo["nome"],
+        }
         self._registrar_rolagens(on_roll, [
             normalizar_rolagem(salvaguarda, {**facts, "ability": atributo_save, "target_name": alvo["nome"]}, personagens),
-            normalizar_rolagem(dano_rolado, {**facts, "magia": None, "weapon": "Ataque de Sopro"}, personagens),
+            normalizar_rolagem(dano_anunciado, {**facts, "magia": None, "weapon": "Ataque de Sopro"}, personagens),
         ])
         return resultado
 
