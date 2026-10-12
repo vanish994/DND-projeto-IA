@@ -59,34 +59,34 @@ ARTIFICER_SPELL_LEVELS: dict[str, int] = {
     "Teia": 2,
     "Tranca Arcana": 2,
     "Truque de Corda": 2,
-    "Ver Invisibilidade": 2,
+    "Ver o Invisível": 2,
     "Visão no Escuro": 2,
-    "Aquecer Metal": 2,
+    "Esquentar Metal": 2,
     # 3º círculo
     "Arma Elemental": 3,
-    "Acelerar": 3,
+    "Celeridade": 3,
     "Caminhar Sobre as Águas": 3,
-    "Criar Alimentos e Água": 3,
+    "Criar Comida e Água": 3,
     "Dissipar Magia": 3,
     "Flechas Flamejantes": 3,
     "Glifo de Proteção": 3,
     "Piscar": 3,
     "Proteção Contra Energia": 3,
-    "Respiração Aquática": 3,
-    "Revificar": 3,
+    "Respirar na Água": 3,
+    "Revivificar": 3,
     "Servo Minúsculo": 3,
     "Voo": 3,
     # 4º círculo
-    "Liberdade de Movimento": 4,
+    "Movimentação Livre": 4,
     "Maldição Elemental": 4,
-    "Moldar Pedra": 4,
+    "Moldar Rochas": 4,
     "Olho Arcano": 4,
     "Fabricar": 4,
     "Baú Secreto de Leomund": 4,
     "Cão Fiel de Mordenkainen": 4,
     "Santuário Particular de Mordenkainen": 4,
     "Esfera Resiliente de Otiluke": 4,
-    "Pele de Pedra": 4,
+    "Pele-Rocha": 4,
     "Invocar Constructo": 4,
     # 5º círculo
     "Animar Objetos": 5,
@@ -142,24 +142,55 @@ def progresso_artifice(nivel: int, inteligencia: int) -> dict[str, Any]:
 
 # Magias de subclasse do Artífice (Eberron: Forge of the Artificer). São sempre preparadas
 # a partir do nível indicado e não contam na escolha de magias preparadas.
-# Só entram nomes com cabeçalho confirmado no PHB 2024 (busca em /tmp/phb.txt, NFC).
-# Pendentes (sem cabeçalho no PHB 2024; ausentes também de Forge/Ravenloft como texto):
-# Nuvem Mortal, Escudo, Imagem Espelhada, Estilhaçar, Muralha de Força, Tempestade de Gelo,
-# Cone Glacial, Pico Mental, Chamado do Relâmpago, Círculo de Teletransporte, Escudo de Fogo,
-# Golpe Brilhante, Liberdade de Movimento, Servo Homúnculo, Passagem (Armeiro 17, removida).
+# Nomes em PT conferidos no cabeçalho do PHB 2024 (equivalentes EN do Forge entre parênteses).
+# Pendentes, sem cabeçalho no PHB 2024 (não entram aqui): Golpe Brilhante (Branding Smite),
+# Servo Homúnculo (Homunculus Servant), Passagem (Passwall).
 ARTIFICER_SUBCLASS_SPELLS: dict[str, dict[int, list[str]]] = {
-    "Armeiro": {3: ["Mísseis Mágicos", "Onda Trovejante"], 13: ["Invisibilidade Maior"],
-                9: ["Padrão Hipnótico", "Relâmpago"]},
-    "Artilheiro": {3: ["Onda Trovejante"], 5: ["Raio Ardente"], 9: ["Bola de Fogo", "Muralha de Vento"],
-                   13: ["Muralha de Fogo"]},
-    "Alquimista": {3: ["Palavra Curativa", "Raio Nauseante"], 5: ["Esfera Flamejante", "Flecha Ácida de Melf"],
-                   9: ["Forma Gasosa", "Palavra Curativa em Massa"], 13: ["Proteção Contra a Morte", "Esfera Vitriólica"],
-                   17: ["Reviver os Mortos"]},
-    "Ferreiro de Batalha": {3: ["Heroísmo"], 5: ["Vínculo de Proteção"], 9: ["Aura de Vitalidade", "Invocar Barragem"],
-                            13: ["Aura de Pureza"], 17: ["Curar Ferimentos em Massa"]},
-    "Cartógrafo": {3: ["Fogo das Fadas", "Raio Guia", "Palavra Curativa"], 5: ["Localizar Objeto"],
-                   9: ["Vidência"], 13: ["Banimento", "Localizar Criatura"]},
+    "Armeiro": {3: ["Mísseis Mágicos", "Onda Trovejante"],  # Magic Missile, Thunderwave
+                5: ["Reflexos", "Despedaçar"],               # Mirror Image, Shatter
+                9: ["Padrão Hipnótico", "Relâmpago"],        # Hypnotic Pattern, Lightning Bolt
+                13: ["Invisibilidade Maior"],                # Greater Invisibility
+                17: ["Muralha de Energia"]},                 # Wall of Force
+    "Artilheiro": {3: ["Escudo Arcano", "Onda Trovejante"],  # Shield, Thunderwave
+                   5: ["Raio Ardente", "Despedaçar"],        # Scorching Ray, Shatter
+                   9: ["Bola de Fogo", "Muralha de Vento"],  # Fireball, Wind Wall
+                   13: ["Tempestade Glacial", "Muralha de Fogo"],  # Ice Storm, Wall of Fire
+                   17: ["Cone de Frio", "Muralha de Energia"]},    # Cone of Cold, Wall of Force
+    "Alquimista": {3: ["Palavra Curativa", "Raio Nauseante"],
+                   5: ["Esfera Flamejante", "Flecha Ácida de Melf"],
+                   9: ["Forma Gasosa", "Palavra Curativa em Massa"],
+                   13: ["Proteção Contra a Morte", "Esfera Vitriólica"],
+                   17: ["Névoa Mortal", "Reviver os Mortos"]},  # Cloudkill, Raise Dead
+    "Ferreiro de Batalha": {3: ["Heroísmo"], 5: ["Vínculo de Proteção"],
+                            9: ["Aura de Vitalidade", "Invocar Barragem"],
+                            13: ["Escudo Ardente", "Aura de Pureza"],   # Fire Shield, Aura of Purity
+                            17: ["Destruição Banidora", "Curar Ferimentos em Massa"]},  # Banishing Smite
+    "Cartógrafo": {3: ["Fogo das Fadas", "Raio Guia", "Palavra Curativa"],
+                   5: ["Localizar Objeto", "Espinho Mental"],           # Mind Spike
+                   9: ["Convocar Relâmpagos", "Clarividência"],         # Call Lightning, Clairvoyance
+                   13: ["Banimento", "Localizar Criatura"],
+                   17: ["Vidência", "Círculo de Teleporte"]},           # Scrying, Teleportation Circle
 }
+
+# Círculo de cada magia de subclasse, conferido no cabeçalho do PHB 2024.
+CIRCULO_MAGIAS_SUBCLASSE: dict[str, int] = {
+    "Mísseis Mágicos": 1, "Onda Trovejante": 1, "Reflexos": 2, "Despedaçar": 2, "Padrão Hipnótico": 3,
+    "Relâmpago": 3, "Invisibilidade Maior": 4, "Muralha de Energia": 5, "Escudo Arcano": 1,
+    "Raio Ardente": 2, "Bola de Fogo": 3, "Muralha de Vento": 3, "Tempestade Glacial": 4,
+    "Muralha de Fogo": 4, "Cone de Frio": 5, "Palavra Curativa": 1, "Raio Nauseante": 1,
+    "Esfera Flamejante": 2, "Flecha Ácida de Melf": 2, "Forma Gasosa": 3,
+    "Palavra Curativa em Massa": 3, "Proteção Contra a Morte": 4, "Esfera Vitriólica": 4,
+    "Reviver os Mortos": 5, "Heroísmo": 1, "Vínculo de Proteção": 2, "Aura de Vitalidade": 3,
+    "Invocar Barragem": 3, "Escudo Ardente": 4, "Aura de Pureza": 4, "Curar Ferimentos em Massa": 5,
+    "Destruição Banidora": 5, "Fogo das Fadas": 1, "Raio Guia": 1, "Localizar Objeto": 2,
+    "Espinho Mental": 2, "Convocar Relâmpagos": 3, "Clarividência": 3, "Banimento": 4,
+    "Localizar Criatura": 4, "Vidência": 5, "Círculo de Teleporte": 5, "Névoa Mortal": 5,
+}
+
+
+def circulo_magia_subclasse(nome: str) -> int | None:
+    alvo = normalizar_nome_magia(nome)
+    return next((c for n, c in CIRCULO_MAGIAS_SUBCLASSE.items() if normalizar_nome_magia(n) == alvo), None)
 
 
 def magias_sempre_preparadas(subclasse: str | None, nivel: int) -> list[str]:

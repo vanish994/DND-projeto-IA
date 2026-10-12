@@ -17,6 +17,7 @@ from rule_engine.character import PROFICIENCIAS_CLASSE
 from rule_engine.bestiary import consultar_monstro
 from rule_engine.spellcasting import (
     ARTIFICER_SPELL_LEVELS,
+    circulo_magia_subclasse,
     magia_sempre_preparada_do_artifice,
     normalizar_nome_magia,
     progresso_artifice,
@@ -1152,7 +1153,7 @@ class DeepSeekMJ:
                         if magia_sempre_preparada_do_artifice(subclasse, int(personagem_magia.get("nivel", 1)), nome_canonico):
                             # Magia de subclasse já liberada: sempre preparada, fora da escolha da ficha.
                             sempre_preparada = True
-                            circulo = int(magia.get("circulo") or 0)
+                            circulo = circulo_magia_subclasse(nome_canonico)
                         else:
                             return {"resultado": "bloqueado", "motivo": "magia_nao_disponivel_para_artifice", "magia": facts.get("magia")}
                 else:

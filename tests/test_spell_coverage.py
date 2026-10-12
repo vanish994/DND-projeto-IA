@@ -319,5 +319,66 @@ class ArtificerListaBase2024Tests(unittest.TestCase):
             validar_escolhas_artifice(3, 16, ["Luz"], ["Alarme", "Onda Trovejante"], {"1": 2}, subclasse="Armeiro")
 
 
+class CatalogoPHB2024LimpezaTests(unittest.TestCase):
+    def test_fragmentos_de_texto_nao_entram_no_catalogo(self):
+        from rule_engine.spells import MAGIAS
+        for nome in ["você", "m", "r", "se", "use", "nenhuma", "o mal", "círculo ou"]:
+            self.assertNotIn(nome, MAGIAS)
+
+    def test_nomes_de_2014_resolvem_para_nome_do_phb_2024(self):
+        from rule_engine.spells import obter_magia
+        self.assertEqual(obter_magia("Revificar")["nome"], "Revivificar")
+        self.assertEqual(obter_magia("Ver Invisibilidade")["nome"], "Ver o Invisível")
+        self.assertEqual(obter_magia("Liberdade de Movimento")["nome"], "Movimentação Livre")
+        self.assertEqual(obter_magia("Criar Alimentos e Água")["nome"], "Criar Comida e Água")
+        self.assertEqual(obter_magia("Benção")["nome"], "Bênção")
+
+    def test_bencao_mantem_componente_do_phb_2024(self):
+        from rule_engine.spells import resolver_magia
+        r = resolver_magia({"magia": "benção", "espaco": 2})
+        self.assertEqual(r["resultado"], "conjurada")
+        self.assertEqual(r["mecanica"]["alvos"], 4)
+        self.assertIn("M", r["componentes"])
+        self.assertEqual(r["duracao"], "concentração, até 1 minuto")
+
+    def test_magias_de_fontes_fora_do_phb_2024_sao_bloqueadas(self):
+        from rule_engine.spells import resolver_magia
+        for nome in ["Sorvedouro de Vida", "Véu da Natureza"]:
+            with self.subTest(magia=nome):
+                self.assertEqual(resolver_magia({"magia": nome})["motivo"], "fora_do_phb_2024")
+
+    def test_prestidigitacao_arcana_tem_mecanica_de_utilidade(self):
+        from rule_engine.spells import resolver_magia
+        r = resolver_magia({"magia": "Prestidigitação Arcana"})
+        self.assertEqual(r["resultado"], "conjurada")
+        self.assertEqual(r["mecanica"]["max_efeitos_nao_instantaneos"], 3)
+        self.assertEqual(len(r["mecanica"]["modos"]), 6)
+        self.assertEqual(r["mecanica"]["duracao"], "ate_1_hora")
+
+
+class ArtificerSubclasseCirculosTests(unittest.TestCase):
+    def test_circulos_de_subclasse_conferidos_no_phb_2024(self):
+        from rule_engine.spellcasting import ARTIFICER_SUBCLASS_SPELLS, circulo_magia_subclasse
+        from rule_engine.spells import obter_magia
+        for sub, tabela in ARTIFICER_SUBCLASS_SPELLS.items():
+            for nivel, nomes in tabela.items():
+                for nome in nomes:
+                    with self.subTest(subclasse=sub, magia=nome):
+                        self.assertIsNotNone(circulo_magia_subclasse(nome))
+                        self.assertIsNotNone(obter_magia(nome), nome)
+                        self.assertEqual(obter_magia(nome)["circulo"], circulo_magia_subclasse(nome))
+
+    def test_destruicao_banidora_e_banishing_smite(self):
+        from rule_engine.spellcasting import circulo_magia_subclasse
+        self.assertEqual(circulo_magia_subclasse("Destruição Banidora"), 5)
+
+    def test_magias_pendentes_nao_entram_nas_listas(self):
+        from rule_engine.spellcasting import ARTIFICER_SUBCLASS_SPELLS, ARTIFICER_SPELL_LEVELS
+        todas = {n for t in ARTIFICER_SUBCLASS_SPELLS.values() for ns in t.values() for n in ns}
+        for pendente in ["Golpe Brilhante", "Servo Homúnculo", "Passagem", "Smite Banidor", "Nuvem Mortal"]:
+            self.assertNotIn(pendente, todas)
+        self.assertNotIn("Passagem", ARTIFICER_SPELL_LEVELS)
+
+
 if __name__ == "__main__":
     unittest.main()

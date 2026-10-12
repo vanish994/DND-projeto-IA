@@ -15,11 +15,45 @@ def _nome_limpo(nome: str) -> str:
     nome = re.sub(r"\s+", " ", nome).strip(" -–")
     return nome
 
+# Entradas do catálogo extraído que não são magias: fragmentos de frase, nomes de
+# traços de classe, talentos ou subclasses. Não entram no catálogo de magias.
+_NAO_SAO_MAGIAS = {
+    "m", "r", "se", "use", "você", "nenhuma", "o mal", "orga", "magia", "círculo", "círculo ou",
+    "mínimo de", "matar", "salvar", "mordenkainen", "mansão magnífica de", "atordoar", "incansável",
+    "caçador preciso", "dádiva épica", "golpes abençoados aprimorados", "fortificar", "pacto da lâmina",
+    "sentidos selvagens", "organizadas por círculo de magia e em ordem alfabéti",
+    "você já tiver qualquer uma dessas opções de uma", "você não pode fazê-lo novamente até",
+    "você pode causar ao alvo", "você pode causar à criatura 1d6 pontos",
+    "quando você atinge uma criatura com uma jogada de", "e restaura todos os usos gastos ao completar",
+    "de vida temporários igual a 1d8 mais seu modificador", "você não pode usar essa característica",
+    "você pode converter usos de", "você tem vantagem em jogadas de ataque contra a",
+    "você invoca espíritos da natureza para se esconder ma", "você pode conjurar salto em si sem gastar um espaço",
+    "sofrer dano não quebra sua concentração da marca do", "ritual e m que necessita de um componente material",
+}
+
+
+def _normalizar_nome_magia(nome: str) -> str:
+    texto = unicodedata.normalize("NFKD", str(nome).strip().lower())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", texto).replace("-", " ")
+
+
+# Nomes antigos em português (PHB 2014) e o nome do PHB 2024. O nome antigo continua no
+# catálogo marcado com "alias_de"; o resolvedor usa sempre o nome do PHB 2024.
+_ALIAS_PARA_2024 = (
+    ("Mão Mágica", "Mãos Mágicas"), ("Consertar", "Reparar"), ("Benção", "Bênção"),
+    ("Ver Invisibilidade", "Ver o Invisível"), ("Acelerar", "Celeridade"), ("Revificar", "Revivificar"),
+    ("Pele de Pedra", "Pele-Rocha"), ("Moldar Pedra", "Moldar Rochas"),
+    ("Liberdade de Movimento", "Movimentação Livre"), ("Respiração Aquática", "Respirar na Água"),
+    ("Aquecer Metal", "Esquentar Metal"), ("Criar Alimentos e Água", "Criar Comida e Água"),
+)
+
+
 MAGIAS: dict[str, dict[str, Any]] = {}
 for bruto, meta in CATALOGO_MAGIAS.items():
     partes = re.split(r"\s{2,}", bruto.strip())
     nome = _nome_limpo(partes[0])
-    if nome and nome.lower() not in {"a opção que você escolheu para golpes abençoados", "após usar", "como uma ação usar"}:
+    if nome and nome.lower() not in {"a opção que você escolheu para golpes abençoados", "após usar", "como uma ação usar"} and nome.lower() not in _NAO_SAO_MAGIAS:
         MAGIAS.setdefault(nome.lower(), {"nome": nome, "circulo": None, "escola": meta["escola"].lower(), "componentes": "V, S" + (", M" if meta.get("material") else ""), "concentracao": bool(meta.get("concentracao")), "ritual": bool(meta.get("ritual")), "duracao": "concentração" if meta.get("concentracao") else "instantânea"})
 
 # Entradas de referência com círculo, componentes e efeitos precisos do PHB 2024.
@@ -37,7 +71,8 @@ _DETALHADAS = {
     "onda trovejante": (1, "evocação", "V, S", False, "2d8 dano trovejante; cubo de 4,5m; salvaguarda de Constituição reduz à metade; falha empurra 3m", {"dano": "+1d8 por círculo"}),
     "mãos flamejantes": (1, "evocação", "V, S", False, "3d6 dano ígneo em cone de 4,5m; salvaguarda de Destreza reduz à metade", {"dano": "+1d6 por círculo"}),
     "armadura arcana": (1, "abjuração", "V, S, M (um pedaço de couro curtido)", False, "CA base 13 + modificador de Destreza por 8 horas; alvo voluntário sem armadura", {}),
-    "benção": (1, "encantamento", "V, S, M (uma gota de água benta)", True, "até três criaturas adicionam 1d4", {"alvos": "+1 por círculo"}),
+    # PHB 2024, p. (Bênção): componentes com Símbolo Sagrado; concentração até 1 minuto.
+    "bênção": (1, "encantamento", "V, S, M (um Símbolo Sagrado no valor de 5 PO ou mais)", True, "até três criaturas adicionam 1d4", {"alvos": "+1 por círculo"}),
     "escudo da fé": (1, "abjuração", "V, S, M (um pergaminho com texto sagrado)", True, "+2 CA para uma criatura; duração de até 10 minutos; ação bônus", {}),
     "bola de fogo": (3, "evocação", "V, S, M (uma bola de guano de morcego e enxofre)", False, "8d6 dano ígneo em esfera de 6m", {"dano": "+1d6 por círculo"}),
     "relâmpago": (3, "evocação", "V, S, M (um pouco de pelo e uma haste de âmbar, cristal ou vidro)", False, "8d6 dano elétrico em linha", {"dano": "+1d6 por círculo"}),
@@ -90,7 +125,7 @@ for nome, (circulo, escola, componentes, conc, efeito, upcast) in _DETALHADAS.it
 
 # Durações específicas que a regra genérica (concentração ou instantânea) não cobre.
 for _nome, _duracao in {"auxílio": "8 horas", "santuário": "1 minuto", "sono": "concentração, até 1 minuto", "heroísmo": "concentração, até 1 minuto", "comando": "instantânea", "teia": "concentração, até 1 hora", "levitação": "concentração, até 10 minutos", "proteção contra energia": "concentração, até 1 hora", "proteção contra veneno": "1 hora", "queda suave": "1 minuto",
-    "mãos mágicas": "1 minuto", "luz": "1 hora", "luzes dançantes": "concentração, até 1 minuto", "mensagem": "1 rodada", "orientação": "concentração, até 1 minuto",
+    "bênção": "concentração, até 1 minuto", "prestidigitação arcana": "até 1 hora", "mãos mágicas": "1 minuto", "luz": "1 hora", "luzes dançantes": "concentração, até 1 minuto", "mensagem": "1 rodada", "orientação": "concentração, até 1 minuto",
     "resistência": "concentração, até 1 minuto", "alarme": "8 horas", "detectar magia": "concentração, até 10 minutos",
     "disfarçar-se": "1 hora", "fogo das fadas": "concentração, até 1 minuto", "graxa": "1 minuto",
     "retirada acelerada": "concentração, até 10 minutos", "salto": "1 minuto"}.items():
@@ -114,6 +149,48 @@ for _nome_artifice, _circulo_artifice in ARTIFICER_SPELL_LEVELS.items():
             "escola": "transmutação", "componentes": "V, S",
             "concentracao": False, "ritual": False, "duracao": "instantânea",
         }
+
+
+from .spellcasting import CIRCULO_MAGIAS_SUBCLASSE as _CIRCULOS_SUB
+
+for _nome_sub, _circulo_sub in _CIRCULOS_SUB.items():
+    _chave_sub = _normalizar_nome_spellcasting(_nome_sub)
+    _existente_sub = next((m for m in MAGIAS.values() if _normalizar_nome_spellcasting(m["nome"]) == _chave_sub), None)
+    if _existente_sub is not None and _existente_sub.get("circulo") is None:
+        _existente_sub["circulo"] = _circulo_sub
+
+# Magias do PHB 2024 que faltavam no catálogo extraído (cabeçalho, componentes e duração
+# conferidos no PDF). Usadas pelas listas de Artífice e de subclasse.
+_PHB2024_COMPLEMENTAR = {
+    # nome: (círculo, escola, componentes, concentração, duração ou None)
+    "Aura de Pureza": (4, "abjuração", "V", True, None),
+    "Convocar Relâmpagos": (3, "invocação", "V, S", True, None),
+    "Círculo de Teleporte": (5, "invocação", "V, M (tintas raras no valor de 50 PO ou mais, que a magia consome)", False, "1 rodada"),
+    "Destruição Banidora": (5, "invocação", "V", True, None),
+    "Esfera Vitriólica": (4, "evocação", "V, S, M (uma gota de bile)", False, None),
+    "Invocar Barragem": (3, "invocação", "V, S, M (uma arma Corpo a Corpo ou à Distância que vale pelo menos 1 PP)", False, None),
+    "Névoa Mortal": (5, "invocação", "V, S", True, None),
+    "Palavra Curativa em Massa": (3, "abjuração", "V", False, None),
+    "Proteção Contra a Morte": (4, "abjuração", "V, S", False, "8 horas"),
+    "Raio Guia": (1, "evocação", "V, S", False, "1 rodada"),
+}
+for _m in MAGIAS.values():
+    if _m["nome"] == "Prestidigitação Arcana":
+        if _m.get("circulo") is None:
+            _m["circulo"] = 0
+        _m.setdefault("efeito", "Cria um dos oito efeitos menores; até três não instantâneos ativos ao mesmo tempo")
+for _nome_c, (_circ, _esc, _comp, _conc, _dur) in _PHB2024_COMPLEMENTAR.items():
+    if not any(m["nome"] == _nome_c for m in MAGIAS.values()):
+        MAGIAS[_nome_c.lower()] = {
+            "nome": _nome_c, "circulo": _circ, "escola": _esc, "componentes": _comp,
+            "concentracao": _conc, "ritual": False,
+            "duracao": _dur or ("concentração, até 10 minutos" if _conc else "instantânea"),
+        }
+
+for _antigo, _novo in _ALIAS_PARA_2024:
+    _entrada = MAGIAS.get(_antigo.lower())
+    if _entrada is not None:
+        _entrada["alias_de"] = _novo
 
 
 # Mecânicas estruturadas para integrar o resultado da magia ao combate.
@@ -177,7 +254,7 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
         "tipo": "defesa", "ca_base": 13, "adiciona_modificador_destreza": True,
         "duracao": "ate_8_horas", "exige_alvo_sem_armadura": True,
     },
-    "benção": {
+    "bênção": {
         "tipo": "beneficio", "alvos_base": 3, "alvos_por_nivel": 1,
         "bonus": "1d4", "aplica_a": ["jogadas_de_ataque", "salvaguardas"],
         "concentracao": True,
@@ -342,6 +419,13 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
         "duracao": "ate_8_horas", "area_max_m": 6, "modos": ["mental", "sonoro"],
         "alcance_mental_m": 1500, "alcance_sonoro_m": 18,
     },
+    # PHB 2024, p. 320 (Prestidigitação Arcana): um dos oito efeitos; até três não instantâneos ativos.
+    "prestidigitação arcana": {
+        "tipo": "utilidade", "alcance_m": 3, "acao": "acao", "concentracao": False,
+        "duracao": "ate_1_hora", "max_efeitos_nao_instantaneos": 3,
+        "modos": ["brincar_com_fogo", "criacao_menor", "efeito_sensorial", "limpar_ou_sujar",
+                  "marca_magica", "sensacao_ideal"],
+    },
     "detectar magia": {
         "tipo": "deteccao", "alcance": "pessoal", "acao": "acao", "concentracao": True,
         "duracao": "ate_10_minutos", "raio_m": 9,
@@ -498,20 +582,18 @@ def listar_magias(escola: str | None = None, circulo: int | None = None) -> list
     return sorted(resultado, key=lambda m: (m["circulo"] is None, m["circulo"] if m["circulo"] is not None else 99, m["nome"]))
 
 
-def _normalizar_nome_magia(nome: str) -> str:
-    texto = unicodedata.normalize("NFKD", str(nome).strip().lower())
-    texto = "".join(c for c in texto if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", texto).replace("-", " ")
-
-
-def obter_magia(nome: str) -> dict[str, Any] | None:
+def obter_magia(nome: str, _sem_alias: bool = False) -> dict[str, Any] | None:
     direta = MAGIAS.get(str(nome).strip().lower())
-    if direta is not None:
+    if direta is not None and "alias_de" not in direta:
         return direta
     chave = _normalizar_nome_magia(nome)
     for magia in MAGIAS.values():
-        if _normalizar_nome_magia(magia["nome"]) == chave:
+        if _normalizar_nome_magia(magia["nome"]) == chave and "alias_de" not in magia:
             return magia
+    if not _sem_alias:
+        for antigo, novo in _ALIAS_PARA_2024:
+            if _normalizar_nome_magia(antigo) == chave:
+                return obter_magia(novo, _sem_alias=True)
     return None
 
 
@@ -531,12 +613,8 @@ def _circulo_efetivo(base: int, usado: int) -> int:
 # O projeto usa apenas regras de 2024: estes nomes são bloqueados, não resolvidos.
 _FORA_DO_PHB_2024 = (
     "Absorver Elementos", "Armadilha", "Bebida Cáustica de Tasha", "Catapulta", "Congelamento",
-    "Criar Fogueira", "Explosão de Espadas", "Pedra Mágica",
+    "Criar Fogueira", "Explosão de Espadas", "Pedra Mágica", "Sorvedouro de Vida", "Véu da Natureza",
 )
-# Nomes antigos em português que são o mesmo truque do PHB 2024 (Mage Hand e Mending).
-_ALIAS_PARA_2024 = (("Mão Mágica", "Mãos Mágicas"), ("Consertar", "Reparar"))
-
-
 def resolver_magia(fatos: dict) -> dict[str, Any]:
     nome = str(fatos.get("magia", fatos.get("spell", ""))).lower()
     for antigo, novo in _ALIAS_PARA_2024:
