@@ -1363,5 +1363,27 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(resolved.outcome["roll"], pending.outcome["roll"])
         self.assertEqual(resolved.outcome["total"], resolved.outcome["roll"] + 5)
 
+    def test_attack_engine_generates_auditable_roll_and_resolves_hit_or_miss(self):
+        facts = {"type": "attack", "modifier": 5, "target_ac": 15, "seed": "attack-seed"}
+        first = self.engine.evaluate(facts)
+        second = self.engine.evaluate(facts)
+        self.assertEqual(first.outcome["roll_source"], "rule_engine")
+        self.assertEqual(first.outcome["roll"], second.outcome["roll"])
+        self.assertEqual(first.outcome["seed"], "attack-seed")
+        self.assertIn(first.outcome["result"], {"hit", "miss"})
+        self.assertIn("attack.engine-roll", first.matched_rules)
+
+    def test_attack_engine_requires_target_ac(self):
+        result = self.engine.evaluate({"type": "attack", "modifier": 5, "seed": "attack-seed"})
+        self.assertEqual(result.outcome["result"], "blocked")
+        self.assertEqual(result.outcome["reason"], "target_ac_ausente")
+
+    def test_surprised_initiative_uses_disadvantage_and_is_auditable(self):
+        result = self.engine.evaluate({"type": "initiative", "modifier": 2, "surprised": True, "seed": "initiative-seed"})
+        self.assertEqual(result.outcome["type"], "initiative")
+        self.assertEqual(len(result.outcome["rolls"]), 2)
+        self.assertTrue(result.outcome["disadvantage"])
+        self.assertEqual(result.outcome["roll_source"], "rule_engine")
+
 if __name__ == "__main__":
     unittest.main()
