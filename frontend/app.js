@@ -58,8 +58,12 @@ function jogadorId() {
   return id;
 }
 
+const API_BASE = location.hostname === 'dnd-projeto-ia-frontend-novo.onrender.com'
+  ? 'https://dnd-projeto-ia-fichas-teste.onrender.com'
+  : '';
+
 async function api(caminho, opcoes = {}) {
-  const resposta = await fetch(caminho, {
+  const resposta = await fetch(API_BASE + caminho, {
     ...opcoes,
     headers: {'Content-Type': 'application/json', 'X-Jogador-Id': jogadorId(), ...(opcoes.headers || {})},
   });
