@@ -29,7 +29,7 @@ class SpellCoverageTests(unittest.TestCase):
     def test_spell_names_are_normalized_without_accents(self):
         result = resolver_magia({"magia": "RAIO MISTICO"})
         self.assertEqual(result["magia"], "Raio Místico")
-        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["resultado"], "nao_implementado")
 
     def test_cantrips_cannot_spend_spell_slots(self):
         result = resolver_magia({"magia": "raio místico", "espaco": 1})

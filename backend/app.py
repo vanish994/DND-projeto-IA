@@ -6,6 +6,7 @@ mensagens ficam persistidas em banco (SQLite local ou Postgres via DATABASE_URL)
 """
 from __future__ import annotations
 
+from copy import deepcopy
 import inspect
 import logging
 import os
@@ -16,7 +17,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from backend.persistencia import RepositorioCampanhas
+from backend.persistencia import RepositorioCampanhas, ConflitoEstadoCampanha, OperacaoIncompativel
 from rule_engine import (
     BESTIARIO,
     build_default_engine,
@@ -34,7 +35,7 @@ from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine.casting import atributo_de_conjuracao
 from rule_engine.damage import aplicar_defesas_monstro, normalizar_tipo_dano
-from rule_engine.spells import listar_magias, mecanica_de_magia, obter_magia, resolver_magia
+from rule_engine.spells import listar_magias, mecanica_de_magia, obter_magia, resolver_magia, suporte_magia
 from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE, CATEGORIAS_FERRAMENTA_ANTECEDENTE, escolha_ferramenta_do_antecedente
 from rule_engine.spellcasters import CASTING_ABILITY, resolver_progressao_conjuracao
 from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA, escolha_de_especie
@@ -83,6 +84,8 @@ class AtualizarCampanha(BaseModel):
 
 class MensagemCampanha(BaseModel):
     mensagem: str = Field(min_length=1, max_length=20000)
+    # Opcional para preservar compatibilidade com clientes antigos.
+    operacao_id: str | None = Field(default=None, min_length=1, max_length=64, pattern=PADRAO_ID)
 
 
 class Campanha(BaseModel):
@@ -456,8 +459,20 @@ def _chamar_mj(mj: DeepSeekMJ, texto: str, historico: list[dict], **extras) -> s
 
 def _responder(
     mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str,
+    operacao_id: str | None = None,
 ) -> tuple[str, list[dict]]:
-    """Responde ao jogador e devolve as rolagens que o motor gerou na resposta."""
+    """Repete o resultado confirmado sem executar ferramentas novamente."""
+    def resultado_confirmado():
+        if not operacao_id:
+            return None
+        try:
+            return repo.obter_operacao(jogador, campanha_id, operacao_id, texto)
+        except OperacaoIncompativel as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    anterior = resultado_confirmado()
+    if anterior is not None:
+        return anterior["resposta"], anterior["rolagens"]
     historico = repo.historico_llm(jogador, campanha_id, HISTORICO_MAX)
     # Evita que respostas narrativas excepcionalmente longas façam a requisição
     # crescer sem limite e provoquem HTTP 413 no provedor.
@@ -476,6 +491,7 @@ def _responder(
     # Contexto autoritativo sempre presente, inclusive quando a campanha ainda não tem ficha.
     historico = [{"role": "system", "content": contexto_personagem}, *historico]
     rolagens: list[dict] = []
+    atualizacoes_pendentes: dict[str, dict] = {}
 
     def registrar_rolagem(rolagem: dict) -> None:
         rolagens.append(rolagem)
@@ -485,10 +501,13 @@ def _responder(
             k: v for k, v in personagem.items()
             if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}
         }
-        repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], ficha)
+        # As ferramentas podem continuar trabalhando com a ficha em memória,
+        # mas uma falha posterior do provedor não pode deixar gastos no banco.
+        atualizacoes_pendentes[personagem["id"]] = deepcopy(ficha)
 
     try:
         personagens = repo.listar_personagens(jogador, campanha_id) or []
+        fichas_esperadas = {p["id"]: deepcopy(p) for p in personagens}
         # Só envia o que o MJ em uso aceita: adaptadores antigos e dublês de teste
         # continuam funcionando com a assinatura reduzida.
         resposta = _chamar_mj(
@@ -497,14 +516,28 @@ def _responder(
             on_roll=registrar_rolagem,
         )
     except Exception as exc:
+        # Outro pedido com a mesma chave pode ter confirmado enquanto a IA
+        # deste pedido falhava. Nesse caso, devolvemos o resultado vencedor.
+        anterior = resultado_confirmado()
+        if anterior is not None:
+            return anterior["resposta"], anterior["rolagens"]
         detalhe, status_provedor = _diagnostico_erro_provedor(exc)
         logger.exception(
             "Falha na chamada do provedor do MJ: tipo=%s status_provedor=%s",
             type(exc).__name__, status_provedor,
         )
         raise HTTPException(status_code=502, detail=detalhe) from exc
-    repo.registrar_troca(jogador, campanha_id, texto, resposta, rolagens)
-    return resposta, rolagens
+    try:
+        confirmado = repo.registrar_troca(
+            jogador, campanha_id, texto, resposta, rolagens,
+            atualizacoes_ficha=atualizacoes_pendentes, fichas_esperadas=fichas_esperadas,
+            operacao_id=operacao_id,
+        )
+    except OperacaoIncompativel as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ConflitoEstadoCampanha as exc:
+        raise HTTPException(status_code=409, detail="A ficha mudou enquanto o MJ respondia. Esta resposta não foi aplicada; tente novamente com o estado atualizado.") from exc
+    return confirmado["resposta"], confirmado["rolagens"]
 
 
 @app.get("/v1/status")
@@ -576,7 +609,7 @@ def enviar_mensagem_campanha(
     mj: DeepSeekMJ = Depends(obter_mj),
 ) -> dict:
     _campanha_ou_404(repo, jogador, campanha_id)
-    resposta, rolagens = _responder(mj, repo, jogador, campanha_id, pedido.mensagem)
+    resposta, rolagens = _responder(mj, repo, jogador, campanha_id, pedido.mensagem, pedido.operacao_id)
     return {"campanha": repo.obter(jogador, campanha_id), "resposta": resposta, "rolagens": rolagens}
 
 
@@ -632,8 +665,10 @@ def catalogo_magias(
 ) -> list[dict]:
     classe_normalizada = (classe or "").strip().lower().replace("í", "i").replace(" ", "")
     if classe_normalizada in {"artifice", "artífice"}:
-        return listar_magias_artifice(nivel)
-    return listar_magias()
+        magias = listar_magias_artifice(nivel)
+    else:
+        magias = listar_magias()
+    return [{**m, "suporte": suporte_magia(m["nome"])} for m in magias]
 
 
 @app.get("/v1/catalogo/conjuracao")
@@ -2396,11 +2431,11 @@ def conjurar_no_mapa_tatico(
     _validar_turno_ativo(estado, conjurador["id"])
     if conjurador["kind"] != "hero":
         raise HTTPException(status_code=422, detail="Somente personagens com ficha podem conjurar nesta versão")
-    if alvo["hp"] <= 0:
-        raise HTTPException(status_code=422, detail="O alvo está com 0 PV")
     ficha = repo.obter_personagem(jogador, campanha_id, conjurador["character_id"])
     if not ficha:
         raise HTTPException(status_code=404, detail="Ficha do conjurador não encontrada")
+    if conjurador["hp"] <= 0:
+        raise HTTPException(status_code=422, detail="O conjurador está com 0 PV")
     if str(ficha.get("classe", "")).casefold() != "artifice":
         raise HTTPException(status_code=422, detail="A lista de magias táticas implementada nesta versão é a do Artífice; outras classes precisam de suas listas validadas")
     efeitos_conjuracao = resolver_efeitos_condicao({"action": "spell", "target_conditions": sorted(_condicoes_da_ficha(ficha).ativas)})
@@ -2438,7 +2473,10 @@ def conjurar_no_mapa_tatico(
             "motivo": resolucao_magia.get("motivo", "magia_sem_resolucao_tatica"),
             "resultado_motor": resolucao_magia,
         })
-    mecanica = resolucao_magia.get("mecanica") or {}
+    mecanica = mecanica_de_magia(nome, nivel_personagem=int(ficha.get("nivel", 1)), aumento=espaco_usado - circulo) or {}
+    resolucao_magia["mecanica"] = mecanica
+    if alvo["hp"] <= 0 and mecanica.get("tipo") != "cura":
+        raise HTTPException(status_code=422, detail="O alvo está com 0 PV")
     chave_magia = nome.casefold()
     dx = abs(int(conjurador["x"]) - int(alvo["x"]))
     dy = abs(int(conjurador["y"]) - int(alvo["y"]))
@@ -2451,8 +2489,16 @@ def conjurar_no_mapa_tatico(
     cura = 0
     rolagem = None
     bonus_ataque = None
+    defesas_dano = None
+
+    def defesas_do_token(token):
+        if token["kind"] == "hero":
+            return _defesas_personagem(repo.obter_personagem(jogador, campanha_id, token["character_id"]) or {})
+        from rule_engine.bestiary import consultar_monstro
+        return consultar_monstro(token.get("monster_name") or token["name"]) or {}
+
     if mecanica.get("tipo") == "ataque_magico":
-        alcance_pes = 120 if chave_magia == "raio de fogo" else round(float(mecanica.get("alcance_m", 0)) * 3.28084)
+        alcance_pes = 120 if chave_magia == "raio de fogo" else int(mecanica.get("alcance_pes", round(float(mecanica.get("alcance_m", 0)) * 3.28084)))
         geometria = resolver_ataque_tatico({
             "distancia": distancia_pes, "alcance": alcance_pes, "alcance_maximo": alcance_pes,
             "ataque_a_distancia": True,
@@ -2490,7 +2536,8 @@ def conjurar_no_mapa_tatico(
             if resultado_ataque.get("critical"):
                 dados += [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
             dano_resolvido = engine.evaluate({"type": "damage", "damage_dice": dados, "damage_modifier": 0, "critical": False}).outcome
-            dano = max(0, int(dano_resolvido.get("total", 0)))
+            defesas_dano = aplicar_defesas_monstro(max(0, int(dano_resolvido.get("total", 0))), str(mecanica.get("tipo_dano", "")), defesas_do_token(alvo))
+            dano = defesas_dano["dano"]
     elif mecanica.get("tipo") == "cura" and chave_magia == "curar ferimentos":
         if distancia_pes > 5:
             raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_pes": 5})
@@ -2504,7 +2551,12 @@ def conjurar_no_mapa_tatico(
         # os tokens atingidos têm salvaguardas deriváveis de fichas completas.
         area = mecanica.get("area") or {}
         forma = str(area.get("forma", "")).lower()
-        if forma == "cubo":
+        if forma == "emanacao":
+            raio_casas = round(float(area.get("raio_m", 0)) / 1.5)
+            alvos_area = [t for t in tokens if t["hp"] > 0
+                          and t["id"] != conjurador["id"]
+                          and max(abs(int(t["x"]) - int(conjurador["x"])), abs(int(t["y"]) - int(conjurador["y"]))) <= raio_casas]
+        elif forma == "cubo":
             lado_casas = max(1, round(float(area.get("lado_m", 0)) * 3.28084 / 5))
             vx = (int(alvo["x"]) > int(conjurador["x"])) - (int(alvo["x"]) < int(conjurador["x"]))
             vy = (int(alvo["y"]) > int(conjurador["y"])) - (int(alvo["y"]) < int(conjurador["y"]))
@@ -2534,6 +2586,9 @@ def conjurar_no_mapa_tatico(
                 }
             alvos_area = [t for t in tokens if t["hp"] > 0 and (int(t["x"]), int(t["y"])) in area_cells]
         elif forma == "esfera":
+            alcance_pes = int(mecanica.get("alcance_pes", round(float(mecanica.get("alcance_m", 0)) * 3.28084)))
+            if distancia_pes > alcance_pes:
+                raise HTTPException(status_code=422, detail={"motivo": "fora_de_alcance", "alcance_pes": alcance_pes})
             raio_pes = round(float(area.get("raio_m", 0)) * 3.28084)
             if raio_pes <= 0:
                 raise HTTPException(status_code=422, detail="A magia não possui dimensão de área válida")
@@ -2543,8 +2598,6 @@ def conjurar_no_mapa_tatico(
             ]
         else:
             raise HTTPException(status_code=422, detail="Este formato de área exige direção/posicionamento explícito ainda não disponível no mapa")
-        if not alvos_area:
-            raise HTTPException(status_code=422, detail="Nenhum alvo dentro da área")
         if not alvos_area:
             raise HTTPException(status_code=422, detail="Nenhum alvo dentro da área")
         fichas_alvos = {}
@@ -2596,6 +2649,9 @@ def conjurar_no_mapa_tatico(
         quantidade, lados = map(int, expressao.lower().split("d"))
         dc = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get(atributo_conjuracao, 0))
         resultados_area = []
+        # Uma mesma área usa uma única rolagem de dano para todas as criaturas.
+        dados_area = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
+        dano_base = sum(dados_area)
         for token_area in alvos_area:
             ficha_alvo = fichas_alvos[token_area["id"]]
             atributo = str(mecanica.get("salvaguarda", "destreza")).lower()
@@ -2607,19 +2663,24 @@ def conjurar_no_mapa_tatico(
             bonus_salva = int(ficha_alvo.get("salvaguardas", {}).get(atributo, bonus_atributo)) if isinstance(ficha_alvo.get("salvaguardas"), dict) else bonus_atributo
             rolagem_salva = secrets.randbelow(20) + 1
             salvaguarda = resolver_salvaguarda({
-                "atributo": atributo, "roll": rolagem_salva, "modifier": bonus_atributo,
+                "atributo": atributo, "roll": rolagem_salva, "modificador_atributo": bonus_atributo,
                 "dc": dc, "proficiente": proficiente, "bonus_proficiencia": int(ficha_alvo.get("bonus_proficiencia", 2)),
             })
             if isinstance(ficha_alvo.get("salvaguardas"), dict):
                 salvaguarda["bonus_oficial_bloco"] = bonus_salva
                 salvaguarda["total"] = int(salvaguarda.get("dado", rolagem_salva)) + bonus_salva
-                salvaguarda["sucesso"] = salvaguarda["total"] >= dc and int(salvaguarda.get("dado", rolagem_salva)) != 1 or int(salvaguarda.get("dado", rolagem_salva)) == 20
+                salvaguarda["modificador_total"] = bonus_salva
+                salvaguarda["sucesso"] = salvaguarda["total"] >= dc
                 salvaguarda["resultado"] = "sucesso" if salvaguarda["sucesso"] else "falha"
             if salvaguarda.get("resultado") == "bloqueado":
                 raise HTTPException(status_code=422, detail={"motivo": "salvaguarda_nao_resolvida", "resultado": salvaguarda})
-            dados_area = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
-            dano_base = sum(dados_area)
+            # Salvaguardas comuns não têm sucesso/falha automáticos em 20/1.
+            salvaguarda["sucesso"] = int(salvaguarda["total"]) >= dc
+            salvaguarda["resultado"] = "sucesso" if salvaguarda["sucesso"] else "falha"
+            salvaguarda["motivo"] = "total_vs_cd"
             dano_alvo = (dano_base // 2) if salvaguarda.get("sucesso") and mecanica.get("sucesso_metade") else (0 if salvaguarda.get("sucesso") else dano_base)
+            defesas_area = aplicar_defesas_monstro(dano_alvo, str(mecanica.get("tipo_dano", "")), defesas_do_token(token_area))
+            dano_alvo = defesas_area["dano"]
             if token_area["kind"] == "hero" and dano_alvo:
                 repo.ajustar_pv_personagem(jogador, campanha_id, token_area["character_id"], -dano_alvo)
                 concentracao_alvo = _resolver_concentracao_apos_dano(repo, jogador, campanha_id, token_area["character_id"], dano_alvo)
@@ -2632,7 +2693,7 @@ def conjurar_no_mapa_tatico(
                     if bruto_area.get("id") == token_area["id"]:
                         bruto_area["hp"] = max(0, int(bruto_area.get("hp", token_area["maxHp"])) - dano_alvo)
                 repo.salvar_mapa_tatico(jogador, campanha_id, estado_bruto_area)
-            resultados_area.append({"alvo_id": token_area["id"], "nome": token_area["name"], "salvaguarda": salvaguarda, "dados_dano": dados_area, "dano": dano_alvo, "concentracao": concentracao_alvo if token_area["kind"] == "hero" and dano_alvo else None})
+            resultados_area.append({"alvo_id": token_area["id"], "nome": token_area["name"], "salvaguarda": salvaguarda, "dados_dano": dados_area, "dano": dano_alvo, "defesas_dano": defesas_area, "concentracao": concentracao_alvo if token_area["kind"] == "hero" and dano_alvo else None})
         dano = sum(x["dano"] for x in resultados_area)
     elif mecanica.get("tipo") == "condicao" and isinstance(mecanica.get("salvaguarda_fim_turno"), dict):
         # Efeitos de condição com salvaguarda repetida precisam declarar a regra
@@ -2720,7 +2781,8 @@ def conjurar_no_mapa_tatico(
         "magia": nome, "resolucao_motor": resolucao_magia,
         "ataque": resultado_ataque, "rolagem": rolagem, "bonus_ataque": bonus_ataque,
         "rolagens": ([rolagem, *rolagens_extra] if rolagem is not None else []),
-        "dano": dano, "cura": cura,
+        "dano": dano, "cura": cura, "defesas_dano": defesas_dano,
+        "suporte": suporte_magia(nome),
         "dados_dano": locals().get("dados") or [],
         "dano_expressao": locals().get("expressao_dano") if resultado_ataque else None,
         "tipo_dano": (mecanica.get("tipo_dano") if resultado_ataque else None),

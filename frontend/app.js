@@ -40,6 +40,12 @@ const state = {
   novas: 0,
 };
 
+const enviosPendentes = new EnviosPendentes(localStorage);
+// Um fechamento de aba depois do POST não pode perder o texto/chave do envio.
+for (const [id, op] of Object.entries(enviosPendentes.listar())) {
+  if (!state.rascunhos[id]) state.rascunhos[id] = op.texto;
+}
+
 function lerJson(chave, padrao) {
   try { return JSON.parse(localStorage.getItem(chave)) ?? padrao; } catch (_) { return padrao; }
 }
@@ -182,7 +188,47 @@ function addMessage(papel, texto, extraClass = '', rolagens = [], criadaEm = nul
   article.querySelector('.bubble-text').replaceChildren(textoComDados(texto));
   const cartao = Dados.cartao ? Dados.cartao(rolagens) : null;
   if (cartao) article.querySelector('.bubble').append(cartao);
+  if (role === 'mj' && !extraClass) {
+    const opcoes = escolhasNarrativas(texto);
+    if (opcoes.length) {
+      const escolhas = document.createElement('section');
+      escolhas.className = 'narrative-choices';
+      escolhas.setAttribute('aria-label', 'Escolha o que fazer');
+      const heading = document.createElement('h3');
+      heading.textContent = '✧ Escolha o que fazer';
+      escolhas.append(heading);
+      for (const [index, opcao] of opcoes.entries()) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'narrative-choice';
+        const number = document.createElement('span');
+        number.className = 'choice-number';
+        number.textContent = String(index + 1).padStart(2, '0');
+        const label = document.createElement('span');
+        label.textContent = opcao;
+        const arrow = document.createElement('span');
+        arrow.textContent = '›';
+        arrow.setAttribute('aria-hidden', 'true');
+        button.append(number, label, arrow);
+        button.addEventListener('click', () => {
+          if (!state.atual || state.pendentes.has(state.atual)) return;
+          input.value = opcao;
+          autoResize();
+          guardarRascunhoAtual();
+          input.focus({preventScroll: true});
+          anunciar('Escolha preenchida. Você pode editar antes de enviar.');
+        });
+        escolhas.append(button);
+      }
+      const hint = document.createElement('p');
+      hint.className = 'choice-hint';
+      hint.textContent = 'Selecione para editar e enviar, ou escreva sua própria ação.';
+      escolhas.append(hint);
+      article.querySelector('.bubble').append(escolhas);
+    }
+  }
   messages.append(article);
+  atualizarEscolhas();
   if (acompanhando || papel === 'user') rolarParaOFim();
   else {
     state.novas += 1;
@@ -288,7 +334,15 @@ async function animarRolagens(rolagens) {
   atualizarBotaoDeRolagem();
 }
 
+function atualizarEscolhas() {
+  const ultima = messages.querySelector('.message:last-child');
+  messages.querySelectorAll('.narrative-choice').forEach((button) => {
+    button.disabled = !state.atual || state.pendentes.has(state.atual) || button.closest('.message') !== ultima;
+  });
+}
+
 function atualizarComposer() {
+  atualizarEscolhas();
   const ocupado = !state.atual || state.pendentes.has(state.atual);
   input.disabled = !state.atual;
   sendButton.disabled = ocupado;
@@ -303,7 +357,7 @@ function autoResize() {
   input.style.overflowY = input.scrollHeight > 160 ? 'auto' : 'hidden';
 }
 
-async function abrirCampanha(id) {
+async function abrirCampanha(id, mostrarEnvioPendente = true) {
   guardarRascunhoAtual();
   state.atual = id;
   localStorage.setItem(ULTIMA_KEY, id);
@@ -324,7 +378,7 @@ async function abrirCampanha(id) {
     state.novas = 0;
     if (!detalhe.mensagens.length) renderEmpty('Ainda não há mensagens. Conte onde a cena começa.', true);
     for (const m of detalhe.mensagens) addMessage(m.papel, m.conteudo, '', m.rolagens || [], m.criada_em);
-    if (state.pendentes.has(id)) addTyping();
+    if (mostrarEnvioPendente && state.pendentes.has(id)) addTyping();
     rolarParaOFim();
   } catch (erro) {
     if (state.atual !== id) return;
@@ -355,6 +409,16 @@ function fecharCampanha() {
 
 async function enviar(texto) {
   const id = state.atual;
+  if (!id || state.pendentes.has(id)) return;
+  let operacao;
+  try {
+    operacao = enviosPendentes.preparar(id, texto);
+  } catch (_) {
+    input.value = texto;
+    autoResize();
+    avisar('Não foi possível guardar o identificador do envio neste navegador. Nenhuma mensagem foi enviada.');
+    return;
+  }
   state.pendentes.add(id);
   delete state.rascunhos[id];
   salvarRascunhos();
@@ -365,17 +429,26 @@ async function enviar(texto) {
   try {
     const dados = await api(`/v1/campanhas/${encodeURIComponent(id)}/mensagens`, {
       method: 'POST',
-      body: JSON.stringify({mensagem: texto}),
+      body: JSON.stringify({mensagem: texto, operacao_id: operacao.id}),
     });
-    state.pendentes.delete(id);
     atualizarCampanha(dados.campanha);
     if (state.atual === id) {
       typing.remove();
       // O dado do motor aparece antes da narração: o valor auditável é
       // apresentado primeiro e o MJ descreve a consequência depois.
       await animarRolagens(dados.rolagens || []);
-      if (state.atual === id) addMessage('assistant', dados.resposta, '', dados.rolagens || []);
+      if (state.atual === id) {
+        if (operacao.repeticao) {
+          // O histórico pode já conter a resposta cujo HTTP se perdeu.
+          // Recarregar a versão canônica evita duplicar bolhas no navegador.
+          await abrirCampanha(id, false);
+        } else {
+          addMessage('assistant', dados.resposta, '', dados.rolagens || []);
+        }
+      }
     }
+    try { enviosPendentes.confirmar(id, operacao.id); }
+    catch (_) { /* Manter a chave é seguro: a próxima repetição será deduplicada. */ }
   } catch (erro) {
     state.pendentes.delete(id);
     if (!state.rascunhos[id]) {
@@ -387,10 +460,12 @@ async function enviar(texto) {
       enviada.remove();
       if (!input.value.trim()) input.value = texto;
       autoResize();
-      addMessage('assistant', `Não foi possível falar com o MJ agora (${erro.message}). Sua mensagem não foi salva e voltou para o campo de texto.`, 'message-error');
+      addMessage('assistant', `Não foi possível falar com o MJ agora (${erro.message}). Não foi possível confirmar o resultado. O texto está no campo; reenvie sem editar para recuperar o mesmo envio sem repetir a ação. Se editar, será uma nova operação.`, 'message-error');
     }
     renderList();
   } finally {
+    state.pendentes.delete(id);
+    renderList();
     atualizarComposer();
     if (state.atual === id) input.focus({preventScroll: true});
   }

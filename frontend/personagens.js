@@ -674,7 +674,8 @@
           const botao = el('button', {type: 'button', className: 'botao-magia',
             'aria-pressed': String(selecionadas.has(chave))},
             el('span', {className: 'magia-nome', textContent: magia.nome}),
-            el('span', {className: 'magia-meta', textContent: `${nome(magia.escola)}${magia.concentracao ? ' · concentração' : ''}${magia.ritual ? ' · ritual' : ''}`}));
+            el('span', {className: 'magia-meta', textContent: `${nome(magia.escola)}${magia.concentracao ? ' · concentração' : ''}${magia.ritual ? ' · ritual' : ''}`}),
+            el('span', {className: 'magia-meta', textContent: magia.suporte?.rotulo || 'Suporte não informado'}));
           botao.dataset.nome = magia.nome;
           botao.addEventListener('click', () => {
             if (selecionadas.has(chave)) selecionadas.delete(chave);
@@ -1126,7 +1127,7 @@
         meta(`Atributo: ${nome(progresso.atributo_conjuracao)} · Truques: ${progresso.truques} · Magias: ${progresso.magias_preparadas}`),
         meta(espacos.length ? `Espaços: ${espacos.map(([circulo, total]) => `${circulo}º círculo ×${total}`).join(', ')}` : 'Nenhum espaço de magia neste nível.'),
         meta(progresso.validacao_escolhas ? 'As escolhas são validadas pelo motor.' : 'A progressão é calculada; a lista de escolhas desta classe ainda não é validada integralmente.')));
-      const truques = magias.filter((m) => Number(m.circulo) === 0);
+      const truques = magias.filter((m) => m.circulo === 0);
       const circuloMaximo = Number(progresso.circulo_maximo || 0);
       const preparadas = magias.filter((m) => Number(m.circulo) > 0 && Number(m.circulo) <= circuloMaximo);
       caixa.append(listaEscolhaMagias('Truques', truques, 'truques', dados.magias.limites.truques, dados.magias.limites.validado));
@@ -1147,7 +1148,8 @@
     for (const magia of magias) {
       const botao = el('button', {type: 'button', className: 'botao-magia', 'aria-pressed': 'false'},
         el('span', {className: 'magia-nome', textContent: magia.nome}),
-        el('span', {className: 'magia-meta', textContent: nome(magia.escola)}));
+        el('span', {className: 'magia-meta', textContent: nome(magia.escola)}),
+        el('span', {className: 'magia-meta', textContent: magia.suporte?.rotulo || 'Suporte não informado'}));
       botao.dataset.nome = magia.nome;
       botao.addEventListener('click', () => {
         const i = selecionadas.indexOf(magia.nome);

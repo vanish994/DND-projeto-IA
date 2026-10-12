@@ -52,6 +52,11 @@ CONJURAR MAGIA (registro de espaço):
   resultado=conjurada; sem espaço disponível a resposta é bloqueado com
   motivo=sem_espacos_restantes. Truques não gastam espaço.
 - Nunca conte espaços de magia de cabeça: use espacos_restantes da resposta.
+- resultado=nao_implementado não é sucesso: informe a limitação e não narre o
+  efeito como aplicado. A descrição de uma magia não substitui sua resolução.
+- O registro de conjuração e a rolagem de dano são etapas diferentes. Uma
+  rolagem com aplicado_ao_alvo=false não altera PV nem comprova consumo de espaço.
+  Não afirme atualização de ficha sem confirmação de uma operação persistida.
 
 ATAQUES DE MAGIA (truques e magias com jogada de ataque):
 - Quando a magia do catálogo tem resolução de ataque mágico, chame
@@ -370,7 +375,9 @@ def normalizar_rolagem(
         modificador_dano = _inteiro(_primeiro_valor(resultado, "damage_modifier", "modifier")) or _inteiro(
             _primeiro_valor(fatos, "damage_modifier")
         ) or 0
-        total_dano = _inteiro(_primeiro_valor(resultado, "total")) or sum(dados_dano) + modificador_dano
+        total_dano = _inteiro(_primeiro_valor(resultado, "total"))
+        if total_dano is None:
+            total_dano = sum(dados_dano) + modificador_dano
         lados_dano = (
             _lados_da_expressao(_primeiro_valor(resultado, "damage_expression", "expressao"))
             or _lados_da_expressao(_primeiro_valor(resultado, "damage_dice_expression"))
@@ -662,14 +669,18 @@ class DeepSeekMJ:
         if not magia:
             return {"resultado": "bloqueado", "motivo": "magia_desconhecida", "magia": nome}
         nome_canonico = str(magia["nome"])
-        circulo = int(magia.get("circulo") or 0)
+        if magia.get("circulo") is None:
+            return {"resultado": "bloqueado", "motivo": "magia_sem_circulo_confirmado_no_catalogo"}
+        circulo = int(magia["circulo"])
+        if personagem is None:
+            return {"resultado": "bloqueado", "motivo": "personagem_ausente_ou_nao_identificado"}
         if personagem is not None:
             conjuracao = personagem.get("conjuracao") or {}
             registradas = conjuracao.get("truques") if circulo == 0 else (
                 conjuracao.get("magias_preparadas") or conjuracao.get("magias")
             )
             registradas = {normalizar_nome_magia(x) for x in (registradas or [])}
-            if registradas and normalizar_nome_magia(nome_canonico) not in registradas:
+            if normalizar_nome_magia(nome_canonico) not in registradas:
                 return {
                     "resultado": "bloqueado", "motivo": "magia_nao_registrada_na_ficha",
                     "magia": nome_canonico,
@@ -677,13 +688,21 @@ class DeepSeekMJ:
 
         nivel = max(1, int((personagem or {}).get("nivel", 1) or 1))
         espaco = facts.get("espaco", facts.get("slot_level"))
-        aumento = facts.get("aumento", facts.get("upcast"))
-        if aumento is None:
-            try:
-                aumento = max(0, int(espaco) - circulo) if espaco is not None else 0
-            except (TypeError, ValueError):
-                return {"resultado": "bloqueado", "motivo": "espaco_de_magia_invalido"}
-        mecanica = mecanica_de_magia(nome_canonico, nivel_personagem=nivel, aumento=max(0, int(aumento)))
+        try:
+            aumento_informado = facts.get("aumento", facts.get("upcast"))
+            usado = int(espaco) if espaco is not None else circulo + int(aumento_informado or 0)
+            if not circulo <= usado <= 9 or (circulo == 0 and usado != 0):
+                raise ValueError("espaço incompatível")
+            aumento = usado - circulo
+            if aumento_informado is not None and int(aumento_informado) != aumento:
+                raise ValueError("espaço e aumento divergentes")
+            if circulo > 0 and int(((personagem.get("conjuracao") or {}).get("espacos_totais") or {}).get(str(usado), 0)) < 1:
+                return {"resultado": "bloqueado", "motivo": "circulo_indisponivel_na_ficha"}
+        except (TypeError, ValueError):
+            return {"resultado": "bloqueado", "motivo": "espaco_de_magia_invalido"}
+        # Esta ferramenta calcula a rolagem; não aplica PV nem consome outro espaço.
+        # A conjuração continua sendo a operação responsável por consumir o recurso.
+        mecanica = mecanica_de_magia(nome_canonico, nivel_personagem=nivel, aumento=aumento)
         if not mecanica:
             return {
                 "resultado": "bloqueado", "motivo": "magia_sem_mecanica_estruturada_no_catalogo",
@@ -833,6 +852,22 @@ class DeepSeekMJ:
             facts = {"type": "bestiary", "operacao": "bloco_completo", **args}
         elif name == "resolver_regra":
             facts = dict(args["fatos"])
+            if facts.get("type") == "class_feature":
+                grupo = personagens or []
+                personagem_id = facts.get("character_id")
+                ficha = next((p for p in grupo if p.get("id") == personagem_id), None)
+                if ficha is None and not personagem_id and len(grupo) == 1:
+                    ficha = grupo[0]
+                if ficha is None:
+                    return {"resultado": "bloqueado", "motivo": "personagem_ausente_ou_nao_identificado"}
+                # Classe e nível não são escolhas do modelo; vêm da ficha.
+                facts.update({"classe": ficha.get("classe", ""), "nivel": ficha.get("nivel", 1),
+                              "character_id": ficha["id"], "modifier_source": "ficha_autoritativa"})
+                for atributo in ("forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"):
+                    facts.pop(atributo, None)
+                    if atributo in (ficha.get("atributos") or {}):
+                        facts[atributo] = ficha["atributos"][atributo]
+                facts["bonus_proficiencia"] = ficha.get("bonus_proficiencia", 2 + (int(ficha.get("nivel", 1)) - 1) // 4)
             if facts.get("type") in {"attack", "initiative"}:
                 grupo = personagens or []
                 personagem_id = facts.get("character_id")
@@ -1194,6 +1229,8 @@ class DeepSeekMJ:
                 "dados_dano": list(resultado.get("damage_dice") or []),
                 "dano_expressao": resultado.get("damage_expression"),
                 "tipo_dano": facts.get("magia_tipo_dano"),
+                "aplicado_ao_alvo": False,
+                "nota": "Rolagem de dano apenas; requer conjuração válida e aplicação ao alvo.",
             })
         # Ataque de magia: com o acerto confirmado, o motor rola o dano da magia
         # pela semente do próprio ataque. O acerto crítico dobra os dados rolados
@@ -1205,14 +1242,18 @@ class DeepSeekMJ:
                 "critical": bool(resultado.get("critical")), "seed": resultado.get("seed"),
             }).outcome
             if dano.get("result") == "damage":
+                alvo_magia = consultar_monstro(str(facts.get("target_name", ""))) or {}
+                defesas_magia = aplicar_defesas_monstro(int(dano["total"]), str(facts.get("magia_tipo_dano", "")), alvo_magia)
                 resultado.update({
-                    "dano": int(dano["total"]),
+                    "dano": defesas_magia["dano"],
+                    "defesas_dano": defesas_magia,
                     "dano_bruto": int(dano["total"]),
                     "dados_dano": list(dano["damage_dice"]),
                     "dano_expressao": dano.get("damage_expression"),
                     "tipo_dano": facts.get("magia_tipo_dano"),
                 })
-                rolagem_dano = normalizar_rolagem(dano, facts, personagens)
+                fatos_dano = {k: v for k, v in facts.items() if k not in {"roll", "rolls", "dado", "dados", "dados_rolados"}}
+                rolagem_dano = normalizar_rolagem({**dano, "total": defesas_magia["dano"], "defesas_dano": defesas_magia}, fatos_dano, personagens)
         # Toda rolagem gerada pelo motor é anunciada para a interface animar o dado.
         rolagem = normalizar_rolagem(resultado, facts, personagens)
         for registro_atual in (rolagem, rolagem_dano):

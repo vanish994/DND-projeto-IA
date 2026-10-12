@@ -1254,15 +1254,15 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(result.outcome["ca"], 15)
         result = self.engine.evaluate({"type": "class_feature", "classe": "guerreiro", "recurso": "indomavel", "nivel": 13})
         self.assertEqual(result.outcome["usos"], 2)
-        result = self.engine.evaluate({"type": "class_feature", "classe": "ladino", "recurso": "talento_confiavel", "rolagem_d20": 4, "bonus": 5, "proficiente": True})
+        result = self.engine.evaluate({"type": "class_feature", "classe": "ladino", "nivel": 7, "recurso": "talento_confiavel", "rolagem_d20": 4, "bonus": 5, "proficiente": True})
         self.assertEqual(result.outcome["total"], 15)
 
     def test_class_features_cover_monk_paladin_and_ranger_rules(self):
         result = self.engine.evaluate({"type": "class_feature", "classe": "monge", "recurso": "golpe_atordoante", "nivel": 5, "sabedoria": 16, "bonus_proficiencia": 3, "salvaguarda_constituicao": 12})
         self.assertEqual(result.outcome["resultado"], "atordoado")
-        result = self.engine.evaluate({"type": "class_feature", "classe": "paladino", "recurso": "aura_de_protecao", "carisma": 18})
+        result = self.engine.evaluate({"type": "class_feature", "classe": "paladino", "nivel": 6, "recurso": "aura_de_protecao", "carisma": 18})
         self.assertEqual(result.outcome["bonus_salvaguardas"], 4)
-        result = self.engine.evaluate({"type": "class_feature", "classe": "guardiao", "recurso": "errante"})
+        result = self.engine.evaluate({"type": "class_feature", "classe": "guardiao", "nivel": 6, "recurso": "errante"})
         self.assertTrue(result.outcome["escalada_igual_deslocamento"])
 
     def test_progression_contains_asi_epic_boon_and_subclass_milestones(self):

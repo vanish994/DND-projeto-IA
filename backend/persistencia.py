@@ -33,6 +33,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 
 TITULO_PADRAO = "Campanha sem título"
 
@@ -82,6 +83,19 @@ encontros_taticos = Table(
 )
 
 
+# Chave única por campanha. Só existe registro para uma operação confirmada;
+# resposta, rolagens, fichas e mensagens participam da mesma transação.
+operacoes_mj = Table(
+    "operacoes_mj", metadata,
+    Column("campanha_id", String(64), ForeignKey("campanhas.id", ondelete="CASCADE"), primary_key=True),
+    Column("operacao_id", String(64), primary_key=True),
+    Column("pergunta", Text, nullable=False),
+    Column("resposta", Text, nullable=False),
+    Column("rolagens", Text, nullable=False),
+    Column("criada_em", DateTime(timezone=True), nullable=False),
+)
+
+
 def _agora() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -119,6 +133,14 @@ def url_banco_padrao() -> str:
     caminho = Path(__file__).resolve().parents[1] / "data" / "mj.sqlite3"
     caminho.parent.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{caminho}"
+
+
+class ConflitoEstadoCampanha(RuntimeError):
+    """A resposta foi calculada sobre uma ficha que já mudou ou foi removida."""
+
+
+class OperacaoIncompativel(ConflitoEstadoCampanha):
+    """Uma chave de operação não pode ser reutilizada para outra mensagem."""
 
 
 class RepositorioCampanhas:
@@ -234,6 +256,7 @@ class RepositorioCampanhas:
         with self.engine.begin() as conn:
             if self._linha(conn, jogador_id, campanha_id) is None:
                 return False
+            conn.execute(delete(operacoes_mj).where(operacoes_mj.c.campanha_id == campanha_id))
             conn.execute(delete(mensagens).where(mensagens.c.campanha_id == campanha_id))
             conn.execute(delete(personagens).where(personagens.c.campanha_id == campanha_id))
             conn.execute(delete(campanhas).where(campanhas.c.id == campanha_id))
@@ -266,6 +289,21 @@ class RepositorioCampanhas:
         registros = self.mensagens(jogador_id, campanha_id, limite) or []
         return [{"role": r["papel"], "content": r["conteudo"]} for r in registros]
 
+    def obter_operacao(self, jogador_id: str, campanha_id: str, operacao_id: str,
+                       pergunta: str) -> dict[str, Any] | None:
+        with self.engine.connect() as conn:
+            if not self._da_campanha(conn, jogador_id, campanha_id):
+                raise ConflitoEstadoCampanha("Campanha indisponível")
+            linha = conn.execute(select(operacoes_mj).where(
+                operacoes_mj.c.campanha_id == campanha_id,
+                operacoes_mj.c.operacao_id == operacao_id,
+            )).first()
+        if linha is None:
+            return None
+        if linha.pergunta != pergunta:
+            raise OperacaoIncompativel("Identificador já utilizado por outra mensagem. Use um novo envio para outra ação.")
+        return {"resposta": linha.resposta, "rolagens": _rolagens_da_linha(linha.rolagens)}
+
     def registrar_troca(
         self,
         jogador_id: str,
@@ -273,22 +311,74 @@ class RepositorioCampanhas:
         pergunta: str,
         resposta: str,
         rolagens: list[dict[str, Any]] | None = None,
-    ) -> None:
+        *,
+        atualizacoes_ficha: dict[str, dict[str, Any]] | None = None,
+        fichas_esperadas: dict[str, dict[str, Any]] | None = None,
+        operacao_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Confirma fichas e mensagens juntas, sem transação durante a chamada da IA.
+
+        O snapshot/compare-and-swap impede uma resposta atrasada de sobrescrever
+        recursos alterados por outro pedido. Qualquer falha desfaz todo o lote.
+        """
+        if operacao_id:
+            anterior = self.obter_operacao(jogador_id, campanha_id, operacao_id, pergunta)
+            if anterior is not None:
+                return anterior
         agora = _agora()
         rolagens_json = json.dumps(rolagens, ensure_ascii=False) if rolagens else None
-        with self.engine.begin() as conn:
-            conn.execute(
-                insert(mensagens),
-                [
-                    {"campanha_id": campanha_id, "papel": "user", "conteudo": pergunta, "rolagens": None, "criada_em": agora},
-                    {"campanha_id": campanha_id, "papel": "assistant", "conteudo": resposta, "rolagens": rolagens_json, "criada_em": agora},
-                ],
-            )
-            conn.execute(
-                update(campanhas)
-                .where(campanhas.c.id == campanha_id, campanhas.c.jogador_id == jogador_id)
-                .values(atualizada_em=agora)
-            )
+        try:
+            with self.engine.begin() as conn:
+                if not self._da_campanha(conn, jogador_id, campanha_id):
+                    raise ConflitoEstadoCampanha("Campanha indisponível")
+                if operacao_id:
+                    # Inserir antes das fichas: disputas pela mesma chave são decididas
+                    # pela restrição única, antes de qualquer segundo gasto.
+                    conn.execute(insert(operacoes_mj).values(
+                        campanha_id=campanha_id, operacao_id=operacao_id,
+                        pergunta=pergunta, resposta=resposta,
+                        rolagens=json.dumps(rolagens or [], ensure_ascii=False), criada_em=agora,
+                    ))
+                for personagem_id, ficha in sorted((atualizacoes_ficha or {}).items()):
+                    esperado = (fichas_esperadas or {}).get(personagem_id)
+                    linha = conn.execute(select(personagens).where(
+                        personagens.c.id == personagem_id,
+                        personagens.c.campanha_id == campanha_id,
+                    )).first()
+                    if (esperado is None or linha is None
+                            or _iso(linha.atualizado_em) != esperado["atualizado_em"]
+                            or linha.pv_atual != esperado["pv_atual"]):
+                        raise ConflitoEstadoCampanha("A ficha mudou durante a resposta")
+                    atualizado = conn.execute(update(personagens).where(
+                        personagens.c.id == personagem_id,
+                        personagens.c.campanha_id == campanha_id,
+                        personagens.c.atualizado_em == linha.atualizado_em,
+                        personagens.c.ficha == linha.ficha,
+                        personagens.c.pv_atual == linha.pv_atual,
+                    ).values(ficha=json.dumps(ficha, ensure_ascii=False), atualizado_em=agora))
+                    if atualizado.rowcount != 1:
+                        raise ConflitoEstadoCampanha("A ficha mudou durante a confirmação")
+                conn.execute(
+                    insert(mensagens),
+                    [
+                        {"campanha_id": campanha_id, "papel": "user", "conteudo": pergunta, "rolagens": None, "criada_em": agora},
+                        {"campanha_id": campanha_id, "papel": "assistant", "conteudo": resposta, "rolagens": rolagens_json, "criada_em": agora},
+                    ],
+                )
+                conn.execute(
+                    update(campanhas)
+                    .where(campanhas.c.id == campanha_id, campanhas.c.jogador_id == jogador_id)
+                    .values(atualizada_em=agora)
+                )
+
+        except IntegrityError:
+            # Em Postgres/SQLite a transação perdedora já foi revertida aqui.
+            if operacao_id:
+                anterior = self.obter_operacao(jogador_id, campanha_id, operacao_id, pergunta)
+                if anterior is not None:
+                    return anterior
+            raise
+        return {"resposta": resposta, "rolagens": rolagens or []}
 
     def _personagem(self, linha: Any) -> dict[str, Any]:
         ficha = json.loads(linha.ficha)
