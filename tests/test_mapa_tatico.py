@@ -543,6 +543,105 @@ class BackendMapaTaticoTests(unittest.TestCase):
         self.assertEqual(token["condition_durations"]["prone"], 1)
         self.assertIn("prone", token["conditions"])
 
+    def _registrar_truques_auditoria(self, *truques, nivel=1):
+        self._criar_artifice_com_magias()
+        ficha = self.repo.obter_personagem("jogador-mapa", self.cid, self.hero["id"])
+        ficha["conjuracao"]["truques"] = list(truques)
+        ficha["nivel"] = nivel
+        self.repo.atualizar_dados_ficha("jogador-mapa", self.cid, self.hero["id"], ficha)
+
+    def _conjurar_auditoria(self, magia, alvo="inimigo-bandido"):
+        return self.client.post(self.url + "/conjurar", headers=self.headers, json={
+            "atacante_id": "heroi-vex", "alvo_id": alvo, "magia": magia,
+        })
+
+    def test_catalogo_expoe_suporte_sem_apagar_escolhas(self):
+        dados = self.client.get('/v1/catalogo/magias?classe=artifice', headers=self.headers).json()
+        catalogo = {m['nome'].lower(): m for m in dados}
+        self.assertFalse(catalogo['luz']['suporte']['mecanica_estruturada'])
+        self.assertTrue(catalogo['rajada de veneno']['suporte']['mapa_tatico'])
+        self.assertTrue(catalogo['onda trovejante']['suporte']['parcial'])
+
+    def test_cura_aliado_a_zero_pv(self):
+        aliado = self.hero
+        self._criar_artifice_com_magias()
+        self.repo.ajustar_pv_personagem("jogador-mapa", self.cid, aliado['id'], -999)
+        self.client.put(self.url, headers=self.headers, json={'tokens': [
+            {'id': 'heroi-vex', 'kind': 'hero', 'character_id': self.hero['id'], 'x': 1, 'y': 1},
+            {'id': 'aliado', 'kind': 'hero', 'character_id': aliado['id'], 'x': 2, 'y': 1},
+        ]})
+        response = self._conjurar_auditoria('Curar Ferimentos', 'aliado')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertGreater(self.repo.obter_personagem('jogador-mapa', self.cid, aliado['id'])['pv_atual'], 0)
+        self.assertEqual(response.json()['espacos_restantes']['1'], 1)
+
+    def test_conjurador_zero_pv_nao_pode_curar_a_si_mesmo(self):
+        self._criar_artifice_com_magias()
+        self.save_encounter()
+        self.repo.ajustar_pv_personagem('jogador-mapa', self.cid, self.hero['id'], -999)
+        r = self._conjurar_auditoria('Curar Ferimentos', 'heroi-vex')
+        self.assertEqual(r.status_code, 422)
+        self.assertEqual(self.repo.obter_personagem('jogador-mapa', self.cid, self.hero['id'])['conjuracao']['espacos_restantes']['1'], 2)
+
+    def test_rajada_veneno_ataque_escala_e_respeita_alcance(self):
+        self._registrar_truques_auditoria('Rajada de Veneno', nivel=5)
+        self.save_encounter(enemy_x=7, enemy_y=1)
+        with patch.object(backend_app.secrets, 'randbelow', side_effect=lambda lados: 14 if lados == 20 else 2):
+            r = self._conjurar_auditoria('Rajada de Veneno')
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()['dano_expressao'], '2d12')
+        self.assertEqual(r.json()['dano'], 6)
+        self.assertIsNone(r.json()['espaco_usado'])
+        self.save_encounter(enemy_x=8, enemy_y=1)
+        r = self._conjurar_auditoria('Rajada de Veneno')
+        self.assertEqual(r.status_code, 422)
+        self.assertEqual(r.json()['detail']['motivo'], 'fora_de_alcance')
+
+    def test_trovao_atinge_vizinhos_exceto_conjurador_e_compartilha_dano(self):
+        self._registrar_truques_auditoria('Trovão', nivel=5)
+        self.client.put(self.url, headers=self.headers, json={'tokens': [
+            {'id': 'heroi-vex', 'kind': 'hero', 'character_id': self.hero['id'], 'x': 1, 'y': 1},
+            {'id': 'inimigo-bandido', 'kind': 'enemy', 'monster_name': 'Bandit', 'x': 2, 'y': 1},
+            {'id': 'vizinho', 'kind': 'enemy', 'monster_name': 'Bandit', 'x': 1, 'y': 2},
+            {'id': 'longe', 'kind': 'enemy', 'monster_name': 'Bandit', 'x': 3, 'y': 1},
+        ]})
+        with patch.object(backend_app.secrets, 'randbelow', side_effect=[2, 3, 0, 19]) as rolar:
+            r = self._conjurar_auditoria('Trovão', 'heroi-vex')
+        self.assertEqual(r.status_code, 200, r.text)
+        areas = r.json()['resultados_area']
+        self.assertEqual({a['alvo_id'] for a in areas}, {'inimigo-bandido', 'vizinho'})
+        self.assertEqual([a['dados_dano'] for a in areas], [[3, 4], [3, 4]])
+        self.assertEqual([a['dano'] for a in areas], [7, 0])
+        self.assertEqual(rolar.call_count, 4)
+        self.assertEqual(r.json()['espacos_restantes']['1'], 2)
+
+    def test_bolha_acida_area_e_alcance(self):
+        self._registrar_truques_auditoria('Bolha Ácida')
+        self.save_encounter(enemy_x=13, enemy_y=1)
+        with patch.object(backend_app.secrets, 'randbelow', return_value=0):
+            r = self._conjurar_auditoria('Bolha Ácida')
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()['resultados_area'][0]['salvaguarda']['atributo'], 'destreza')
+        self.assertEqual(r.json()['dano'], 1)
+        self.save_encounter(enemy_x=14, enemy_y=1)
+        self.assertEqual(self._conjurar_auditoria('Bolha Ácida').status_code, 422)
+
+    def test_dano_de_area_aplica_defesas_de_personagem(self):
+        aliado = self.hero
+        self._registrar_truques_auditoria('Trovão')
+        ficha = self.repo.obter_personagem('jogador-mapa', self.cid, aliado['id'])
+        self.repo.atualizar_dados_ficha('jogador-mapa', self.cid, aliado['id'], {**ficha, 'imunidades_dano': ['thunder']})
+        self.client.put(self.url, headers=self.headers, json={'tokens': [
+            {'id': 'heroi-vex', 'kind': 'hero', 'character_id': self.hero['id'], 'x': 1, 'y': 1},
+            {'id': 'aliado', 'kind': 'hero', 'character_id': aliado['id'], 'x': 2, 'y': 1},
+        ]})
+        with patch.object(backend_app.secrets, 'randbelow', side_effect=[5, 0]):
+            r = self._conjurar_auditoria('Trovão', 'heroi-vex')
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()['resultados_area'][0]['defesas_dano']['aplicacao'], 'imunidade')
+        self.assertEqual(r.json()['dano'], 0)
+        self.assertEqual(self.repo.obter_personagem('jogador-mapa', self.cid, aliado['id'])['pv_atual'], aliado['pv_atual'])
+
 
 if __name__ == "__main__":
     unittest.main()

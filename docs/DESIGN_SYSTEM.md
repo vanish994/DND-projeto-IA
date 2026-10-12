@@ -106,3 +106,19 @@ Nenhum valor de regra é calculado no navegador: CA, bônus de ataque, dano, sal
 - AI Dungeon: https://aidungeon.com/ — aventura textual aberta dirigida pelo jogador.
 - Roll20: https://roll20.net/ — organização de campanha e automação integrada.
 - Foundry VTT: https://foundryvtt.com/ — plataforma moderna e self-hosted de RPG.
+
+## Tela do Mestre — livro de aventura
+
+Cabeçalho “O Mestre”, subtítulo e nome da campanha preservado como contexto. A conversa usa molduras finas em âmbar, narrativa serifada e cartões de escolha. A ilustração local `assets/mestre-castelo.jpg` é ambientação fixa gerada por IA, inspirada na referência visual fornecida, e não representa dinamicamente a cena. Ela rola com o histórico; cabeçalho e compositor continuam fixos.
+
+Listas de 2 a 6 itens após um convite explícito (“Escolha o que fazer”, “O que você faz”, “Suas opções”, “Você pode escolher”) ganham botões. O texto original é preservado. Apenas a última mensagem pode oferecer escolhas ativas, bloqueadas durante envio. Selecionar preenche o rascunho para edição e confirmação; nunca envia automaticamente. A ação livre continua disponível. Sem lista explícita, não são inventadas opções.
+
+
+### Disponibilidade de magias
+
+Os cartões de escolha exibem o rótulo `suporte.rotulo` da API, diferenciando ausência de mecânica, regra estruturada e execução no mapa do Artífice. Não excluir escolhas já registradas. O seletor de conjuração do mapa é carregado da ficha atual; opções sem resolução ficam desabilitadas e efeitos parciais recebem aviso textual. Círculo desconhecido (`null`) não deve ser convertido em truque.
+
+
+### Repetição de mensagens
+
+O compositor guarda texto e identificador da operação antes de enviar. Uma falha de conexão não permite afirmar que a mensagem não foi salva: o aviso deve orientar a repetir o texto sem edição para recuperar a mesma operação. Edição é um novo envio. Replays recarregam o histórico canônico para evitar duplicação de bolhas, mantendo o botão de envio bloqueado até concluir o fluxo.

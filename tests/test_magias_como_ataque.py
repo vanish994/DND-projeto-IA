@@ -156,7 +156,7 @@ class MotorDeMagiaTests(unittest.TestCase):
     def test_dano_de_magia_respeita_espaco_maior(self):
         resultado, _ = self.resolver(
             {"type": "damage", "character_id": "p1", "magia": "Bola de Fogo", "espaco": 5, "seed": "11"},
-            [feiticeiro(nivel=5)],
+            [feiticeiro(nivel=9, conjuracao={"magias_preparadas": ["Bola de Fogo"], "espacos_totais": {"5": 1}})],
         )
         self.assertEqual(resultado["dano_expressao"], "10d6")
         self.assertEqual(resultado["aumento"], 2)
@@ -389,7 +389,9 @@ class ConjurarNoMapaTaticoTests(unittest.TestCase):
         body = self._conjurar([9, 9, 4])  # d20 = 10 em cada dado de desvantagem; dano 5
         self.assertEqual(body["dano_expressao"], "1d10")
         self.assertEqual(len(body["dados_dano"]), 1)
-        self.assertEqual(body["dano"], sum(body["dados_dano"]))
+        # Awakened Shrub é vulnerável a fogo; o total aplicado é dobrado.
+        self.assertEqual(body["defesas_dano"]["aplicacao"], "vulnerabilidade")
+        self.assertEqual(body["dano"], 2 * sum(body["dados_dano"]))
         self.assertEqual(body["ca_alvo"], 9)
         self.assertEqual(body["tipo_dano"], "igneo")
         self.assertIsNone(body["espaco_usado"], "truque não gasta espaço")
@@ -399,13 +401,17 @@ class ConjurarNoMapaTaticoTests(unittest.TestCase):
         body = self._conjurar([9, 9, 4, 4, 4])
         self.assertEqual(body["dano_expressao"], "3d10")
         self.assertEqual(len(body["dados_dano"]), 3)
-        self.assertEqual(body["dano"], sum(body["dados_dano"]))
+        # Awakened Shrub é vulnerável a fogo; o total aplicado é dobrado.
+        self.assertEqual(body["defesas_dano"]["aplicacao"], "vulnerabilidade")
+        self.assertEqual(body["dano"], 2 * sum(body["dados_dano"]))
 
     def test_critico_dobra_os_dados_do_truque(self):
         body = self._conjurar([19, 19, 4, 4])  # 20 natural nas duas rolagens
         self.assertTrue(body["ataque"]["critical"])
         self.assertEqual(len(body["dados_dano"]), 2)
-        self.assertEqual(body["dano"], sum(body["dados_dano"]))
+        # Awakened Shrub é vulnerável a fogo; o total aplicado é dobrado.
+        self.assertEqual(body["defesas_dano"]["aplicacao"], "vulnerabilidade")
+        self.assertEqual(body["dano"], 2 * sum(body["dados_dano"]))
 
 
 class _Ferramenta:
@@ -485,7 +491,8 @@ class LacoDoMJTests(unittest.TestCase):
         # Acerto rola o dano da magia; erro não rola nada além do d20.
         if chamada_ferramenta["result"] == "hit":
             self.assertEqual([r["tipo"] for r in rolagens], ["ataque", "dano"])
-            self.assertEqual(chamada_ferramenta["dano"], sum(chamada_ferramenta["dados_dano"]))
+            self.assertEqual(chamada_ferramenta["defesas_dano"]["aplicacao"], "vulnerabilidade")
+            self.assertEqual(chamada_ferramenta["dano"], 2 * sum(chamada_ferramenta["dados_dano"]))
             self.assertEqual(rolagens[1]["rotulo"], "Dano de Raio De Fogo")
         else:
             self.assertEqual([r["tipo"] for r in rolagens], ["ataque"])

@@ -73,7 +73,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <section class="bancada" aria-labelledby="banca-magia">
     <h2 id="banca-magia">Magia</h2>
     <div class="linha">
-      <select id="spell-choice" aria-label="Magia tática"><option value="">Magia disponível…</option><option value="Raio de Fogo">Raio de Fogo (truque)</option><option value="Curar Ferimentos">Curar Ferimentos (1º círculo)</option><option value="Onda Trovejante">Onda Trovejante (área/salvaguarda)</option></select>
+      <select id="spell-choice" aria-label="Magia tática"><option value="">Selecione um conjurador…</option></select>
       <button id="cast-spell">Conjurar</button>
     </div>
   </section>
@@ -118,6 +118,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     }catch(erro){console.warn('Animação do dado indisponível:', erro)}
   }
   let rosterCharacters = [], rosterMonsters = [];
+  let spellRequest = 0;
   const playerId = localStorage.getItem('dnd-mj-jogador') || 'anonimo';
   async function api(path, options={}) { const response=await fetch(path,{...options,headers:{'Content-Type':'application/json','X-Jogador-Id':playerId,...(options.headers||{})}}); let data={}; try{data=await response.json()}catch(_){} if(!response.ok){const detail=data.detail;throw new Error(typeof detail==='string'?detail:(detail?.motivo||JSON.stringify(detail)||('HTTP '+response.status)))}return data }
   function gridCoord(pixel){return Math.max(0,Math.min(19,Math.round((pixel-CELL/2)/CELL)))}
@@ -131,7 +132,47 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     const info=document.querySelector('#turn-info');
     if(scene.combate_ativo){const atual=scene.iniciativa.find(i=>i.token_id===scene.token_ativo);info.textContent='Rodada '+scene.rodada+' · Turno: '+(atual?.nome||scene.token_ativo||'—');}
     else info.textContent='Combate não iniciado';
+    refreshSpellChoices();
   }
+  async function refreshSpellChoices() {
+    const request = ++spellRequest;
+    const select = document.querySelector('#spell-choice');
+    const cast = document.querySelector('#cast-spell');
+    const previous = select.value;
+    cast.disabled = true;
+    select.replaceChildren(new Option('Selecione um conjurador…', ''));
+    const token = scene.tokens.find(t => t.id === document.querySelector('#attack-source').value);
+    if (!token?.character_id) return;
+    select.replaceChildren(new Option('Carregando magias da ficha…', ''));
+    try {
+      const ficha = await api('/v1/campanhas/' + encodeURIComponent(campaignId) + '/personagens/' + encodeURIComponent(token.character_id));
+      if (request !== spellRequest) return;
+      if (ficha.classe !== 'artifice') {
+        select.replaceChildren(new Option('Mapa: classe ainda não suportada', ''));
+        return;
+      }
+      const catalogo = await api('/v1/catalogo/magias?classe=artifice&nivel=' + encodeURIComponent(ficha.nivel));
+      if (request !== spellRequest) return;
+      const normalize = text => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const registradas = new Set([...(ficha.conjuracao?.truques || []), ...(ficha.conjuracao?.magias_preparadas || [])].map(normalize));
+      select.replaceChildren(new Option('Magias registradas na ficha…', ''));
+      for (const magia of catalogo.filter(m => registradas.has(normalize(m.nome)))) {
+        const option = new Option(magia.nome + (magia.suporte?.mapa_tatico ? (magia.suporte.parcial ? ' — efeito parcial' : '') : ' — indisponível no mapa'), magia.nome);
+        option.disabled = !magia.suporte?.mapa_tatico;
+        option.title = magia.suporte?.rotulo || 'Sem resolução';
+        select.add(option);
+      }
+      if ([...select.options].some(o => o.value === previous && !o.disabled)) select.value = previous;
+      cast.disabled = !select.value;
+    } catch (error) {
+      if (request !== spellRequest) return;
+      select.replaceChildren(new Option('Falha ao carregar magias; selecione novamente', ''));
+    }
+  }
+  document.querySelector('#attack-source').addEventListener('change', refreshSpellChoices);
+  document.querySelector('#spell-choice').addEventListener('change', () => {
+    document.querySelector('#cast-spell').disabled = !document.querySelector('#spell-choice').value;
+  });
   async function syncMapToServer(){const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico',{method:'PUT',body:JSON.stringify(payload())});applyServerMap(data.mapa);status.textContent='Mapa e posições salvos no servidor. PV dos personagens vêm da ficha.';}
   async function loadEncounter(){try{const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico');rosterCharacters=data.personagens||[];rosterMonsters=data.monstros||[];const charSel=document.querySelector('#character-choice');charSel.replaceChildren(new Option('Personagens da campanha…',''));rosterCharacters.forEach(p=>charSel.add(new Option(p.nome+' · '+p.classe+' · '+p.pv_atual+'/'+p.pv_maximo+' PV',p.id)));const monsterSel=document.querySelector('#monster-choice');monsterSel.replaceChildren(new Option('Monstros do bestiário…',''));rosterMonsters.forEach(m=>monsterSel.add(new Option(m.nome+' · CA '+m.ca+' · '+m.pv+' PV · ND '+m.nd,m.nome)));applyServerMap(data.mapa);status.textContent=rosterCharacters.length?'Encontro sincronizado. Adicione personagens e monstros reais da campanha.':'Crie primeiro um personagem na campanha; depois ele aparecerá aqui para ser colocado no mapa.';}catch(e){status.textContent='Não foi possível sincronizar o encontro: '+e.message+'. O mapa local continua disponível.'}}
   try { const saved=JSON.parse(localStorage.getItem(KEY)||'null'); if(saved&&typeof saved==='object') scene={...scene,...saved,tokens:Array.isArray(saved.tokens)?saved.tokens:[]}; } catch(_){}
@@ -203,6 +244,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     const alvo_id=document.querySelector('#attack-target').value;
     const magia=document.querySelector('#spell-choice').value;
     if(!atacante_id||!alvo_id||!magia){status.textContent='Escolha conjurador, alvo e magia.';return}
+    document.querySelector('#cast-spell').disabled=true;
     try{
       const data=await api('/v1/campanhas/'+encodeURIComponent(campaignId)+'/mapa-tatico/conjurar',{method:'POST',body:JSON.stringify({atacante_id,alvo_id,magia})});
       applyServerMap(data.mapa);
@@ -210,7 +252,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       if(data.ataque){const a=data.ataque;status.textContent=data.magia+': '+(a.result==='hit'?'acertou':'errou')+' · d20 '+data.rolagem+' + '+data.bonus_ataque+' · dano '+data.dano+' PV.'}
       else if(data.resultados_area&&data.resultados_area.length){status.textContent=data.magia+': '+data.resultados_area.map(x=>x.nome+' '+(x.salvaguarda.sucesso?'passou na salvaguarda':'falhou na salvaguarda')+', dano '+x.dano).join('; ')+'. Total '+data.dano+' PV.'}
       else status.textContent=data.magia+': cura de '+data.cura+' PV. '+(data.espacos_restantes?('Espaços restantes: '+JSON.stringify(data.espacos_restantes)): 'Truque, sem gasto de espaço.');
-    }catch(e){status.textContent='Conjuração rejeitada pelo motor: '+e.message}
+          if(data.suporte?.parcial) status.textContent+=' Efeito parcial: empurrão ainda não aplicado.';
+    }catch(e){status.textContent='Conjuração rejeitada pelo motor: '+e.message;refreshSpellChoices()}
   });
 
   document.querySelector('#measure').addEventListener('click',()=>{measureMode=!measureMode;measureStart=null;document.querySelector('#measure').classList.toggle('primary',measureMode);status.textContent=measureMode?'Toque em dois pontos do mapa para medir.':'Medição desativada.'});

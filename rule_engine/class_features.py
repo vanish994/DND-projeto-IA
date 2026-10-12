@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import unicodedata
 
+from .class_progression import FEATURES_BY_CLASS
+
 
 def _normalizar(valor: object) -> str:
     texto = unicodedata.normalize("NFKD", str(valor).strip().lower())
@@ -21,13 +23,35 @@ def _mod(valor: int) -> int:
 def resolver_caracteristica(f: dict) -> dict:
     classe = _normalizar(f.get("classe", f.get("class", "")))
     recurso = _normalizar(f.get("recurso", f.get("feature", "")))
-    nivel = int(f.get("nivel", f.get("level", 1)))
+    try:
+        nivel = int(f.get("nivel", f.get("level", 1)))
+    except (TypeError, ValueError):
+        return {"resultado": "bloqueado", "motivo": "nivel_invalido"}
     if not classe:
         return {"resultado": "bloqueado", "motivo": "classe_ausente"}
     if not 1 <= nivel <= 20:
         return {"resultado": "bloqueado", "motivo": "nivel_invalido"}
     if not recurso:
         return {"resultado": "requer_caracteristica", "classe": classe, "nivel": nivel}
+
+    if classe not in FEATURES_BY_CLASS:
+        return {"resultado": "bloqueado", "motivo": "classe_desconhecida", "classe": classe}
+    aliases = {
+        "asi": "aumento_de_atributo_ou_talento",
+        "aumento_de_atributo": "aumento_de_atributo_ou_talento",
+        "tinkers_magic": "magia_de_artifice",
+        "replicate_magic_item": "replicar_item_magico",
+        "flash_of_genius": "lampejo_de_genio",
+        "spell_storing_item": "item_armazenador_de_magia",
+        "advanced_artifice": "artifice_avancado",
+        "soul_of_artifice": "alma_do_artifice",
+    }
+    chave = aliases.get(recurso, recurso)
+    marcos = [n for n, nomes in FEATURES_BY_CLASS[classe].items()
+              if chave in {_normalizar(nome) for nome in nomes}]
+    if marcos and nivel < min(marcos):
+        return {"resultado": "bloqueado", "motivo": "nivel_insuficiente",
+                "classe": classe, "caracteristica": chave, "nivel_minimo": min(marcos)}
 
     if recurso in {"asi", "aumento_de_atributo", "aumento_de_atributo_ou_talento"}:
         atributo = f.get("atributo")

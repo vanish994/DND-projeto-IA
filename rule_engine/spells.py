@@ -24,6 +24,10 @@ for bruto, meta in CATALOGO_MAGIAS.items():
 
 # Entradas de referência com círculo, componentes e efeitos precisos do PHB 2024.
 _DETALHADAS = {
+    # PHB 2024, pp. 249, 324 e 340 (PDF local: páginas 255, 330 e 346).
+    "bolha ácida": (0, "evocação", "V, S", False, "Esfera de raio 1,5 m a até 18 m; Destreza evita 1d6 ácido", {"dano": "escala nos níveis 5, 11 e 17"}),
+    "rajada de veneno": (0, "necromancia", "V, S", False, "Ataque mágico à distância; 1d12 dano venenoso; alcance 9 m", {"dano": "escala nos níveis 5, 11 e 17"}),
+    "trovão": (0, "evocação", "S", False, "Emanação de 1,5 m; Constituição evita 1d6 trovejante; som audível a 30 m", {"dano": "escala nos níveis 5, 11 e 17"}),
     "armadura de agathys": (1, "abjuração", "V, S, M (um caco de vidro azul)", False, "5 PV temporários; 5 dano gélido ao atacante", {"pv_temporarios": "+5 por círculo", "dano_retorno": "+5 por círculo"}),
     "mísseis mágicos": (1, "evocação", "V, S", False, "3 dardos de 1d4+1 dano energético", {"dardos": "+1 por círculo"}),
     "raio de fogo": (0, "evocação", "V, S", False, "Ataque mágico à distância; 1d10 dano ígneo; alcance 36 m", {"dano": "escala nos níveis 5, 11 e 17"}),
@@ -74,6 +78,22 @@ for _nome_artifice, _circulo_artifice in ARTIFICER_SPELL_LEVELS.items():
 # Fórmulas são devolvidas como dados; o motor de combate continua responsável
 # por rolagens, salvaguardas, aplicação de dano e atualização de estado.
 MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
+    "bolha ácida": {
+        "tipo": "dano_em_area", "dados_dano_base": "1d6", "tipo_dano": "acido",
+        "salvaguarda": "destreza", "sucesso_metade": False, "acao": "acao",
+        "alcance_m": 18, "alcance_pes": 60,
+        "area": {"forma": "esfera", "raio_m": 1.5}, "escala_niveis": [5, 11, 17],
+    },
+    "rajada de veneno": {
+        "tipo": "ataque_magico", "dados_dano_base": "1d12", "tipo_dano": "venenoso",
+        "alcance_m": 9, "alcance_pes": 30, "escala_niveis": [5, 11, 17], "acao": "acao",
+    },
+    "trovão": {
+        "tipo": "dano_em_area", "dados_dano_base": "1d6", "tipo_dano": "trovejante",
+        "salvaguarda": "constituicao", "sucesso_metade": False, "acao": "acao",
+        "area": {"forma": "emanacao", "raio_m": 1.5, "origem": "conjurador", "exclui_conjurador": True},
+        "som_audivel_m": 30, "escala_niveis": [5, 11, 17],
+    },
     "raio de fogo": {
         "tipo": "ataque_magico", "dados_dano_base": "1d10", "tipo_dano": "igneo",
         "alcance_m": 36, "escala_niveis": [5, 11, 17],
@@ -312,7 +332,7 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
         "componentes": sorted(requeridos), "concentracao": magia["concentracao"],
         "duracao": magia["duracao"], "encerra_concentracao": encerra,
     }
-    if "efeito" not in magia:
+    if "efeito" not in magia or _aplicar_escalonamento_mecanico(magia["nome"], magia, aumento) is None:
         # Metadados do catálogo não bastam para executar uma magia com fidelidade.
         # Não declarar a conjuração resolvida enquanto o efeito específico não existir.
         resultado.update({
@@ -327,3 +347,20 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
     if aumento and magia.get("upcasting"):
         resultado["escalonamento"] = magia["upcasting"]
     return resultado
+
+
+def suporte_magia(nome: str) -> dict[str, Any]:
+    """Capacidades reais, não uma promessa de aplicação de todo efeito catalogado."""
+    mecanica = mecanica_de_magia(nome)
+    chave = _normalizar_nome_magia(nome)
+    tatico = chave in {"raio de fogo", "rajada de veneno", "trovao", "bolha acida", "curar ferimentos", "onda trovejante"}
+    parcial = chave == "onda trovejante"  # Empurrão ainda não move os tokens.
+    if not mecanica:
+        rotulo = "Sem mecânica implementada"
+    elif tatico:
+        rotulo = "Mapa (Artífice): parcial, sem empurrão" if parcial else "Mapa (Artífice): resolução disponível"
+    else:
+        rotulo = "Regra estruturada; sem execução no mapa"
+    return {"mecanica_estruturada": mecanica is not None, "mapa_tatico": tatico,
+            "parcial": parcial, "rotulo": rotulo,
+            "restricao_mapa": "Apenas Artífice; exige registro na ficha"}

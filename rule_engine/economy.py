@@ -88,12 +88,15 @@ def resolver_sintonizacao(fatos: dict) -> dict[str, Any]:
     nome = fatos["item"].lower()
     if not item.get("sintonizacao"):
         return {"resultado": "nao_requerida", "item": item["nome"]}
+    if fatos.get("acao", "sintonizar") == "encerrar":
+        if nome not in {str(x).lower() for x in sintonizados}:
+            return {"resultado": "bloqueado", "motivo": "item_nao_sintonizado"}
+        return {"resultado": "encerrada", "item": item["nome"],
+                "sintonizados": [x for x in sintonizados if str(x).lower() != nome]}
     if nome in {str(x).lower() for x in sintonizados}:
         return {"resultado": "bloqueado", "motivo": "item_ja_sintonizado"}
     if len(sintonizados) >= 3:
         return {"resultado": "bloqueado", "motivo": "limite_de_tres_itens"}
-    if fatos.get("acao", "sintonizar") == "encerrar":
-        return {"resultado": "encerrada", "item": item["nome"]}
     sintonizados.append(nome)
     return {"resultado": "sintonizado", "item": item["nome"], "sintonizados": sintonizados, "limite": 3, "requer_descanso_curto": True}
 

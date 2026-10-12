@@ -79,3 +79,53 @@
   .messages > * { animation: none; }
   .messages { scroll-behavior: auto; }
 }
+
+/* Livro de aventura: ambientação fixa; não representa a cena atual. */
+.master-emblem {
+  display: grid; place-items: center; flex: none;
+  width: 52px; height: 58px; border: 1px solid var(--color-accent);
+  color: var(--color-accent-hover); font-size: 34px;
+  clip-path: polygon(50% 0, 100% 22%, 100% 78%, 50% 100%, 0 78%, 0 22%);
+  background: var(--color-surface-sunken);
+}
+.master-title { font: 400 clamp(24px, 3vw, 34px)/1.1 var(--font-display); }
+.master-tagline { color: var(--color-accent-hover); font: 16px/1.5 var(--font-display); }
+.chat-heading h2 { margin-top: 4px; color: var(--color-text-muted); font: 14px/1.4 var(--font-body); }
+.chat-header { border: 1px solid var(--color-line-strong); }
+.messages::before {
+  content: ''; display: block; flex: none;
+  width: 100%; max-width: 48rem; height: clamp(180px, 33vh, 340px);
+  margin: 0 auto var(--space-6);
+  background: linear-gradient(0deg, var(--color-bg), transparent 38%), url('/assets/mestre-castelo.jpg') center 48% / cover;
+  border-top: 1px solid var(--color-line-strong);
+}
+.message-mj:not(.typing) { display: block; }
+.message-mj:not(.typing) > .avatar { display: none; }
+.message-mj:not(.typing) .bubble {
+  position: relative; width: 100%; border: 1px solid var(--color-line-strong);
+  border-radius: 2px; padding: clamp(20px, 4vw, 36px);
+  background: linear-gradient(135deg, var(--color-surface), var(--color-surface-sunken));
+  outline: 1px solid var(--color-line-strong); outline-offset: -6px;
+}
+.message-mj:not(.typing) .bubble-text { font: 400 clamp(18px, 2vw, 22px)/1.7 var(--font-display); }
+.narrative-choices { white-space: normal; margin-top: var(--space-6); border-top: 1px solid var(--color-line-strong); padding-top: var(--space-4); }
+.narrative-choices h3 { color: var(--color-accent-hover); font: 400 22px/1.4 var(--font-display); margin: 0 0 var(--space-4); }
+.narrative-choice {
+  display: grid; grid-template-columns: 32px 1fr 16px; align-items: center; gap: var(--space-3);
+  width: 100%; min-height: 72px; margin-top: var(--space-3); padding: var(--space-4);
+  border: 1px solid var(--color-accent); border-radius: 2px;
+  background: var(--color-surface-raised); color: var(--color-text);
+  text-align: left; font: 18px/1.5 var(--font-display);
+}
+.choice-number, .narrative-choice > :last-child { color: var(--color-accent-hover); }
+.narrative-choice:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); }
+.narrative-choice:disabled { opacity: .55; cursor: default; }
+.choice-hint { color: var(--color-text-muted); font: 14px/1.5 var(--font-body); margin-top: var(--space-3); }
+@media (max-width: 599px) {
+  .chat-header { flex-wrap: wrap; gap: var(--space-2); }
+  .master-emblem { width: 40px; height: 48px; font-size: 28px; }
+  .chat-actions { width: 100%; justify-content: flex-end; }
+  .master-tagline { font-size: 14px; }
+  .messages { padding: var(--space-3); }
+  .narrative-choice { padding: var(--space-3); font-size: 17px; grid-template-columns: 24px 1fr 12px; }
+}
