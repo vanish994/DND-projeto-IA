@@ -218,7 +218,10 @@ class DeepSeekMJ:
                         "besta de mão", "besta pesada", "arco curto",
                     }
                     nome_normalizado = nome_canonico.casefold()
-                    arma_proficiente = ("simples" in prof_classe and nome_normalizado in simples)
+                    # Druida usa a lista específica do Livro do Jogador, não toda a categoria simples.
+                    arma_proficiente = (
+                        "simples" in prof_classe and classe != "druida" and nome_normalizado in simples
+                    )
                     arma_proficiente = arma_proficiente or ("marciais" in prof_classe and nome_canonico not in {
                         next((k for k in CATALOGO_ARMAS if k.casefold() == x), x) for x in simples
                     })
