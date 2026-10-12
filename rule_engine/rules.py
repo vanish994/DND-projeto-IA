@@ -46,7 +46,7 @@ from .economy import comprar_item, consultar_item, resolver_inventario, resolver
 from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
 from .class_features import resolver_caracteristica
 from .bestiary import resolver_bestiario
-from .dice import rolar_d20_auditavel
+from .dice import rolar_d20_auditavel, rolar_ataque_auditavel, rolar_iniciativa_auditavel
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -117,6 +117,22 @@ def build_default_engine() -> RuleEngine:
             "total": _check_total(f), "dc": int(f["dc"]),
         },
         source="D&D 2024 — testes de d20",
+    ))
+    engine.register(Rule(
+        rule_id="attack.engine-roll",
+        description="O motor gera um d20 auditável e resolve acerto, erro e crítico.",
+        priority=110,
+        when=lambda f: f["type"] == "attack" and "roll" not in f,
+        resolve=rolar_ataque_auditavel,
+        source="D&D 2024 — jogadas de ataque",
+    ))
+    engine.register(Rule(
+        rule_id="initiative.engine-roll",
+        description="O motor gera iniciativa; surpresa impõe desvantagem, sem teste separado.",
+        priority=110,
+        when=lambda f: f["type"] == "initiative" and "roll" not in f,
+        resolve=rolar_iniciativa_auditavel,
+        source="D&D 2024 — iniciativa e surpresa",
     ))
     engine.register(Rule(
         rule_id="attack.natural-20",
