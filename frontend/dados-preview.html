@@ -36,6 +36,7 @@
         <button class="primary-button" type="button" data-exemplo="falha">Salvaguarda falha</button>
         <button class="primary-button" type="button" data-exemplo="area">Magia em área</button>
         <button class="primary-button" type="button" data-exemplo="sequencia">Rodada completa</button>
+        <button class="primary-button" type="button" data-exemplo="resistencia">Dano com resistência</button>
       </div>
     </section>
 
@@ -70,6 +71,10 @@
           resultado: 'dano', rotulo: 'Dano de Bola de Fogo', alvo: 'Goblin'},
           {tipo: 'salvaguarda', dado: 'd20', lados: 20, valor: 19, rolagens: [19], modificador: 3, total: 22,
           dificuldade: 15, dificuldade_tipo: 'cd', resultado: 'sucesso', sucesso: true, rotulo: 'Salvaguarda de Destreza', alvo: 'Nyx'}],
+        resistencia: [{tipo: 'ataque', dado: 'd20', lados: 20, valor: 16, rolagens: [16], modificador: 5, total: 21,
+          dificuldade: 16, dificuldade_tipo: 'ca', resultado: 'acerto', sucesso: true, rotulo: 'Ataque com Espada Longa contra Esqueleto', personagem: 'Vex', alvo: 'Esqueleto'},
+          {tipo: 'dano', dado: 'd8', lados: 8, rolagens: [6], modificador: 4, total: 5, expressao: '1d8 + 4',
+          resultado: 'dano', rotulo: 'Dano cortante', personagem: 'Vex', alvo: 'Esqueleto', motivo: 'resistência: metade'}],
         sequencia: [{tipo: 'iniciativa', dado: 'd20', lados: 20, valor: 17, rolagens: [17], modificador: 3, total: 20,
           resultado: 'rolado', rotulo: 'Iniciativa de Vex', personagem: 'Vex'},
           {tipo: 'ataque', dado: 'd20', lados: 20, valor: 12, rolagens: [12], modificador: 6, total: 18,
@@ -86,6 +91,7 @@
         falha: 'O veneno sobe pelo braço antes que Bram consiga se soltar.',
         area: 'A explosão consome a linha de frente; apenas Nyx escapa do pior.',
         sequencia: 'Vex age primeiro e a rapieira acerta antes que o goblin erga o escudo.',
+        resistencia: 'A lâmina atravessa as costelas expostas, mas o osso resiste ao corte.',
       };
 
       for (const [chave, rolagens] of Object.entries(exemplos)) {

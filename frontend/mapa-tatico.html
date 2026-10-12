@@ -71,7 +71,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     try{
       const rolagens = Array.isArray(data && data.iniciativa)
         ? Dado.normalizarIniciativa(data.iniciativa)
-        : Dado.normalizarMapa(data, {personagem:nomeToken(atacanteId), alvo:nomeToken(alvoId)});
+        : Dado.normalizarMapa(data, {personagem:nomeToken(atacanteId), alvo:nomeToken(alvoId), nomePorId:nomeToken});
       if(rolagens.length) Dado.animar(rolagens);
     }catch(erro){console.warn('Animação do dado indisponível:', erro)}
   }

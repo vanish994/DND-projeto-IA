@@ -37,6 +37,13 @@
     salvaguarda: 'Salvaguarda', dano: 'Dano', rolagem: 'Rolagem',
   };
 
+  // Como o motor aplicou as defesas de dano do alvo (campo defesas_dano.aplicacao).
+  const APLICACAO_DANO = {
+    imunidade: 'imune ao tipo',
+    resistencia: 'resistência: metade',
+    vulnerabilidade: 'vulnerabilidade: dobro',
+  };
+
   const ROTULOS_ATRIBUTO = {
     forca: 'Força', destreza: 'Destreza', constituicao: 'Constituição',
     inteligencia: 'Inteligência', sabedoria: 'Sabedoria', carisma: 'Carisma',
@@ -141,7 +148,7 @@
   }
 
   function roladorDeSalvaguarda(salvaguarda, extras = {}) {
-    const valor = paraInteiro(salvaguarda.dado ?? salvaguarda.rolagem);
+    const valor = paraInteiro(salvaguarda.dado ?? salvaguarda.rolagem ?? salvaguarda.valor);
     if (valor === null) return null;
     const total = paraInteiro(salvaguarda.total);
     const cd = paraInteiro(salvaguarda.cd ?? salvaguarda.dc);
@@ -157,12 +164,29 @@
       total,
       dificuldade: cd,
       dificuldade_tipo: 'cd',
-      resultado: sucesso === true ? 'sucesso' : sucesso === false ? 'falha' : 'rolado',
+      resultado: extras.resultado || (sucesso === true ? 'sucesso' : sucesso === false ? 'falha' : 'rolado'),
       sucesso,
-      rotulo: `Salvaguarda de ${nomeAtributo(extras.atributo || salvaguarda.atributo)}`,
+      rotulo: extras.rotulo || `Salvaguarda de ${nomeAtributo(extras.atributo || salvaguarda.atributo)}`,
       personagem: extras.personagem || null,
       alvo: extras.alvo || null,
     }, {origem: 'rule_engine'});
+  }
+
+  /** Rótulo legível para ataques de arma, de monstro e de magia do mapa tático. */
+  function rotuloDoAtaque(resposta, alvo) {
+    const arma = String(resposta.arma || '').trim();
+    const magia = String(resposta.magia || '').trim();
+    const monstro = String(resposta.monstro || '').trim();
+    const acao = String(resposta.acao || '').trim();
+    let base;
+    if (magia) base = arma && arma !== magia ? `${magia} (${arma})` : magia;
+    else if (monstro && acao) base = `${acao} de ${monstro}`;
+    else if (monstro) base = `Ataque de ${monstro}`;
+    else if (/^ataque/i.test(arma)) base = arma;
+    else if (arma) base = `Ataque com ${arma}`;
+    else base = 'Jogada de ataque';
+    if (alvo && !/\bcontra\b/i.test(base)) base += ` contra ${alvo}`;
+    return base;
   }
 
   /** Converte a resposta de /mapa-tatico/atacar, /ataque-monstro e /conjurar. */
@@ -177,6 +201,8 @@
     const rolagens = listaDeInteiros(resposta.rolagens || ataque.rolls);
     const valor = paraInteiro(resposta.rolagem ?? ataque.roll) ?? (rolagens.length ? rolagens[0] : null);
     const armas = Array.isArray(ataque.damage_dice) ? ataque.damage_dice : [];
+    const nomePorId = typeof extras.nomePorId === 'function' ? extras.nomePorId : () => null;
+    const quem = (indicador) => (indicador ? nomePorId(indicador) || String(indicador) : null);
 
     if (valor !== null) {
       registros.push(normalizar({
@@ -186,8 +212,8 @@
         valor,
         rolagens: rolagens.length ? rolagens : [valor],
         modificador: paraInteiro(resposta.bonus_ataque) || 0,
-        total: paraInteiro(ataque.total),
-        dificuldade: paraInteiro(resposta.ca_alvo),
+        total: paraInteiro(ataque.total) ?? (valor !== null ? valor + (paraInteiro(resposta.bonus_ataque) || 0) : null),
+        dificuldade: paraInteiro(resposta.ca_alvo ?? ataque.target_ac),
         dificuldade_tipo: 'ca',
         resultado: ataque.result === 'hit' ? 'acerto' : ataque.result === 'miss' ? 'erro' : 'rolado',
         sucesso: ataque.result === 'hit',
@@ -195,10 +221,9 @@
         natural_1: ataque.reason === 'natural_1',
         vantagem: Boolean(ataque.advantage),
         desvantagem: Boolean(ataque.disadvantage),
-        rotulo: resposta.magia ? `${resposta.magia}${resposta.arma ? ` (${resposta.arma})` : ''}`
-          : resposta.arma ? `Ataque com ${resposta.arma}` : 'Jogada de ataque',
+        rotulo: rotuloDoAtaque(resposta, extras.alvo),
         personagem: extras.personagem || resposta.monstro || null,
-        alvo: extras.alvo || null,
+        alvo: extras.alvo || quem(resposta.alvo_id) || null,
         motivo: ataque.reason || null,
         seed: ataque.seed || null,
       }, {origem: 'rule_engine'}));
@@ -206,6 +231,7 @@
 
     const dadosDano = listaDeInteiros(resposta.dados_dano).length ? listaDeInteiros(resposta.dados_dano) : listaDeInteiros(armas);
     const dano = paraInteiro(resposta.dano);
+    const aplicacao = resposta.defesas_dano && resposta.defesas_dano.aplicacao;
     if (dano !== null && dano > 0) {
       const expressao = resposta.dano_expressao || null;
       registros.push(normalizar({
@@ -222,6 +248,7 @@
         rotulo: resposta.tipo_dano ? `Dano ${resposta.tipo_dano}` : 'Dano',
         personagem: extras.personagem || resposta.monstro || null,
         alvo: extras.alvo || null,
+        motivo: APLICACAO_DANO[aplicacao] || null,
       }, {origem: 'rule_engine'}));
     }
 
@@ -231,10 +258,24 @@
       if (registro) registros.push(registro);
     }
 
+    for (const linha of resposta.salvaguardas_resolvidas || []) {
+      const registro = roladorDeSalvaguarda(linha, {
+        personagem: quem(linha.token_id),
+        rotulo: `Salvaguarda contra ${linha.condicao || 'o efeito'}`,
+        resultado: linha.encerrada === true ? 'sucesso' : linha.encerrada === false ? 'falha' : null,
+      });
+      if (registro) registros.push(registro);
+    }
+
     for (const area of resposta.resultados_area || []) {
       const extraAlvo = {personagem: area.nome || null, alvo: area.nome || null};
       if (area.salvaguarda) {
-        const registro = roladorDeSalvaguarda(area.salvaguarda, {...extraAlvo, atributo: area.salvaguarda.atributo});
+        const atributo = area.salvaguarda.atributo;
+        const registro = roladorDeSalvaguarda(area.salvaguarda, {
+          ...extraAlvo,
+          atributo,
+          rotulo: atributo ? null : `Salvaguarda de ${area.nome || 'criatura'}${resposta.magia ? ` contra ${resposta.magia}` : ''}`,
+        });
         if (registro) registros.push(registro);
       }
       const dadosArea = listaDeInteiros(area.dados_dano);
@@ -300,6 +341,21 @@
     for (const parte of partes.slice(1)) conta += ` + ${parte}`;
     if (rolagem.modificador > 0) conta += ` + ${rolagem.modificador}`;
     else if (rolagem.modificador < 0) conta += ` − ${Math.abs(rolagem.modificador)}`;
+
+    if (rolagem.tipo === 'dano') {
+      const total = rolagem.total;
+      // Dano sem dados (ataque desarmado, efeito fixo): só o valor aplicado.
+      if (!valores.length) return rolagem.motivo ? `${total ?? '—'} · ${rolagem.motivo}` : String(total ?? '—');
+      const soma = valores.reduce((acumulado, valor) => acumulado + valor, 0) + rolagem.modificador;
+      // Quando o motor ajusta o total (defesas, metade por salvaguarda), a seta
+      // mostra o valor aplicado sem fingir que a soma fecha.
+      const sinal = total === null || total === undefined ? '='
+        : valores.length && soma === total ? '=' : '→';
+      let texto = `${conta} ${sinal} ${total ?? '—'}`;
+      if (rolagem.motivo) texto += ` · ${rolagem.motivo}`;
+      return texto;
+    }
+
     let texto = `${conta} = ${rolagem.total ?? '—'}`;
     if (rolagem.dificuldade !== null && rolagem.dificuldade !== undefined) {
       texto += ` contra ${rolagem.dificuldadeTipo === 'ca' ? 'CA' : 'CD'} ${rolagem.dificuldade}`;
@@ -315,8 +371,11 @@
     const alvo = rolagem.alvo && !rotulo.toLowerCase().includes(String(rolagem.alvo).toLowerCase())
       ? ` em ${rolagem.alvo}` : '';
     const dono = rolagem.personagem && !rotulo.includes(rolagem.personagem) ? `${rolagem.personagem}: ` : '';
-    const dado = rolagem.tipo === 'dano' ? 'Dano' : rolagem.dado;
-    return `${dono}${rotulo}${alvo}. ${dado} ${formulaDa(rolagem)}. ${vereditoDa(rolagem).rotulo}`;
+    if (rolagem.tipo === 'dano') {
+      // "Dano de X. Dano 1 + 3 = 4. Dano" repetiria a palavra três vezes.
+      return `${dono}${rotulo}${alvo}. ${formulaDa(rolagem)} de dano.`;
+    }
+    return `${dono}${rotulo}${alvo}. ${rolagem.dado} ${formulaDa(rolagem)}. ${vereditoDa(rolagem).rotulo}`;
   }
 
   /* ------------------------------------------------------------------ *

@@ -91,6 +91,10 @@
   filter: blur(2px);
 }
 
+/* O wrapper existe só para dar ao SVG um tamanho definido: com 100% de
+   um contêiner automático o desenho poderia colapsar. */
+.dado-giro { width: 100%; height: 100%; display: grid; place-items: center; }
+
 .dado-forma { width: 100%; height: 100%; overflow: visible; }
 .dado-forma .dado-aresta {
   fill: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface-raised));

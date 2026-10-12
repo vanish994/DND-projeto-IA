@@ -1840,6 +1840,7 @@ def atacar_token_tatico(
     dano = 0
     dano_bruto = 0
     defesas_dano = None
+    modificador_dano = 0
     tipo_dano_ataque = str((CATALOGO_ARMAS.get(nome_arma or "") or {}).get("tipo", "contundente"))
     fortitude = None
     if ataque.get("result") == "hit":
@@ -1905,6 +1906,8 @@ def atacar_token_tatico(
         "dados_dano": dados_dano,
         "dano_expressao": f"{len(dados_dano)}d{str((CATALOGO_ARMAS.get(nome_arma or '') or {}).get('dano', '')).split('d')[-1]}" if dados_dano else None,
         "tipo_dano": tipo_dano_ataque,
+        # Modificador de dano realmente somado aos dados, para a interface exibir a conta.
+        "dano_modificador": int(modificador_dano),
         "fortitude": fortitude,
         "dano_bruto": dano_bruto if ataque.get("result") == "hit" else 0,
         "defesas_dano": defesas_dano,
@@ -2401,6 +2404,7 @@ def atacar_com_monstro_tatico(
         "bonus_ataque": selecionado["bonus_ataque"],
         "dados_dano": dados_dano if ataque.get("result") == "hit" else [],
         "dano": dano, "dano_bruto": dano_bruto,
+        "dano_modificador": int(modificador) if ataque.get("result") == "hit" else 0,
         "concentracao": concentracao if "concentracao" in locals() else None,
         "efeitos_condicao": efeitos_condicao_monstro,
         "defesas_dano": defesas_aplicadas,
