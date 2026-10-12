@@ -39,7 +39,6 @@ _DETALHADAS = {
     "armadura arcana": (1, "abjuração", "V, S, M (um pedaço de couro curtido)", False, "CA base 13 + modificador de Destreza por 8 horas; alvo voluntário sem armadura", {}),
     "benção": (1, "encantamento", "V, S, M (uma gota de água benta)", True, "até três criaturas adicionam 1d4", {"alvos": "+1 por círculo"}),
     "escudo da fé": (1, "abjuração", "V, S, M (um pergaminho com texto sagrado)", True, "+2 CA para uma criatura; duração de até 10 minutos; ação bônus", {}),
-    "raio místico": (0, "evocação", "V, S", False, "1d10 dano energético", {"raios": "+1 nos níveis 5, 11 e 17"}),
     "bola de fogo": (3, "evocação", "V, S, M (uma bola de guano de morcego e enxofre)", False, "8d6 dano ígneo em esfera de 6m", {"dano": "+1d6 por círculo"}),
     "relâmpago": (3, "evocação", "V, S, M (um pouco de pelo e uma haste de âmbar, cristal ou vidro)", False, "8d6 dano elétrico em linha", {"dano": "+1d6 por círculo"}),
     "voo": (3, "transmutação", "V, S, M (uma pena de qualquer ave)", True, "deslocamento de voo 18m", {"alvos": "+1 por círculo"}),
@@ -62,13 +61,37 @@ _DETALHADAS = {
     "restauração menor": (2, "abjuração", "V, S", False, "Bônus: remove uma condição (Cego, Envenenado, Paralisado ou Surdo)", {}),
     "proteção contra veneno": (2, "abjuração", "V, S", False, "Encerra Envenenado; Vantagem em salvaguardas contra Envenenado; Resistência a dano Venenoso por 1 hora", {}),
     "proteção contra energia": (3, "abjuração", "V, S", True, "Resistência a Ácido, Elétrico, Gélido, Ígneo ou Trovejante (escolha) por até 1 hora", {}),
+    "acudir os moribundos": (0, "necromancia", "V, S", False, "Criatura com 0 PV e não morta fica Estável; alcance dobra nos níveis 5, 11 e 17", {"alcance": "dobra nos níveis 5, 11 e 17"}),
+    "chicote de espinhos": (0, "transmutação", "V, S, M (o caule de uma planta espinhosa)", False, "Ataque mágico corpo a corpo; 1d6 perfurante; puxa alvo Grande ou menor até 3 m", {"dano": "escala nos níveis 5, 11 e 17"}),
+    "luz": (0, "evocação", "V, M (um vaga-lume ou musgo fosforescente)", False, "Objeto Grande ou menor emite Luz Plena de 6 m e Meia-luz por mais 6 m por 1 hora", {}),
+    "luzes dançantes": (0, "ilusão", "V, S, M (um pouco de fósforo)", True, "Até quatro luzes com Meia-luz de 3 m; mover 18 m como Ação Bônus", {}),
+    "mensagem": (0, "transmutação", "S, M (um fio de cobre)", False, "Sussurro a uma criatura no alcance, que pode responder; bloqueado por 30 cm de pedra, metal ou madeira", {}),
+    "orientação": (0, "adivinhação", "V, S", True, "Criatura voluntária adiciona 1d4 a testes de atributo com a perícia escolhida", {}),
+    "raio místico": (0, "evocação", "V, S", False, "Ataque mágico à distância; 1d10 energético; feixes: dois no nível 5, três no 11, quatro no 17", {"feixes": "+1 nos níveis 5, 11 e 17"}),
+    "raio de gelo": (0, "evocação", "V, S", False, "Ataque mágico à distância; 1d8 gélido; alvo tem deslocamento -3 m até o início do próximo turno dele", {"dano": "escala nos níveis 5, 11 e 17"}),
+    "resistência": (0, "abjuração", "V, S", True, "Criatura voluntária reduz 1d4 do dano do tipo escolhido, uma vez por turno", {}),
+    "toque chocante": (0, "evocação", "V, S", False, "Ataque mágico corpo a corpo; 1d8 elétrico; alvo não faz Ataques de Oportunidade até o próximo turno dele", {"dano": "escala nos níveis 5, 11 e 17"}),
+    "alarme": (1, "abjuração", "V, S, M (um sino e um fio de prata)", False, "Alarme em porta, janela ou área de até 6 m; sonoro (18 m) ou mental (1,5 km); 8 horas; ritual", {}),
+    "detectar magia": (1, "adivinhação", "V, S", True, "Sente efeitos mágicos em 9 m; Usar Magia revela auras; até 10 minutos; ritual", {}),
+    "disfarçar-se": (1, "ilusão", "V, S", False, "Altera sua aparência (até 30 cm de altura, roupas e pertences) por 1 hora; falha em inspeção física", {}),
+    "fogo das fadas": (1, "evocação", "V", True, "Cubo de 6 m delineado: Destreza evita; Meia-luz de 3 m; sem Invisível; ataques com Vantagem", {}),
+    "graxa": (1, "invocação", "V, S, M (um pouco de banha de porco ou manteiga)", False, "Quadrado de 3 m vira Terreno Difícil por 1 minuto; Destreza evita Caído", {}),
+    "identificar": (1, "adivinhação", "V, S, M (uma pérola no valor de 100 ou mais PO)", False, "Revela propriedades, sintonização e cargas de item mágico, ou magias que afetam uma criatura; 1 minuto ou ritual", {}),
+    "purificar alimentos e bebidas": (1, "transmutação", "V, S", False, "Remove veneno e podridão de alimentos e bebidas não mágicos em Esfera de 1,5 m; ação ou ritual", {}),
+    "retirada acelerada": (1, "transmutação", "V, S", True, "Ação Bônus para executar Correr até 10 minutos", {}),
+    "salto": (1, "transmutação", "V, S, M (perna traseira de um gafanhoto)", True, "Criatura voluntária salta 9 m gastando 3 m de movimento, uma vez por turno; 1 minuto", {"alvos": "+1 por círculo"}),
+    "vitalidade vazia": (1, "necromancia", "V, S, M (uma gota de álcool)", False, "2d4 + 4 PV temporários", {"pv": "+5 PV temporários por círculo acima de 1"}),
     "santuário": (1, "abjuração", "V, S, M (o caco de um espelho)", False, "Atacante que mirar a criatura protegida faz salvaguarda de Sabedoria ou perde o ataque ou a magia", {}),
 }
 for nome, (circulo, escola, componentes, conc, efeito, upcast) in _DETALHADAS.items():
     MAGIAS[nome] = {"nome": nome.title(), "circulo": circulo, "escola": escola, "componentes": componentes, "concentracao": conc, "ritual": False, "duracao": "concentração" if conc else "instantânea", "efeito": efeito, "upcasting": upcast}
 
 # Durações específicas que a regra genérica (concentração ou instantânea) não cobre.
-for _nome, _duracao in {"auxílio": "8 horas", "santuário": "1 minuto", "sono": "concentração, até 1 minuto", "heroísmo": "concentração, até 1 minuto", "comando": "instantânea", "teia": "concentração, até 1 hora", "levitação": "concentração, até 10 minutos", "proteção contra energia": "concentração, até 1 hora", "proteção contra veneno": "1 hora", "queda suave": "1 minuto"}.items():
+for _nome, _duracao in {"auxílio": "8 horas", "santuário": "1 minuto", "sono": "concentração, até 1 minuto", "heroísmo": "concentração, até 1 minuto", "comando": "instantânea", "teia": "concentração, até 1 hora", "levitação": "concentração, até 10 minutos", "proteção contra energia": "concentração, até 1 hora", "proteção contra veneno": "1 hora", "queda suave": "1 minuto",
+    "luz": "1 hora", "luzes dançantes": "concentração, até 1 minuto", "mensagem": "1 rodada", "orientação": "concentração, até 1 minuto",
+    "resistência": "concentração, até 1 minuto", "alarme": "8 horas", "detectar magia": "concentração, até 10 minutos",
+    "disfarçar-se": "1 hora", "fogo das fadas": "concentração, até 1 minuto", "graxa": "1 minuto",
+    "retirada acelerada": "concentração, até 10 minutos", "salto": "1 minuto"}.items():
     MAGIAS[_nome]["duracao"] = _duracao
 
 # O catálogo extraído contém entradas incompletas sem círculo. Para as magias
@@ -258,6 +281,98 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
         "tipo": "resistencia", "alcance": "toque", "acao": "acao", "concentracao": True,
         "duracao": "ate_1_hora", "tipos_escolha": ["acido", "eletrico", "gelido", "igneo", "trovejante"],
     },
+    "acudir os moribundos": {
+        "tipo": "estabilizar", "alcance_m": 4.5, "escala_alcance_truque": True, "acao": "acao",
+    },
+    "chicote de espinhos": {
+        "tipo": "ataque_magico", "ataque": "corpo_a_corpo", "dados_dano_base": "1d6",
+        "tipo_dano": "perfurante", "alcance_m": 9, "acao": "acao",
+        "puxa_m": 3, "puxa_tamanho_max": "grande",
+    },
+    "luz": {
+        "tipo": "luz_objeto", "alcance": "toque", "acao": "acao", "objeto_tamanho_max": "grande",
+        "luz_plena_m": 6, "meia_luz_m": 6,
+    },
+    "luzes dançantes": {
+        "tipo": "luzes_moveis", "alcance_m": 36, "acao": "acao", "concentracao": True,
+        "duracao": "ate_1_minuto", "quantidade": 4, "meia_luz_raio_m": 3,
+        "mover_m": 18, "acao_mover": "bonus",
+    },
+    "mensagem": {
+        "tipo": "comunicacao", "alcance_m": 36, "acao": "acao", "duracao": "1_rodada",
+        "bloqueio": "30 cm de pedra, metal ou madeira, ou fina folha de chumbo",
+    },
+    "orientação": {
+        "tipo": "bonus_teste", "alcance": "toque", "acao": "acao", "concentracao": True,
+        "duracao": "ate_1_minuto", "dado_bonus": "1d4", "aplica_a": "teste_de_atributo_com_pericia",
+    },
+    "raio místico": {
+        "tipo": "ataque_magico", "dados_dano_base": "1d10", "tipo_dano": "energetico",
+        "alcance_m": 36, "acao": "acao", "alvos_base": 1, "escala_alvos_truque": True,
+        "escala_dados_truque": False,
+    },
+    "raio de gelo": {
+        "tipo": "ataque_magico", "dados_dano_base": "1d8", "tipo_dano": "gelido",
+        "alcance_m": 18, "acao": "acao", "reduz_deslocamento_m": 3,
+        "reducao_ate": "inicio_do_proximo_turno_do_alvo",
+    },
+    "resistência": {
+        "tipo": "protecao_dano", "alcance": "toque", "acao": "acao", "concentracao": True,
+        "duracao": "ate_1_minuto", "reducao_dano_base": "1d4", "uma_vez_por_turno": True,
+        "tipos_escolha": ["acido", "contundente", "cortante", "eletrico", "gelido", "igneo",
+                          "necrotico", "perfurante", "radiante", "trovejante", "venenoso"],
+    },
+    "toque chocante": {
+        "tipo": "ataque_magico", "ataque": "corpo_a_corpo", "dados_dano_base": "1d8",
+        "tipo_dano": "eletrico", "alcance": "toque", "acao": "acao",
+        "sem_ataques_oportunidade_ate": "inicio_do_proximo_turno_do_alvo",
+    },
+    "alarme": {
+        "tipo": "protecao_area", "alcance_m": 9, "acao": "acao", "concentracao": False,
+        "duracao": "ate_8_horas", "area_max_m": 6, "modos": ["mental", "sonoro"],
+        "alcance_mental_m": 1500, "alcance_sonoro_m": 18,
+    },
+    "detectar magia": {
+        "tipo": "deteccao", "alcance": "pessoal", "acao": "acao", "concentracao": True,
+        "duracao": "ate_10_minutos", "raio_m": 9,
+    },
+    "disfarçar-se": {
+        "tipo": "ilusao_disfarce", "alcance": "pessoal", "acao": "acao", "concentracao": False,
+        "duracao": "ate_1_hora", "altura_ajuste_cm": 30, "falha_em_inspecao_fisica": True,
+        "teste_para_descobrir": "inteligencia_analise",
+    },
+    "fogo das fadas": {
+        "tipo": "area_controle", "salvaguarda": "destreza", "alcance_m": 18, "acao": "acao",
+        "concentracao": True, "duracao": "ate_1_minuto", "area": {"forma": "cubo", "lado_m": 6},
+        "efeito": "delineado", "luz_meia_m": 3, "impede_invisivel": True,
+        "vantagem_ataques_contra_alvo_visivel": True,
+    },
+    "graxa": {
+        "tipo": "area_controle", "salvaguarda": "destreza", "alcance_m": 18, "acao": "acao",
+        "concentracao": False, "duracao": "1_minuto", "area": {"forma": "quadrado", "lado_m": 3},
+        "terreno_dificil": True, "condicao": "caido", "repete_ao_entrar_ou_terminar_turno": True,
+    },
+    "identificar": {
+        "tipo": "identificacao", "alcance": "toque", "acao": "1_minuto_ou_ritual",
+        "revela": ["propriedades", "sintonizacao", "cargas", "magias_ativas"],
+    },
+    "purificar alimentos e bebidas": {
+        "tipo": "utilidade", "alcance_m": 3, "acao": "acao", "area": {"forma": "esfera", "raio_m": 1.5},
+        "efeito": "remove_veneno_e_podridao_nao_magicos",
+    },
+    "retirada acelerada": {
+        "tipo": "movimento", "acao": "bonus", "acao_concedida": "correr", "concentracao": True,
+        "duracao": "ate_10_minutos",
+    },
+    "salto": {
+        "tipo": "beneficio_movimento", "alcance": "toque", "acao": "bonus", "concentracao": True,
+        "duracao": "ate_1_minuto", "salto_m": 9, "custo_movimento_m": 3, "usos_por_turno": 1,
+        "alvos_base": 1, "alvos_por_nivel": 1,
+    },
+    "vitalidade vazia": {
+        "tipo": "pv_temporarios", "alcance": "pessoal", "acao": "acao",
+        "pv_temporarios_base": "2d4", "pv_temporarios_fixo": 4, "pv_temporarios_extra_por_nivel": 5,
+    },
     "santuário": {
         "tipo": "protecao", "salvaguarda": "sabedoria", "alcance_m": 9, "acao": "bonus",
         "duracao": "ate_1_minuto", "nao_protege_contra": ["area"],
@@ -295,6 +410,8 @@ def _aplicar_escalonamento_mecanico(nome: str, magia: dict[str, Any], aumento: i
         mecanica["alvos"] = base["alvos_base"] + base.get("alvos_por_nivel", 0) * aumento
     if "pv_base" in base:
         mecanica["pv_curados"] = base["pv_base"] + base["pv_por_nivel"] * aumento
+    if "pv_temporarios_extra_por_nivel" in base:
+        mecanica["pv_temporarios_extra"] = base["pv_temporarios_extra_por_nivel"] * aumento
     if base.get("dissipa_ate_espaco"):
         mecanica["dissipa_ate_circulo"] = base["circulo_base"] + aumento
     if "pv_bonus_base" in base:
@@ -319,6 +436,11 @@ def escala_de_truque(nivel_personagem: int) -> int:
     return 1
 
 
+def _mecanica_base_normalizada(nome: str) -> dict[str, Any] | None:
+    chave = _normalizar_nome_magia(nome)
+    return next((m for k, m in MECANICAS_MAGIA.items() if _normalizar_nome_magia(k) == chave), None)
+
+
 def mecanica_de_magia(
     nome: object,
     *,
@@ -340,8 +462,15 @@ def mecanica_de_magia(
         return None
     if magia.get("circulo") == 0:
         multiplicador = escala_de_truque(nivel_personagem)
+        base_mec = _mecanica_base_normalizada(magia["nome"])
+        if base_mec and base_mec.get("escala_alvos_truque"):
+            mecanica["alvos"] = multiplicador * base_mec.get("alvos_base", 1)
+        if base_mec and base_mec.get("escala_alcance_truque"):
+            mecanica["alcance_m"] = base_mec["alcance_m"] * 2 ** (multiplicador - 1)
         base = str(mecanica.get("dados_dano") or mecanica.get("dados_dano_base") or "")
         casamento = re.fullmatch(r"(\d+)d(\d+)", base)
+        if base_mec and base_mec.get("escala_dados_truque") is False:
+            casamento = None  # ex.: Raio Místico escala feixes, não dados
         if casamento:
             quantidade = int(casamento.group(1)) * multiplicador
             mecanica["dados_dano"] = f"{quantidade}d{casamento.group(2)}"
@@ -424,7 +553,11 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
         "componentes": sorted(requeridos), "concentracao": magia["concentracao"],
         "duracao": magia["duracao"], "encerra_concentracao": encerra,
     }
-    if "efeito" not in magia or _aplicar_escalonamento_mecanico(magia["nome"], magia, aumento) is None:
+    try:
+        nivel = max(1, int(fatos.get("nivel_personagem", 1) or 1))
+    except (TypeError, ValueError):
+        nivel = 1
+    if "efeito" not in magia or mecanica_de_magia(magia["nome"], nivel_personagem=nivel, aumento=aumento) is None:
         # Metadados do catálogo não bastam para executar uma magia com fidelidade.
         # Não declarar a conjuração resolvida enquanto o efeito específico não existir.
         resultado.update({
@@ -433,7 +566,7 @@ def resolver_magia(fatos: dict) -> dict[str, Any]:
         })
         return resultado
     resultado.update({"resultado": "conjurada", "efeito": magia["efeito"]})
-    mecanica = _aplicar_escalonamento_mecanico(magia["nome"], magia, aumento)
+    mecanica = mecanica_de_magia(magia["nome"], nivel_personagem=nivel, aumento=aumento)
     if mecanica is not None:
         resultado["mecanica"] = mecanica
     if aumento and magia.get("upcasting"):

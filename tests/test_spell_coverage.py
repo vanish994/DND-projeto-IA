@@ -27,8 +27,8 @@ class SpellCoverageTests(unittest.TestCase):
         self.assertNotIn(unknown, {m["nome"].lower() for m in listar_magias(circulo=0)})
 
     def test_spell_names_are_normalized_without_accents(self):
-        result = resolver_magia({"magia": "RAIO MISTICO"})
-        self.assertEqual(result["magia"], "Raio Místico")
+        result = resolver_magia({"magia": "SERVO MINUSCULO", "espaco": 3})
+        self.assertEqual(result["magia"], "Servo Minúsculo")
         self.assertEqual(result["resultado"], "nao_implementado")
 
     def test_cantrips_cannot_spend_spell_slots(self):
@@ -200,6 +200,50 @@ class MagiasControleProtecaoTests(unittest.TestCase):
         result = resolver_magia({"magia": "proteção contra energia", "espaco": 3})
         self.assertEqual(len(result["mecanica"]["tipos_escolha"]), 5)
         self.assertTrue(result["concentracao"])
+
+
+class TruquesEPrimeiroCirculoTests(unittest.TestCase):
+    """Lote de truques e magias de 1.º círculo do PHB 2024 (texto oficial)."""
+
+    def test_cantrip_dice_scale_with_character_level(self):
+        from rule_engine.spells import mecanica_de_magia
+        self.assertEqual(mecanica_de_magia("chicote de espinhos", nivel_personagem=5)["dados_dano"], "2d6")
+        self.assertEqual(mecanica_de_magia("chicote de espinhos", nivel_personagem=17)["dados_dano"], "4d6")
+        self.assertEqual(mecanica_de_magia("raio de gelo", nivel_personagem=11)["dados_dano"], "3d8")
+
+    def test_eldritch_blast_like_beams_scale_targets_not_dice(self):
+        from rule_engine.spells import mecanica_de_magia
+        mec = mecanica_de_magia("raio místico", nivel_personagem=11)
+        self.assertEqual(mec["dados_dano"], "1d10")
+        self.assertEqual(mec["alvos"], 3)
+
+    def test_acudir_range_doubles_at_5_11_17(self):
+        from rule_engine.spells import mecanica_de_magia
+        self.assertEqual(mecanica_de_magia("acudir os moribundos", nivel_personagem=5)["alcance_m"], 9)
+        self.assertEqual(mecanica_de_magia("acudir os moribundos", nivel_personagem=17)["alcance_m"], 36)
+
+    def test_cantrip_does_not_consume_slot(self):
+        result = resolver_magia({"magia": "raio de gelo"})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["dados_dano"], "1d8")
+
+    def test_vitalidade_vazia_adds_five_temp_hp_per_extra_slot_level(self):
+        result = resolver_magia({"magia": "vitalidade vazia", "espaco": 3})
+        self.assertEqual(result["mecanica"]["pv_temporarios_extra"], 10)
+        self.assertEqual(result["mecanica"]["pv_temporarios_base"], "2d4")
+
+    def test_salto_targets_scale_with_slot(self):
+        result = resolver_magia({"magia": "salto", "espaco": 3})
+        self.assertEqual(result["mecanica"]["alvos"], 3)
+
+    def test_dissipar_style_detection_and_identify_are_resolved(self):
+        self.assertEqual(resolver_magia({"magia": "detectar magia", "espaco": 1})["resultado"], "conjurada")
+        self.assertEqual(resolver_magia({"magia": "identificar", "espaco": 1})["resultado"], "conjurada")
+
+    def test_resistance_lists_eleven_damage_types(self):
+        result = resolver_magia({"magia": "resistência"})
+        self.assertEqual(len(result["mecanica"]["tipos_escolha"]), 11)
+        self.assertEqual(result["mecanica"]["reducao_dano_base"], "1d4")
 
 
 if __name__ == "__main__":

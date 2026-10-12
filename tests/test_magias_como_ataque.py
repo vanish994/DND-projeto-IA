@@ -58,7 +58,7 @@ class MotorDeMagiaTests(unittest.TestCase):
         self.assertEqual(mecanica_de_magia("Bola de Fogo", nivel_personagem=5)["dados_dano"], "8d6")
         self.assertEqual(mecanica_de_magia("Bola de Fogo", nivel_personagem=5, aumento=2)["dados_dano"], "10d6")
         self.assertIsNone(mecanica_de_magia("Magia Inexistente"))
-        self.assertIsNone(mecanica_de_magia("Raio de Gelo"))
+        self.assertIsNone(mecanica_de_magia("Reviver os Mortos"))
 
     # ---------- ataque de magia ----------
 

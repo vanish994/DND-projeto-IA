@@ -16,12 +16,12 @@ class MecanicasCorrigidasTests(unittest.TestCase):
             'id': 'p1', 'classe': 'mago', 'nivel': 9,
             'atributos': {'inteligencia': 16},
             'conjuracao': {'truques': ['Raio Místico', 'Rajada de Veneno', 'Trovão', 'Bolha Ácida'],
-                          'magias_preparadas': ['Identificar', 'Alarme', 'Reviver os Mortos', 'Bola de Fogo', 'Raio Místico'],
+                          'magias_preparadas': ['Revificar', 'Servo Minúsculo', 'Reviver os Mortos', 'Bola de Fogo'],
                           'espacos_totais': {'1': 2, '3': 2, '5': 1}, 'espacos_restantes': {'1': 2, '3': 2, '5': 1}},
         }
 
     def test_sem_mecanica_nao_conjura_nem_gasta_espacos(self):
-        for nome in ['Identificar', 'Alarme', 'Reviver os Mortos', 'Raio Místico']:
+        for nome in ['Revificar', 'Servo Minúsculo', 'Reviver os Mortos']:
             with self.subTest(magia=nome):
                 original = copy.deepcopy(self.ficha)
                 updates = []
@@ -98,7 +98,7 @@ class MecanicasCorrigidasTests(unittest.TestCase):
         self.assertEqual(damage_roll['motivo'], 'imune ao tipo')
 
     def test_suporte_distingue_catalogo_e_mapa(self):
-        self.assertFalse(suporte_magia('Luz')['mecanica_estruturada'])
+        self.assertFalse(suporte_magia('Mesclar-se às Rochas')['mecanica_estruturada'])
         self.assertTrue(suporte_magia('Escudo')['mecanica_estruturada'])
         self.assertFalse(suporte_magia('Escudo')['mapa_tatico'])
         self.assertTrue(suporte_magia('Bolha Acida')['mapa_tatico'])
