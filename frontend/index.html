@@ -6,13 +6,24 @@
   <meta name="theme-color" content="#0e1012">
   <meta name="description" content="Mestre de Jogo com narrativa livre e mecânicas de D&D validadas pelo motor de regras.">
   <title>MJ — D&D Projeto IA</title>
-  <link rel="stylesheet" href="/design-tokens.css">
+  <link rel="stylesheet" href="/design-tokens.css">\n  <link rel="stylesheet" href="/dashboard.css">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/ficha.css">
   <link rel="stylesheet" href="/dado.css">
   <link rel="stylesheet" href="/narration-theme.css">
 </head>
-<body>
+<body class="dashboard-mode">\n<div class="dashboard-topbar"><div class="dashboard-topbar-inner"><div class="dashboard-brand"><div class="dashboard-brand-mark">♜</div><div><strong>D&amp;D Projeto IA</strong><small>5.5e Rule Engine</small></div></div><div id="dashboard-status" class="dashboard-status"><i></i> Verificando API</div></div></div>
+<main id="dashboard" class="dashboard">
+  <div class="dashboard-kicker"><span>FastAPI • Motor de regras determinístico</span><span id="dashboard-ping" class="dashboard-ping">verificando…</span></div>
+  <h1>Saudações, Mestre &amp; Conjurador</h1><p class="dashboard-lead">Sua mesa, suas fichas e suas aventuras em um só lugar. Os dados abaixo vêm da API real — nenhuma campanha ou ficha de demonstração.</p>
+  <section class="dashboard-feature"><div class="dashboard-feature-label">Sua próxima aventura</div><h2>O destino aguarda sua decisão.</h2><p>Retome uma campanha existente ou crie um personagem validado pelo Rule Engine para usar em diferentes campanhas.</p><div class="dashboard-actions"><button id="dashboard-create-character" class="dashboard-btn primary" type="button">＋ Criar personagem</button><button id="dashboard-new-campaign" class="dashboard-btn" type="button">＋ Nova campanha</button><button id="dashboard-refresh" class="dashboard-btn" type="button">↻ Atualizar dados</button></div></section>
+  <p id="dashboard-notice" class="dashboard-message" hidden role="status"></p>
+  <section class="dashboard-section"><div class="dashboard-section-head"><h2>Meus personagens</h2><span id="dashboard-character-count" class="dashboard-count">Carregando…</span></div><div id="dashboard-characters" class="dashboard-list"></div></section>
+  <section class="dashboard-section"><div class="dashboard-section-head"><h2>Campanhas com Mestre IA</h2><span id="dashboard-campaign-count" class="dashboard-count">Carregando…</span></div><div id="dashboard-campaigns" class="dashboard-list"></div></section>
+  <footer class="dashboard-footer"><strong>Integridade determinística</strong>Ficha e opções são fornecidas pelo backend e pelo Rule Engine. A IA narra a aventura; não inventa os cálculos da ficha.</footer>
+</main>
+<nav class="dashboard-nav" aria-label="Navegação principal"><button id="dashboard-nav-home" type="button"><span>⌂</span>Início</button><button id="dashboard-nav-heroes" type="button"><span>♙</span>Heróis</button><button id="dashboard-nav-campaigns" type="button"><span>▤</span>Campanhas</button><button id="dashboard-nav-adventures" type="button"><span>⚔</span>Aventuras IA</button></nav>
+
   <div class="app-shell" id="app" data-view="inicio">
     <aside class="campaigns" aria-labelledby="campaigns-title">
       <header class="campaigns-header">
@@ -166,6 +177,6 @@
   <script src="/narrative-choices.js"></script>
   <script src="/envios-pendentes.js"></script>
   <script src="/app.js"></script>
-  <script src="/personagens.js"></script>
+  <script src="/personagens.js"></script>\n  <script src="/dashboard.js"></script>
 </body>
 </html>
