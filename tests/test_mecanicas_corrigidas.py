@@ -16,12 +16,12 @@ class MecanicasCorrigidasTests(unittest.TestCase):
             'id': 'p1', 'classe': 'mago', 'nivel': 9,
             'atributos': {'inteligencia': 16},
             'conjuracao': {'truques': ['Raio Místico', 'Rajada de Veneno', 'Trovão', 'Bolha Ácida'],
-                          'magias_preparadas': ['Contramagia', 'Dissipar Magia', 'Reviver os Mortos', 'Bola de Fogo'],
-                          'espacos_totais': {'3': 2, '5': 1}, 'espacos_restantes': {'3': 2, '5': 1}},
+                          'magias_preparadas': ['Identificar', 'Alarme', 'Reviver os Mortos', 'Bola de Fogo', 'Raio Místico'],
+                          'espacos_totais': {'1': 2, '3': 2, '5': 1}, 'espacos_restantes': {'1': 2, '3': 2, '5': 1}},
         }
 
     def test_sem_mecanica_nao_conjura_nem_gasta_espacos(self):
-        for nome in ['Contramagia', 'Dissipar Magia', 'Reviver os Mortos', 'Raio Místico']:
+        for nome in ['Identificar', 'Alarme', 'Reviver os Mortos', 'Raio Místico']:
             with self.subTest(magia=nome):
                 original = copy.deepcopy(self.ficha)
                 updates = []

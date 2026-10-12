@@ -161,5 +161,46 @@ class MagiasSalvaguardaEControleTests(unittest.TestCase):
         self.assertIn("area", result["mecanica"]["nao_protege_contra"])
 
 
+class MagiasControleProtecaoTests(unittest.TestCase):
+    """Lote 2 de magias do PHB 2024 (texto oficial)."""
+
+    def test_scorching_ray_adds_rays_not_dice(self):
+        result = resolver_magia({"magia": "raio ardente", "espaco": 4})
+        self.assertEqual(result["mecanica"]["alvos"], 5)
+        self.assertEqual(result["mecanica"]["dados_dano"], "2d6")
+        self.assertEqual(result["mecanica"]["tipo_dano"], "igneo")
+
+    def test_web_is_cube_with_dex_save_and_restrained(self):
+        result = resolver_magia({"magia": "teia", "espaco": 2})
+        self.assertEqual(result["mecanica"]["area"], {"forma": "cubo", "lado_m": 6})
+        self.assertEqual(result["mecanica"]["salvaguarda"], "destreza")
+        self.assertEqual(result["mecanica"]["condicao"], "contido")
+        self.assertEqual(result["duracao"], "concentração, até 1 hora")
+
+    def test_dispel_magic_ends_spells_up_to_slot_level(self):
+        result = resolver_magia({"magia": "dissipar magia", "espaco": 5})
+        self.assertEqual(result["mecanica"]["dissipa_ate_circulo"], 5)
+
+    def test_counterspell_is_reaction(self):
+        result = resolver_magia({"magia": "contramagia", "espaco": 3})
+        self.assertEqual(result["mecanica"]["acao"], "reacao")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "constituicao")
+
+    def test_feather_fall_is_reaction_for_up_to_five(self):
+        result = resolver_magia({"magia": "queda suave", "espaco": 1})
+        self.assertEqual(result["mecanica"]["alvos"], 5)
+        self.assertEqual(result["mecanica"]["acao"], "reacao")
+
+    def test_lesser_restoration_removes_one_listed_condition(self):
+        result = resolver_magia({"magia": "restauração menor", "espaco": 2})
+        self.assertEqual(result["mecanica"]["acao"], "bonus")
+        self.assertIn("envenenado", result["mecanica"]["condicoes_removiveis"])
+
+    def test_protection_from_energy_lists_five_damage_types(self):
+        result = resolver_magia({"magia": "proteção contra energia", "espaco": 3})
+        self.assertEqual(len(result["mecanica"]["tipos_escolha"]), 5)
+        self.assertTrue(result["concentracao"])
+
+
 if __name__ == "__main__":
     unittest.main()

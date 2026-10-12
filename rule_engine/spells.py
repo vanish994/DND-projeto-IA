@@ -42,12 +42,10 @@ _DETALHADAS = {
     "raio místico": (0, "evocação", "V, S", False, "1d10 dano energético", {"raios": "+1 nos níveis 5, 11 e 17"}),
     "bola de fogo": (3, "evocação", "V, S, M (uma bola de guano de morcego e enxofre)", False, "8d6 dano ígneo em esfera de 6m", {"dano": "+1d6 por círculo"}),
     "relâmpago": (3, "evocação", "V, S, M (um pouco de pelo e uma haste de âmbar, cristal ou vidro)", False, "8d6 dano elétrico em linha", {"dano": "+1d6 por círculo"}),
-    "contramagia": (3, "abjuração", "S", False, "interrompe magia", {}),
     "voo": (3, "transmutação", "V, S, M (uma pena de qualquer ave)", True, "deslocamento de voo 18m", {"alvos": "+1 por círculo"}),
     "invisibilidade": (2, "ilusão", "V, S, M (uma pestana envolta em goma)", True, "condição Invisível", {"alvos": "+1 por círculo"}),
     "passo nebuloso": (2, "conjuração", "V", False, "teleporta 9m", {}),
     "reviver os mortos": (5, "necromancia", "V, S, M (um diamante de 500 PO)", False, "retorna criatura morta à vida", {}),
-    "dissipar magia": (3, "abjuração", "V, S", False, "encerra efeitos mágicos", {}),
     "banimento": (4, "abjuração", "V, S, M (um item desagradável ao alvo)", True, "salvaguarda ou banido", {"alvos": "+1 por círculo"}),
     "cura completa": (6, "necromancia", "V, S", False, "cura 70 PV", {"cura": "+10 por círculo"}),
     "infligir ferimentos": (1, "necromancia", "V, S", False, "Toque; Constituição evita 2d10 necrótico, metade em sucesso", {"dano": "+1d10 por círculo"}),
@@ -55,13 +53,22 @@ _DETALHADAS = {
     "sono": (1, "encantamento", "V, S, M (uma pitada de areia ou pétalas de rosa)", True, "Esfera de 1,5 m; Sabedoria evita Incapacitado; segunda falha causa Inconsciente", {}),
     "heroísmo": (1, "encantamento", "V, S", True, "Imune a Amedrontado; PV temporários igual ao modificador de conjuração a cada turno", {"alvos": "+1 por círculo"}),
     "auxílio": (2, "abjuração", "V, S, M (uma tira de pano branco)", False, "até três criaturas: +5 PV máximos e atuais por 8 horas", {"pv": "+5 por círculo acima de 2"}),
+    "raio ardente": (2, "evocação", "V, S", False, "Até três raios; cada um exige ataque à distância e causa 2d6 Ígneo ao acertar; +1 raio por círculo acima de 2", {"raios": "+1 por círculo"}),
+    "teia": (2, "invocação", "V, S, M (um pouco de teia de aranha)", True, "Cubo de 6 m de teia (Terreno Difícil); Destreza evita Contido ao entrar ou começar o turno nela", {}),
+    "levitação": (2, "transmutação", "V, S, M (uma mola de metal)", True, "Alvo sobe até 6 m; Constituição evita se involuntário; carga de 200 kg", {}),
+    "dissipar magia": (3, "abjuração", "V, S", False, "Encerra automaticamente magias até o círculo do espaço usado; para magias de 4.º+, teste de atributo CD 10 + círculo", {}),
+    "contramagia": (3, "abjuração", "S", False, "Reação: criatura conjurando magia V/S/M faz salvaguarda de Constituição; se falhar, a magia se dissipa", {}),
+    "queda suave": (1, "transmutação", "V, M (uma pequena pena ou pedaço de penugem)", False, "Reação: até cinco criaturas caem a 18 m por rodada; sem dano de queda se pousarem", {}),
+    "restauração menor": (2, "abjuração", "V, S", False, "Bônus: remove uma condição (Cego, Envenenado, Paralisado ou Surdo)", {}),
+    "proteção contra veneno": (2, "abjuração", "V, S", False, "Encerra Envenenado; Vantagem em salvaguardas contra Envenenado; Resistência a dano Venenoso por 1 hora", {}),
+    "proteção contra energia": (3, "abjuração", "V, S", True, "Resistência a Ácido, Elétrico, Gélido, Ígneo ou Trovejante (escolha) por até 1 hora", {}),
     "santuário": (1, "abjuração", "V, S, M (o caco de um espelho)", False, "Atacante que mirar a criatura protegida faz salvaguarda de Sabedoria ou perde o ataque ou a magia", {}),
 }
 for nome, (circulo, escola, componentes, conc, efeito, upcast) in _DETALHADAS.items():
     MAGIAS[nome] = {"nome": nome.title(), "circulo": circulo, "escola": escola, "componentes": componentes, "concentracao": conc, "ritual": False, "duracao": "concentração" if conc else "instantânea", "efeito": efeito, "upcasting": upcast}
 
 # Durações específicas que a regra genérica (concentração ou instantânea) não cobre.
-for _nome, _duracao in {"auxílio": "8 horas", "santuário": "1 minuto", "sono": "concentração, até 1 minuto", "heroísmo": "concentração, até 1 minuto", "comando": "instantânea"}.items():
+for _nome, _duracao in {"auxílio": "8 horas", "santuário": "1 minuto", "sono": "concentração, até 1 minuto", "heroísmo": "concentração, até 1 minuto", "comando": "instantânea", "teia": "concentração, até 1 hora", "levitação": "concentração, até 10 minutos", "proteção contra energia": "concentração, até 1 hora", "proteção contra veneno": "1 hora", "queda suave": "1 minuto"}.items():
     MAGIAS[_nome]["duracao"] = _duracao
 
 # O catálogo extraído contém entradas incompletas sem círculo. Para as magias
@@ -211,6 +218,46 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
         "tipo": "beneficio_pv_maximo", "alcance_m": 9, "acao": "acao", "duracao": "ate_8_horas",
         "alvos_base": 3, "pv_bonus_base": 5, "pv_bonus_por_nivel": 5,
     },
+    "raio ardente": {  # alvos = número de raios (3 base, +1 por círculo acima de 2)
+        "tipo": "ataque_magico", "dados_dano_base": "2d6", "tipo_dano": "igneo",
+        "alcance_m": 36, "acao": "acao", "alvos_base": 3, "alvos_por_nivel": 1,
+    },
+    "teia": {
+        "tipo": "area_controle", "salvaguarda": "destreza", "alcance_m": 18, "acao": "acao",
+        "area": {"forma": "cubo", "lado_m": 6}, "concentracao": True, "duracao": "ate_1_hora",
+        "terreno_dificil": True, "obscurecido": "parcial", "condicao": "contido",
+        "colapsa_sem_apoio": True,
+    },
+    "levitação": {
+        "tipo": "controle_movimento", "salvaguarda": "constituicao", "alcance_m": 18, "acao": "acao",
+        "altura_m": 6, "carga_kg": 200, "concentracao": True, "duracao": "ate_10_minutos",
+        "alvos_base": 1,
+    },
+    "dissipar magia": {
+        "tipo": "encerrar_magia", "alcance_m": 36, "acao": "acao", "circulo_base": 3,
+        "dissipa_ate_espaco": True, "teste_atributo_cd_base": 10,
+    },
+    "contramagia": {
+        "tipo": "interrupcao", "salvaguarda": "constituicao", "alcance_m": 18, "acao": "reacao",
+        "gatilho": "criatura_conjurando_magia_verbal_somatica_ou_material",
+    },
+    "queda suave": {
+        "tipo": "protecao_queda", "alcance_m": 18, "acao": "reacao", "alvos_base": 5,
+        "taxa_queda_m_por_rodada": 18,
+    },
+    "restauração menor": {
+        "tipo": "remover_condicao", "alcance": "toque", "acao": "bonus",
+        "condicoes_removiveis": ["cego", "envenenado", "paralisado", "surdo"],
+    },
+    "proteção contra veneno": {
+        "tipo": "protecao_condicao", "alcance": "toque", "acao": "acao", "duracao": "ate_1_hora",
+        "condicao_removida": "envenenado", "vantagem_salvaguardas": ["envenenado"],
+        "resistencia": ["venenoso"],
+    },
+    "proteção contra energia": {
+        "tipo": "resistencia", "alcance": "toque", "acao": "acao", "concentracao": True,
+        "duracao": "ate_1_hora", "tipos_escolha": ["acido", "eletrico", "gelido", "igneo", "trovejante"],
+    },
     "santuário": {
         "tipo": "protecao", "salvaguarda": "sabedoria", "alcance_m": 9, "acao": "bonus",
         "duracao": "ate_1_minuto", "nao_protege_contra": ["area"],
@@ -248,6 +295,8 @@ def _aplicar_escalonamento_mecanico(nome: str, magia: dict[str, Any], aumento: i
         mecanica["alvos"] = base["alvos_base"] + base.get("alvos_por_nivel", 0) * aumento
     if "pv_base" in base:
         mecanica["pv_curados"] = base["pv_base"] + base["pv_por_nivel"] * aumento
+    if base.get("dissipa_ate_espaco"):
+        mecanica["dissipa_ate_circulo"] = base["circulo_base"] + aumento
     if "pv_bonus_base" in base:
         mecanica["pv_bonus"] = base["pv_bonus_base"] + base["pv_bonus_por_nivel"] * aumento
     return mecanica
