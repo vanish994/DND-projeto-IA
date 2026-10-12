@@ -194,6 +194,32 @@ curl -X POST http://localhost:8000/v1/mj/mensagem \
   -d '{"sessao_id":"campanha-1","mensagem":"Os aventureiros entram nas ruínas."}'
 ```
 
+### Estrutura do backend, DI e qualidade
+
+O `backend/` é dividido por responsabilidade (o `backend/app.py` é apenas o composition root que cria a aplicação, registra as rotas com `include_router` e monta o frontend):
+
+| Módulo | Responsabilidade |
+|---|---|
+| `backend/app.py` | Criação do app FastAPI, registro de rotas e do tratador de erros |
+| `backend/config.py` | Constantes de processo (`HISTORICO_MAX`, `PADRAO_ID`) |
+| `backend/schemas.py` | Modelos Pydantic de entrada/saída de todas as rotas |
+| `backend/dependencies.py` | Providers de injeção (`obter_mj`, `obter_repositorio`, `obter_jogador`) e limite de taxa |
+| `backend/erros.py` | Exceções de domínio e o único mapeamento exceção → HTTP |
+| `backend/routes/` | Rotas finas por recurso (`campanhas`, `personagens`, `catalogo`, `sistema`) |
+| `backend/services/` | Casos de uso e regra (`personagem_service`, `bloco_ficha`, `condicoes_service`, `mj_service`, `campanha_service`) |
+| `backend/persistencia.py` | `RepositorioCampanhas` com transações e compare-and-set de ficha |
+
+Os recursos de processo (MJ e repositório) vivem em `app.state.recursos` (um container `Recursos` por app), nunca em variáveis de módulo. Em testes, injete dublês com `app.dependency_overrides[obter_mj]` / `[obter_repositorio]` — ver `tests/test_dependencias_di.py`. Os nomes `obter_*` reexportados em `backend.app` formam a superfície pública de injeção; os demais símbolos devem ser importados dos módulos donos (`backend.schemas`, `backend.services.*`).
+
+Qualidade local (é o que o CI roda em cada PR):
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt httpx
+black --check . && isort --check-only . && ruff check .   # estilo e lint
+pytest -q --cov --cov-fail-under=80                        # suíte + piso de cobertura
+node --test tests/*.cjs                                    # testes da interface
+```
+
 ### Campanhas persistidas
 
 Campanhas e mensagens ficam salvas em banco. Sem configuração, o backend usa SQLite em `data/mj.sqlite3` (ignorado pelo Git). Em produção, defina `DATABASE_URL` com um Postgres (o formato `postgres://` do Render é aceito). O disco do plano gratuito do Render é efêmero: sem `DATABASE_URL`, o SQLite é apagado a cada deploy ou reinício.
