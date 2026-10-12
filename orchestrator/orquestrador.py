@@ -90,6 +90,11 @@ class _Preparo:
     slot_a_consumir: str | None = None
 
 
+# Operação composta: conjuração + dano + salvaguardas de área em uma única
+# chamada de ferramenta. Aliases aceitos; o canônico é "area_spell".
+TIPOS_MAGIA_DE_AREA = {"area_spell", "spell_area", "magia_de_area"}
+
+
 class OrquestradorAcoes:
     """Coordena MJ, Rule Engine e estado canônico."""
 
@@ -118,6 +123,10 @@ class OrquestradorAcoes:
         slot_a_consumir: str | None = None
 
         if acao.ferramenta == "resolver_regra":
+            if str(fatos.get("type", "")).strip().lower() in TIPOS_MAGIA_DE_AREA:
+                return self._executar_magia_de_area(
+                    fatos, personagens, on_alteracao, on_rolagem
+                )
             pronto = self._preparar(fatos, personagens)
             if isinstance(pronto, ResultadoAcao):
                 # Recusa ou resolução direta (ex.: Ataque de Sopro): as rolagens
@@ -548,6 +557,179 @@ class OrquestradorAcoes:
 
         fatos.update({"espaco": slot, "slot_level": slot, "has_slot": True, "type": "spell_cast"})
         return _Preparo(fatos, personagem_magia=ficha, slot_a_consumir=str(slot))
+
+    # ------------------------------------------------------------------
+    # Operação composta (responsabilidade 2 sem rodadas extras do modelo)
+    # ------------------------------------------------------------------
+    def _executar_magia_de_area(
+        self,
+        fatos: dict[str, Any],
+        personagens: list[dict[str, Any]] | None,
+        on_alteracao: Callable[[dict[str, Any], dict[str, Any]], None] | None,
+        on_rolagem: Callable[[dict[str, Any]], None] | None,
+    ) -> ResultadoAcao:
+        """Conjura a magia, rola o dano uma vez e a salvaguarda de cada alvo.
+
+        Uma única chamada de ferramenta substitui a sequência ``spell`` →
+        ``damage`` → ``saving_throw`` por alvo que o MJ teria de orquestrar
+        rodada a rodada (cada rodada reenvia o contexto inteiro ao modelo).
+
+        Autoridade mecânica continua toda no motor: a conjuração usa o mesmo
+        preparo do fluxo simples; o dano e a CD saem do catálogo; a salvaguarda
+        usa o **modificador do bloco do monstro** (não há ficha de jogador no
+        meio). A operação é atômica: se o catálogo não tiver a mecânica de
+        dano, ou se algum alvo não existir no bestiário, nada é gasto — nem
+        espaço, nem rolagem.
+        """
+        ficha = self._personagem(fatos.get("character_id"), personagens)
+        if ficha is None:
+            return ResultadoAcao.bloqueado("personagem_ausente_ou_nao_identificado")
+
+        brutos = (
+            fatos.get("alvos")
+            or fatos.get("target_names")
+            or ([fatos["target_name"]] if fatos.get("target_name") else [])
+        )
+        nomes_alvos = (
+            [str(alvo).strip() for alvo in brutos if str(alvo).strip()]
+            if isinstance(brutos, (list, tuple))
+            else []
+        )
+        if not nomes_alvos:
+            return ResultadoAcao.bloqueado(
+                "alvos_de_area_ausentes", dica="Informe alvos=[nomes dos monstros na área]."
+            )
+        monstros = []
+        for nome in nomes_alvos:
+            alvo = consultar_monstro(nome)
+            if alvo is None:
+                return ResultadoAcao.bloqueado(
+                    "monstro_desconhecido_no_bestiario", alvo=nome
+                )
+            monstros.append(alvo)
+
+        # 1. Conjuração: mesmo preparo do fluxo simples, sem efeito colateral.
+        pronto = self._preparar_conjuracao({**fatos, "type": "spell"}, personagens)
+        if isinstance(pronto, ResultadoAcao):
+            return pronto
+        slot_a_consumir = pronto.slot_a_consumir
+        personagem_magia = pronto.personagem_magia
+
+        # 2. A mecânica de dano precisa existir ANTES de gastar o espaço.
+        seco = preparar_dano_de_magia(
+            self.engine,
+            {
+                "type": "damage",
+                "character_id": ficha.get("id"),
+                "magia": pronto.fatos.get("magia"),
+                "espaco": slot_a_consumir or 0,
+                "seed": fatos.get("seed"),
+            },
+            ficha,
+        )
+        if "fatos" not in seco:
+            return ResultadoAcao(
+                str(seco.get("resultado", "bloqueado")),
+                {chave: valor for chave, valor in seco.items()},
+            )
+        fatos_dano = dict(seco["fatos"])
+
+        # 3. Conjuração confirmada pelo motor; só então o espaço é gasto — uma
+        #    única vez, independente do número de alvos.
+        resolucao = self.engine.evaluate(pronto.fatos)
+        resultado_conjuracao = {"status": resolucao.status, **dict(resolucao.outcome)}
+        self._pos_processar_resolucao(pronto.fatos, resultado_conjuracao)
+        if resultado_conjuracao.get("resultado") != "conjurada":
+            return ResultadoAcao(resolucao.status, resultado_conjuracao, [], [])
+        alteracoes = self._aplicar_estado(
+            pronto.fatos, resultado_conjuracao, personagem_magia,
+            slot_a_consumir, on_alteracao,
+        )
+
+        # 4. Dano: mesmo caminho do fluxo manual (catálogo → motor), rolado
+        #    uma vez para toda a área.
+        saida_dano = self.engine.evaluate(fatos_dano)
+        resultado_dano = {"status": saida_dano.status, **dict(saida_dano.outcome)}
+        self._pos_processar_resolucao(fatos_dano, resultado_dano)
+        dano_base = int(resultado_dano.get("dano") or resultado_dano.get("total") or 0)
+        cd = int(resultado_dano.get("cd_magia") or 0)
+        atributo_save = str(fatos_dano.get("magia_salvaguarda") or "destreza")
+        metade_no_sucesso = bool(fatos_dano.get("magia_sucesso_metade"))
+
+        # 5. Salvaguarda de cada alvo com o modificador do próprio bloco.
+        semente = str(fatos.get("seed") or "")
+        resultado_alvos = []
+        rolagens = [
+            registro
+            for registro in (normalizar_rolagem(resultado_dano, fatos_dano, personagens),)
+            if registro
+        ]
+        for indice, (nome_alvo, alvo) in enumerate(zip(nomes_alvos, monstros)):
+            blocos_salva = alvo.get("salvaguardas") or {}
+            modificador_alvo = int(
+                blocos_salva.get(
+                    atributo_save, (alvo.get("modificadores") or {}).get(atributo_save, 0)
+                )
+            )
+            fatos_salva = {
+                "type": "saving_throw",
+                "ability": atributo_save,
+                "modifier": modificador_alvo,
+                "dc": cd,
+                "target_name": alvo.get("nome", nome_alvo),
+                "seed": f"{semente}:area-{indice}" if semente else None,
+            }
+            saida_salva = self.engine.evaluate(fatos_salva)
+            desfecho = dict(saida_salva.outcome)
+            sucesso = desfecho.get("result") == "success"
+            dano_alvo = dano_base // 2 if (sucesso and metade_no_sucesso) else dano_base
+            defesas = aplicar_defesas_monstro(
+                dano_alvo, str(fatos_dano.get("magia_tipo_dano", "")), alvo
+            )
+            resultado_alvos.append({
+                "nome": alvo.get("nome", nome_alvo),
+                "salvaguarda": {
+                    "atributo": atributo_save,
+                    "cd": cd,
+                    "modificador": modificador_alvo,
+                    "rolagem": desfecho.get("roll"),
+                    "total": desfecho.get("total"),
+                    "sucesso": sucesso,
+                },
+                "dano_aplicado": int(defesas["dano"]),
+                "dano_antes_das_defesas": dano_alvo,
+                "defesas_dano": defesas,
+            })
+            registro = normalizar_rolagem(desfecho, fatos_salva, personagens)
+            if registro:
+                rolagens.append(registro)
+
+        self._registrar(rolagens, on_rolagem)
+        payload = {
+            "resultado": "conjurada",
+            "tipo_resolucao": "magia_de_area",
+            "magia": resultado_conjuracao.get("magia"),
+            "circulo": resultado_conjuracao.get("circulo"),
+            "espaco_usado": resultado_conjuracao.get("espaco_usado"),
+            "espacos_restantes": resultado_conjuracao.get("espacos_restantes"),
+            "dano": dano_base,
+            "dano_bruto": int(resultado_dano.get("dano_bruto") or dano_base),
+            "dados_dano": resultado_dano.get("dados_dano"),
+            "dano_expressao": resultado_dano.get("dano_expressao"),
+            "tipo_dano": resultado_dano.get("tipo_dano"),
+            "cd_magia": cd,
+            "magia_salvaguarda": atributo_save,
+            "magia_sucesso_metade": metade_no_sucesso,
+            "magia_area": fatos_dano.get("magia_area"),
+            "alvos": resultado_alvos,
+            "nota": (
+                "Operação composta: conjuração, dano (rolado uma vez) e "
+                "salvaguardas resolvidos pelo motor nesta única chamada. "
+                "Narre os valores por alvo exatamente como devolvidos."
+            ),
+            "fonte": str(fatos_dano.get("fonte") or "catálogo de magias do Rule Engine"),
+        }
+        return ResultadoAcao("resolvido", payload, alteracoes, rolagens)
 
     # ------------------------------------------------------------------
     # Pós-processamento (responsabilidade 5)

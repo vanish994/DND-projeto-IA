@@ -179,6 +179,38 @@ por rodada evitada — e reduziria também a chance de o modelo errar a sequênc
 Guardrails do prompt são fixados em `tests/test_contexto_mj.py` sobre texto
 normalizado; qualquer compressão futura roda esse teste antes de subir.
 
+### Ação composta `area_spell` — implementada e validada (2026-10-12)
+
+`resolver_regra` aceita `type=area_spell` (aliases `spell_area`,
+`magia_de_area`): o MJ envia `character_id`, `magia`, `espaco` (opcional) e
+`alvos=[nomes dos monstros]`; o orquestrador resolve **uma única rodada de
+ferramenta** — validação de conjuração, conferência de que a mecânica de dano
+existe no catálogo, gasto do espaço **uma vez**, dano rolado uma vez,
+salvaguarda de cada alvo com o **modificador do bloco do monstro**, resistências
+aplicadas e `dano_aplicado` por alvo.
+
+Validação no mesmo harness do medidor (`scripts/medir_tokens_mj.py`), mesma
+tarefa ("Bola de Fogo em 2 alvos"):
+
+| Fluxo | Chamadas ao modelo | Entrada | Total |
+|---|---|---|---|
+| Manual (spell→damage→2 salvaguardas→narração) | 5 | 31.295 | 34.685 |
+| Composto (1 ferramenta→narração) | 2 | 11.242 | 12.598 |
+
+**−64% de tokens, −3 idas e voltas ao modelo**, com equivalência mecânica
+provada por sementes em `tests/test_orquestrador_composto.py`: mesmos dados de
+dano, mesma CD, mesmos d20s, mesmo gasto de espaço. O payload composto é maior
+(~300 tokens) mas é pago uma vez; cada rodada evitada vale ~6.259.
+
+Duas correções de fidelidade que o composto traz (documentadas, testadas):
+
+1. **Modificador do monstro.** No fluxo manual, a salvaguarda do alvo saía do
+   atributo da ficha do jogador (vazamento — só coincidia certo com goblins).
+   O composto usa o bloco do bestiário, como o Ataque de Sopro já fazia.
+2. **Atomicidade.** Se a mecânica de dano não existe no catálogo, ou algum
+   alvo não está no bestiário, a operação recusa **antes** de gastar o espaço.
+   No fluxo manual, a conjuração podia consumir o espaço e o dano falhar depois.
+
 ## 4. Rolagens: contrato atual e obrigatório
 
 A CD pertence à decisão do MJ. O resultado do d20 pertence ao Rule Engine.

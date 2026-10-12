@@ -160,6 +160,42 @@ class FluxoCompletoTests(unittest.TestCase):
         self.assertEqual(len(cliente.requisicoes), 2, "a IA foi chamada de novo no replay")
         self.assertEqual(self._espacos(), 1)
 
+    def test_magia_de_area_composta_em_unica_rodada_de_ferramenta(self):
+        # "Bola de Fogo em dois alvos" em UMA rodada de ferramenta: o fluxo
+        # manual equivalente (spell, damage, 2 salvaguardas, narração) seriam
+        # 5 chamadas ao modelo — cada uma reenviando o contexto inteiro.
+        cliente = self._mj([
+            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+                "type": "area_spell", "character_id": self.personagem["id"],
+                "magia": "Bola de Fogo", "alvos": ["Goblin", "Zombie"],
+            }})]),
+            _Mensagem(content="A Bola de Fogo varre a sala; o goblin é engolido pelas chamas."),
+        ])
+
+        resposta = self._enviar("Lanço Bola de Fogo no goblin e no zumbi.", "op-area")
+        self.assertEqual(resposta.status_code, 200, resposta.text)
+
+        # Duas idas ao modelo (ferramenta + narração), não cinco.
+        self.assertEqual(len(cliente.requisicoes), 2, "a operação composta não deveria reenviar o contexto por alvo")
+
+        ferramenta = self._resultado_da_ferramenta(cliente.requisicoes[1])
+        self.assertEqual(ferramenta["resultado"], "conjurada")
+        self.assertEqual(ferramenta["tipo_resolucao"], "magia_de_area")
+        self.assertEqual(ferramenta["espaco_usado"], 3)
+        self.assertEqual(len(ferramenta["alvos"]), 2)
+        nomes = {alvo["nome"]: alvo for alvo in ferramenta["alvos"]}
+        self.assertEqual(nomes["Goblin"]["salvaguarda"]["modificador"], 2)
+        self.assertEqual(nomes["Zombie"]["salvaguarda"]["modificador"], -2)
+        self.assertIn("dano_aplicado", nomes["Goblin"])
+
+        # O espaço foi gasto uma única vez, com dois alvos.
+        self.assertEqual(self._espacos(), 1)
+
+        # Três rolagens do motor chegaram à interface: dano + duas salvaguardas.
+        rolagens = resposta.json()["rolagens"]
+        self.assertEqual([r["tipo"] for r in rolagens], ["dano", "salvaguarda", "salvaguarda"])
+        self.assertTrue(all(r["origem"] == "rule_engine" for r in rolagens))
+
     def test_teste_de_habilidade_devolve_a_rolagem_do_motor_para_a_interface(self):
         self._mj([
             _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {

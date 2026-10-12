@@ -70,15 +70,18 @@ ATAQUES (com arma ou com magia)
   magia_nao_resolve_por_jogada_de_ataque, informe a limitação sem narrar dano
   oficial.
 
-DANO POR SALVAGUARDA (Bola de Fogo, Mãos Flamejantes, Onda Trovejante)
-1. type=damage com character_id e magia (e espaco, se círculo maior). Use
-   dados_dano, dano, tipo_dano e cd_magia da resposta — não invente os dados nem
-   re-escalone. Sem cd_magia na resposta, não invente a CD: informe o jogador.
-2. Para cada alvo na área: type=saving_throw com ability=magia_salvaguarda,
-   target_name e dc=cd_magia.
-3. Aplique o passo 1 a quem falhou e metade (piso) a quem passou, quando
-   magia_sucesso_metade for verdadeiro. Mesmo total para todos os alvos: role
-   uma vez.
+DANO POR SALVAGUARDA EM ÁREA (Bola de Fogo, Mãos Flamejantes, Onda Trovejante)
+- UMA única chamada: type=area_spell com character_id, magia (nome exato do
+  catálogo), espaco (se gastar círculo maior) e alvos=[nomes exatos dos
+  monstros na área]; nunca repita a chamada por alvo.
+- A resposta já traz a conjuração confirmada, o dano rolado UMA vez, a
+  salvaguarda de cada alvo (com o modificador do próprio bloco do monstro) e
+  o dano_aplicado por alvo: inteiro em falha, metade no sucesso quando
+  magia_sucesso_metade, resistências já aplicadas. Narre esses valores; não
+  re-escalone, não invente CD, não re-role salvaguarda.
+- bloqueado com motivo sem_espacos_restantes: informe e não narre efeito.
+  magia_sem_mecanica_estruturada_no_catalogo: informe a limitação — a operação
+  é atômica e nada foi gasto.
 
 ATAQUE DE SOPRO (Draconato)
 - type=attack com weapon="Ataque de Sopro" e target_name. O motor confere a
@@ -158,7 +161,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "resolver_regra",
-            "description": "Resolve fatos mecânicos. Em spell, o motor confere a magia na ficha, gasta o espaço e responde conjurada. Em attack com weapon, o motor deriva bônus e dano da ficha e consulta a CA do bestiário. Em attack com magia, o motor deriva o bônus de conjuração da ficha, aplica o escalonamento de truque e rola o dano da magia. Em initiative, gera d20 e aplica desvantagem quando surprised=true. Em ability_check e em saving_throw sem roll, gera d20 auditável e compara com dc quando fornecida.",
+            "description": "Resolve fatos mecânicos. Em spell, o motor confere a magia na ficha, gasta o espaço e responde conjurada. Em attack com weapon, o motor deriva bônus e dano da ficha e consulta a CA do bestiário. Em attack com magia, o motor deriva o bônus de conjuração da ficha, aplica o escalonamento de truque e rola o dano da magia. Em area_spell (magias de salvaguarda como Bola de Fogo), uma única chamada conjura a magia, gasta o espaço, rola o dano uma vez e resolve a salvaguarda de cada alvo da lista alvos. Em initiative, gera d20 e aplica desvantagem quando surprised=true. Em ability_check e em saving_throw sem roll, gera d20 auditável e compara com dc quando fornecida.",
             "parameters": {
                 "type": "object",
                 "properties": {

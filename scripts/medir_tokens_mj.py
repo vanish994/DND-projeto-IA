@@ -147,6 +147,25 @@ CENARIOS = {
         _Mensagem(tool_calls=[_Ferramenta("consultar_monstro", {"nome": "Goblin"})]),
         _Mensagem(content="O goblin avança com a lâmina torta."),
     ],
+    "magia de área MANUAL (4 ferramentas, 2 alvos)": [
+        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+            "type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}}, "call-1")]),
+        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+            "type": "damage", "character_id": "p1", "magia": "Bola de Fogo"}}, "call-2")]),
+        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+            "type": "saving_throw", "ability": "destreza", "target_name": "Goblin",
+            "dc": 14}}, "call-3")]),
+        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+            "type": "saving_throw", "ability": "destreza", "target_name": "Zombie",
+            "dc": 14}}, "call-4")]),
+        _Mensagem(content="A Bola de Fogo atinge os dois alvos; o zumbi resiste à metade."),
+    ],
+    "magia de área COMPOSTA (1 ferramenta, 2 alvos)": [
+        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
+            "type": "area_spell", "character_id": "p1", "magia": "Bola de Fogo",
+            "alvos": ["Goblin", "Zombie"]}}, "call-1")]),
+        _Mensagem(content="A Bola de Fogo atinge os dois alvos; o zumbi resiste à metade."),
+    ],
 }
 
 
