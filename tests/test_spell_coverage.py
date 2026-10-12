@@ -67,7 +67,8 @@ class SpellCoverageTests(unittest.TestCase):
     def test_healing_word_scales_and_uses_bonus_action(self):
         result = resolver_magia({"magia": "palavra curativa", "espaco": 2})
         self.assertEqual(result["resultado"], "conjurada")
-        self.assertEqual(result["mecanica"]["dados_cura"], "2d4")
+        # PHB 2024: 2d4 + modificador, +2d4 por círculo acima do 1.º (2.º círculo = 4d4)
+        self.assertEqual(result["mecanica"]["dados_cura"], "4d4")
         self.assertEqual(result["mecanica"]["acao"], "bonus")
         self.assertTrue(result["mecanica"]["soma_modificador_conjuracao"])
 
@@ -111,6 +112,53 @@ class SpellCoverageTests(unittest.TestCase):
         result = resolver_magia({"magia": "bola de fogo", "componentes_disponiveis": ["V"]})
         self.assertEqual(result["resultado"], "bloqueado")
         self.assertEqual(result["motivo"], "componentes_ausentes")
+
+
+
+
+class MagiasSalvaguardaEControleTests(unittest.TestCase):
+    """Magias do PHB 2024 modeladas em 'mecanica' estruturada (texto oficial)."""
+
+    def test_inflict_wounds_scales_and_halves_on_save(self):
+        result = resolver_magia({"magia": "infligir ferimentos", "espaco": 3})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["dados_dano"], "4d10")
+        self.assertEqual(result["mecanica"]["tipo_dano"], "necrotico")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "constituicao")
+        self.assertTrue(result["mecanica"]["sucesso_metade"])
+
+    def test_command_uses_wisdom_save_and_one_target_at_first_level(self):
+        result = resolver_magia({"magia": "comando", "espaco": 1})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["salvaguarda"], "sabedoria")
+        self.assertEqual(result["mecanica"]["alvos"], 1)
+        self.assertIn("parar", result["mecanica"]["comandos"])
+
+    def test_sleep_is_concentration_sphere_with_incapacitated_condition(self):
+        result = resolver_magia({"magia": "sono", "espaco": 1})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertTrue(result["concentracao"])
+        self.assertEqual(result["mecanica"]["area"]["raio_m"], 1.5)
+        self.assertEqual(result["mecanica"]["condicao_inicial"], "incapacitado")
+        self.assertEqual(result["mecanica"]["condicao_apos_segunda_falha"], "inconsciente")
+
+    def test_heroism_scales_targets_and_grants_immunity(self):
+        result = resolver_magia({"magia": "heroismo", "espaco": 3})
+        self.assertEqual(result["mecanica"]["alvos"], 3)
+        self.assertIn("amedrontado", result["mecanica"]["condicao_imune"])
+        self.assertEqual(result["duracao"], "concentração, até 1 minuto")
+
+    def test_aid_scales_max_hp_bonus_by_slot_level(self):
+        result = resolver_magia({"magia": "auxílio", "espaco": 4})
+        self.assertEqual(result["mecanica"]["alvos"], 3)
+        self.assertEqual(result["mecanica"]["pv_bonus"], 15)
+        self.assertEqual(result["duracao"], "8 horas")
+
+    def test_sanctuary_is_bonus_action_and_ignores_areas(self):
+        result = resolver_magia({"magia": "santuário", "espaco": 1})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["acao"], "bonus")
+        self.assertIn("area", result["mecanica"]["nao_protege_contra"])
 
 
 if __name__ == "__main__":

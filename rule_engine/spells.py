@@ -33,7 +33,7 @@ _DETALHADAS = {
     "raio de fogo": (0, "evocação", "V, S", False, "Ataque mágico à distância; 1d10 dano ígneo; alcance 36 m", {"dano": "escala nos níveis 5, 11 e 17"}),
     "escudo": (1, "abjuração", "V, S", False, "+5 CA até o início do próximo turno", {}),
     "curar ferimentos": (1, "necromancia", "V, S", False, "cura 2d8", {"cura": "+2d8 por círculo"}),
-    "palavra curativa": (1, "abjuração", "V", False, "cura 1d4 + modificador de conjuração; alcance 18m; ação bônus", {"cura": "+1d4 por círculo"}),
+    "palavra curativa": (1, "abjuração", "V", False, "cura 2d4 + modificador de conjuração; alcance 18m; ação bônus", {"cura": "+2d4 por círculo"}),
     "onda trovejante": (1, "evocação", "V, S", False, "2d8 dano trovejante; cubo de 4,5m; salvaguarda de Constituição reduz à metade; falha empurra 3m", {"dano": "+1d8 por círculo"}),
     "mãos flamejantes": (1, "evocação", "V, S", False, "3d6 dano ígneo em cone de 4,5m; salvaguarda de Destreza reduz à metade", {"dano": "+1d6 por círculo"}),
     "armadura arcana": (1, "abjuração", "V, S, M (um pedaço de couro curtido)", False, "CA base 13 + modificador de Destreza por 8 horas; alvo voluntário sem armadura", {}),
@@ -50,9 +50,19 @@ _DETALHADAS = {
     "dissipar magia": (3, "abjuração", "V, S", False, "encerra efeitos mágicos", {}),
     "banimento": (4, "abjuração", "V, S, M (um item desagradável ao alvo)", True, "salvaguarda ou banido", {"alvos": "+1 por círculo"}),
     "cura completa": (6, "necromancia", "V, S", False, "cura 70 PV", {"cura": "+10 por círculo"}),
+    "infligir ferimentos": (1, "necromancia", "V, S", False, "Toque; Constituição evita 2d10 necrótico, metade em sucesso", {"dano": "+1d10 por círculo"}),
+    "comando": (1, "encantamento", "V", False, "Sabedoria evita; alvo segue um comando no próximo turno (Abaixar, Aproximar, Fugir, Largar, Parar)", {"alvos": "+1 por círculo"}),
+    "sono": (1, "encantamento", "V, S, M (uma pitada de areia ou pétalas de rosa)", True, "Esfera de 1,5 m; Sabedoria evita Incapacitado; segunda falha causa Inconsciente", {}),
+    "heroísmo": (1, "encantamento", "V, S", True, "Imune a Amedrontado; PV temporários igual ao modificador de conjuração a cada turno", {"alvos": "+1 por círculo"}),
+    "auxílio": (2, "abjuração", "V, S, M (uma tira de pano branco)", False, "até três criaturas: +5 PV máximos e atuais por 8 horas", {"pv": "+5 por círculo acima de 2"}),
+    "santuário": (1, "abjuração", "V, S, M (o caco de um espelho)", False, "Atacante que mirar a criatura protegida faz salvaguarda de Sabedoria ou perde o ataque ou a magia", {}),
 }
 for nome, (circulo, escola, componentes, conc, efeito, upcast) in _DETALHADAS.items():
     MAGIAS[nome] = {"nome": nome.title(), "circulo": circulo, "escola": escola, "componentes": componentes, "concentracao": conc, "ritual": False, "duracao": "concentração" if conc else "instantânea", "efeito": efeito, "upcasting": upcast}
+
+# Durações específicas que a regra genérica (concentração ou instantânea) não cobre.
+for _nome, _duracao in {"auxílio": "8 horas", "santuário": "1 minuto", "sono": "concentração, até 1 minuto", "heroísmo": "concentração, até 1 minuto", "comando": "instantânea"}.items():
+    MAGIAS[_nome]["duracao"] = _duracao
 
 # O catálogo extraído contém entradas incompletas sem círculo. Para as magias
 # da lista de Artífice, o círculo é conhecido e validado separadamente do efeito.
@@ -117,7 +127,7 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
         "soma_modificador_conjuracao": True, "alcance": "toque",
     },
     "palavra curativa": {
-        "tipo": "cura", "dados_cura_base": "1d4", "dados_cura_por_nivel": "1d4",
+        "tipo": "cura", "dados_cura_base": "2d4", "dados_cura_por_nivel": "2d4",
         "soma_modificador_conjuracao": True, "alcance_m": 18, "acao": "bonus",
     },
     "onda trovejante": {
@@ -175,6 +185,37 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
         "concentracao": True, "duracao": "ate_1_minuto",
         "alvos_base": 1, "alvos_por_nivel": 1,
     },
+    "infligir ferimentos": {
+        "tipo": "dano_salvaguarda", "dados_dano_base": "2d10", "dados_dano_por_nivel": "1d10",
+        "tipo_dano": "necrotico", "salvaguarda": "constituicao", "sucesso_metade": True,
+        "alcance": "toque", "acao": "acao",
+    },
+    "comando": {
+        "tipo": "controle_comando", "salvaguarda": "sabedoria", "alcance_m": 18, "acao": "acao",
+        "comandos": ["abaixar", "aproximar", "fugir", "largar", "parar"],
+        "alvos_base": 1, "alvos_por_nivel": 1,
+    },
+    "sono": {
+        "tipo": "controle_area", "salvaguarda": "sabedoria", "alcance_m": 18, "acao": "acao",
+        "area": {"forma": "esfera", "raio_m": 1.5}, "concentracao": True, "duracao": "ate_1_minuto",
+        "condicao_inicial": "incapacitado", "condicao_apos_segunda_falha": "inconsciente",
+        "encerra_se_sofrer_dano": True, "imunes": ["nao_dorme", "imunidade_a_exaustao"],
+    },
+    "heroísmo": {
+        "tipo": "beneficio", "alcance": "toque", "acao": "acao", "concentracao": True,
+        "duracao": "ate_1_minuto", "condicao_imune": ["amedrontado"],
+        "pv_temporarios_por_turno": "modificador_de_conjuracao",
+        "alvos_base": 1, "alvos_por_nivel": 1,
+    },
+    "auxílio": {
+        "tipo": "beneficio_pv_maximo", "alcance_m": 9, "acao": "acao", "duracao": "ate_8_horas",
+        "alvos_base": 3, "pv_bonus_base": 5, "pv_bonus_por_nivel": 5,
+    },
+    "santuário": {
+        "tipo": "protecao", "salvaguarda": "sabedoria", "alcance_m": 9, "acao": "bonus",
+        "duracao": "ate_1_minuto", "nao_protege_contra": ["area"],
+        "encerra_se": ["ataque", "magia", "dano", "conjurar_magia"],
+    },
 }
 
 
@@ -207,6 +248,8 @@ def _aplicar_escalonamento_mecanico(nome: str, magia: dict[str, Any], aumento: i
         mecanica["alvos"] = base["alvos_base"] + base.get("alvos_por_nivel", 0) * aumento
     if "pv_base" in base:
         mecanica["pv_curados"] = base["pv_base"] + base["pv_por_nivel"] * aumento
+    if "pv_bonus_base" in base:
+        mecanica["pv_bonus"] = base["pv_bonus_base"] + base["pv_bonus_por_nivel"] * aumento
     return mecanica
 
 
