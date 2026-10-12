@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend import app as backend
 from backend.persistencia import RepositorioCampanhas, ConflitoEstadoCampanha
-from backend.routes.campanhas import _responder
+from backend.services.mj_service import responder
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine import build_default_engine
 from rule_engine.class_features import resolver_caracteristica
@@ -126,7 +126,7 @@ class PersistenciaAtomicaTests(unittest.TestCase):
             repo = RepositorioCampanhas(url)
             cid = repo.criar('auditoria-p0', 'Persistente')['id']
             p = repo.criar_personagem('auditoria-p0', cid, {}, self.ficha)
-            _responder(MJComFerramenta(), repo, 'auditoria-p0', cid, 'Conjuro.')
+            responder(MJComFerramenta(), repo, 'auditoria-p0', cid, 'Conjuro.')
             repo.engine.dispose()
             reaberto = RepositorioCampanhas(url)
             try:

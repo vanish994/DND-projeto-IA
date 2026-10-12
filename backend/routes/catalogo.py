@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
+from backend.services.bloco_ficha import ALIAS_PROFICIENCIA_ARMA, ARMAS_SIMPLES
 from rule_engine import (
     ANTECEDENTES,
     CLASSES,
@@ -27,23 +28,6 @@ from rule_engine.spells import listar_magias, suporte_magia
 from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA
 
 router = APIRouter()
-
-# Armas simples do catálogo; as demais do CATALOGO_ARMAS são marciais.
-ARMAS_SIMPLES = {
-    "Clava", "Clava Grande", "Adaga", "Dardo", "Machadinha", "Martelo Leve", "Maça",
-    "Cajado", "Funda", "Azagaia", "Arco Curto", "Besta Leve",
-}
-
-# Proficiências específicas concedidas por classe que não usam o nome da arma.
-ALIAS_PROFICIENCIA_ARMA = {
-    "Besta de Mão": "bestas_de_mao", "Espada Longa": "espadas_longas",
-    "Rapieira": "rapieiras", "Espada Curta": "espadas_curtas",
-    "Adaga": "adagas", "Dardo": "dardos", "Funda": "fundas",
-    "Cajado": "cajados", "Besta Leve": "bestas_leves", "Clava": "clavas",
-    "Clava Grande": "clavas_grandes", "Machadinha": "machadinhas",
-    "Azagaia": "azagaias", "Martelo Leve": "martelos_leves", "Maça": "macas",
-    "Cimitarra": "cimitarras", "Foice": "foices", "Lança": "lancas",
-}
 
 
 @router.get("/v1/catalogo/personagens")

@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend import app as backend
 from backend.persistencia import RepositorioCampanhas, operacoes_mj
-from backend.routes.campanhas import _responder
+from backend.services.mj_service import responder
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine import build_default_engine
 
@@ -153,12 +153,12 @@ class IdempotenciaMJTests(unittest.TestCase):
             repo = RepositorioCampanhas(url)
             cid = repo.criar('jogador-idem', 'Persistente')['id']
             p = repo.criar_personagem('jogador-idem', cid, {}, copy.deepcopy(FICHA))
-            original = _responder(self.mj, repo, 'jogador-idem', cid, 'Conjuro.', 'op-reabrir')
+            original = responder(self.mj, repo, 'jogador-idem', cid, 'Conjuro.', 'op-reabrir')
             repo.engine.dispose()
             reaberto = RepositorioCampanhas(url)
             try:
                 self.mj.falhar = True
-                self.assertEqual(_responder(self.mj, reaberto, 'jogador-idem', cid, 'Conjuro.', 'op-reabrir'), original)
+                self.assertEqual(responder(self.mj, reaberto, 'jogador-idem', cid, 'Conjuro.', 'op-reabrir'), original)
                 self.assertEqual(self.mj.chamadas, 1)
                 self.assertEqual(reaberto.obter_personagem('jogador-idem', cid, p['id'])['conjuracao']['espacos_restantes']['1'], 1)
             finally:

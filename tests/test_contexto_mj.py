@@ -1,6 +1,6 @@
 import unittest
 
-from backend.routes.campanhas import _resumo_grupo
+from backend.services.campanha_service import resumo_grupo
 from integrations.deepseek_mj import PROMPT_NORMATIVO
 
 
@@ -40,7 +40,7 @@ class ContextoMestreTests(unittest.TestCase):
             "equipamento_antecedente": {"A": "kit de investigador"},
             "conjuracao": {"truques": [], "magias_preparadas": [], "espacos_totais": {}},
         }
-        contexto = _resumo_grupo(RepositorioFalso([personagem]), "jogador", "campanha")
+        contexto = resumo_grupo(RepositorioFalso([personagem]), "jogador", "campanha")
 
         self.assertIn("nome=Vex", contexto)
         self.assertIn("espécie=draconato", contexto)
@@ -51,7 +51,7 @@ class ContextoMestreTests(unittest.TestCase):
         self.assertIn("não invente nome", contexto)
 
     def test_sem_personagem_instrui_mj_a_nao_inventar_um(self):
-        contexto = _resumo_grupo(RepositorioFalso([]), "jogador", "campanha")
+        contexto = resumo_grupo(RepositorioFalso([]), "jogador", "campanha")
         self.assertIn("nenhum personagem está cadastrado", contexto)
         self.assertIn("Não invente nem presuma nome", contexto)
 
