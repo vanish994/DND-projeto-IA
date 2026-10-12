@@ -435,6 +435,7 @@ class RepositorioCampanhas:
             "entrada": entrada,
             "criado_em": _iso(linha.criado_em),
             "atualizado_em": _iso(linha.atualizado_em),
+            "pv_atual": int(ficha.get("pv_maximo", 1)),
         }
 
     def criar_ficha_salva(
