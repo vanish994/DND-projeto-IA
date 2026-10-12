@@ -527,11 +527,21 @@ def _circulo_efetivo(base: int, usado: int) -> int:
     return usado - base
 
 
+# Nomes do catálogo que pertencem ao PHB 2014 ou a suplementos, não ao PHB 2024.
+# O projeto usa apenas regras de 2024: estes nomes são bloqueados, não resolvidos.
+_FORA_DO_PHB_2024 = (
+    "Absorver Elementos", "Armadilha", "Bebida Cáustica de Tasha", "Catapulta", "Congelamento",
+    "Consertar", "Criar Fogueira", "Explosão de Espadas", "Mão Mágica", "Passos Longos", "Pedra Mágica",
+)
+
+
 def resolver_magia(fatos: dict) -> dict[str, Any]:
     nome = str(fatos.get("magia", fatos.get("spell", ""))).lower()
     magia = obter_magia(nome)
     if not magia:
         return {"resultado": "bloqueado", "motivo": "magia_desconhecida", "magia": nome}
+    if any(_normalizar_nome_magia(n) == _normalizar_nome_magia(magia["nome"]) for n in _FORA_DO_PHB_2024):
+        return {"resultado": "bloqueado", "motivo": "fora_do_phb_2024", "magia": magia["nome"]}
     if magia.get("circulo") is None:
         return {
             "resultado": "nao_implementado",

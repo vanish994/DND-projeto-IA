@@ -264,5 +264,21 @@ class MagiasPHB2024NomesNovosTests(unittest.TestCase):
         self.assertFalse(result["mecanica"]["restaura_magia"])
 
 
+class MagiasForaDoPHB2024Tests(unittest.TestCase):
+    """Nomes de 2014 ou de suplementos não são usados pelo projeto (regras 2024)."""
+
+    def test_names_from_2014_or_supplements_are_blocked(self):
+        for nome in ["Mão Mágica", "Consertar", "Passos Longos", "Catapulta", "Pedra Mágica"]:
+            with self.subTest(magia=nome):
+                result = resolver_magia({"magia": nome})
+                self.assertEqual(result["resultado"], "bloqueado")
+                # Sem entrada no catálogo (magia_desconhecida) ou bloqueada pela lista explícita.
+                self.assertIn(result["motivo"], {"magia_desconhecida", "fora_do_phb_2024"})
+
+    def test_2024_names_still_resolve(self):
+        self.assertEqual(resolver_magia({"magia": "mãos mágicas"})["resultado"], "conjurada")
+        self.assertEqual(resolver_magia({"magia": "reparar"})["resultado"], "conjurada")
+
+
 if __name__ == "__main__":
     unittest.main()
