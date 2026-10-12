@@ -449,7 +449,11 @@ class DeepSeekMJ:
             resultado["espacos_restantes"] = restantes
             if on_character_update is not None:
                 on_character_update(personagem_magia)
-        for chave in ("character_id", "proficiency_applied", "modifier_source"):
+        for chave in (
+            "character_id", "proficiency_applied", "modifier_source", "weapon",
+            "weapon_damage", "damage_type", "damage_modifier", "attack_ability",
+            "target_name",
+        ):
             if chave in facts:
                 resultado[chave] = facts[chave]
         return resultado
