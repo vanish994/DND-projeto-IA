@@ -1,4 +1,7 @@
+from backend.erros import ErroDeValidacao
 from backend.persistencia import RepositorioCampanhas
+from backend.schemas import NovoPersonagem
+from backend.services.personagem_service import exigir_escolhas_de_criacao
 
 
 def ficha_teste():
@@ -58,9 +61,6 @@ def test_biblioteca_isola_fichas_por_jogador():
     assert repo.apagar_ficha_salva(outro, salva["id"]) is False
 
 
-from backend.erros import ErroDeValidacao
-from backend.schemas import NovoPersonagem
-from backend.services.personagem_service import exigir_escolhas_de_criacao
 
 
 def dados_criacao(**alteracoes):
