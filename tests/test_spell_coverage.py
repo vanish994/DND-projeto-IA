@@ -333,6 +333,11 @@ class CatalogoPHB2024LimpezaTests(unittest.TestCase):
         self.assertEqual(obter_magia("Criar Alimentos e Água")["nome"], "Criar Comida e Água")
         self.assertEqual(obter_magia("Benção")["nome"], "Bênção")
 
+    def test_catalogo_sem_circulo_restringe_a_2014_e_bloqueadas(self):
+        from rule_engine.spells import MAGIAS
+        sem = sorted(v["nome"] for v in MAGIAS.values() if v.get("circulo") is None and "alias_de" not in v)
+        self.assertEqual(sem, ["Animar Mortos", "Sorvedouro de Vida", "Véu da Natureza"])
+
     def test_bencao_mantem_componente_do_phb_2024(self):
         from rule_engine.spells import resolver_magia
         r = resolver_magia({"magia": "benção", "espaco": 2})

@@ -4,6 +4,8 @@ O catálogo reaproveita as centenas de entradas extraídas do livro e adiciona
 metadados executáveis, componentes, concentração, efeitos e escalonamento.
 """
 from __future__ import annotations
+import json
+import pathlib
 import re
 import unicodedata
 from typing import Any
@@ -186,6 +188,15 @@ for _nome_c, (_circ, _esc, _comp, _conc, _dur) in _PHB2024_COMPLEMENTAR.items():
             "concentracao": _conc, "ritual": False,
             "duracao": _dur or ("concentração, até 10 minutos" if _conc else "instantânea"),
         }
+
+# Círculo de magias do catálogo extraído que não tinham círculo (cabeçalhos do PHB 2024).
+_CIRCULOS_PHB2024 = json.loads(
+    (pathlib.Path(__file__).parent / "dados" / "circulos_phb2024.json").read_text(encoding="utf-8")
+)["circulos"]
+for _nome_d, _circ_d in _CIRCULOS_PHB2024.items():
+    for _m in MAGIAS.values():
+        if _m["nome"] == _nome_d and _m.get("circulo") is None:
+            _m["circulo"] = int(_circ_d)
 
 for _antigo, _novo in _ALIAS_PARA_2024:
     _entrada = MAGIAS.get(_antigo.lower())
