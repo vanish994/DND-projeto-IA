@@ -27,8 +27,17 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt httpx
+      - name: Collect tests (diagnóstico de import)
+        run: pytest --collect-only -q
       - name: Python test suite with coverage floor
-        run: pytest -q --cov --cov-fail-under=80
+        run: pytest -q --cov --cov-fail-under=80 2>&1 | tee pytest-ci.log
+      - name: Upload pytest log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-ci-log
+          path: pytest-ci.log
+          if-no-files-found: ignore
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
