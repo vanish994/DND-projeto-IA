@@ -37,6 +37,18 @@ class CombatIntegrationTests(unittest.TestCase):
         self.assertEqual(result.get("target_name"), "Baboon")
         self.assertEqual(result.get("modifier_source"), "ficha_autoritativa")
 
+    def test_attack_ignores_model_supplied_ac_and_uses_bestiary(self):
+        result = self.mj._tool(
+            "resolver_regra",
+            {"fatos": {
+                "type": "attack", "weapon": "Adaga", "target_name": "Baboon",
+                "target_ac": 99, "seed": "official-ac-test",
+            }},
+            [self.personagem],
+        )
+        self.assertNotEqual(result.get("target_ac"), 99)
+        self.assertEqual(result.get("target_ac"), 12)
+
     def test_attack_blocks_weapon_not_in_catalog(self):
         result = self.mj._tool(
             "resolver_regra",
