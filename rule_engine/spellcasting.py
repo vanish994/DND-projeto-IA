@@ -28,6 +28,7 @@ ARTIFICER_SPELL_LEVELS: dict[str, int] = {
     "Trovão": 0,
     # 1º círculo
     "Alarme": 1,
+    "Passos Longos": 1,
     "Curar Ferimentos": 1,
     "Detectar Magia": 1,
     "Disfarçar-se": 1,

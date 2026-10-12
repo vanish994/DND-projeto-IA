@@ -531,12 +531,17 @@ def _circulo_efetivo(base: int, usado: int) -> int:
 # O projeto usa apenas regras de 2024: estes nomes são bloqueados, não resolvidos.
 _FORA_DO_PHB_2024 = (
     "Absorver Elementos", "Armadilha", "Bebida Cáustica de Tasha", "Catapulta", "Congelamento",
-    "Consertar", "Criar Fogueira", "Explosão de Espadas", "Mão Mágica", "Passos Longos", "Pedra Mágica",
+    "Criar Fogueira", "Explosão de Espadas", "Pedra Mágica",
 )
+# Nomes antigos em português que são o mesmo truque do PHB 2024 (Mage Hand e Mending).
+_ALIAS_PARA_2024 = (("Mão Mágica", "Mãos Mágicas"), ("Consertar", "Reparar"))
 
 
 def resolver_magia(fatos: dict) -> dict[str, Any]:
     nome = str(fatos.get("magia", fatos.get("spell", ""))).lower()
+    for antigo, novo in _ALIAS_PARA_2024:
+        if _normalizar_nome_magia(antigo) == _normalizar_nome_magia(nome):
+            nome = novo.lower()
     magia = obter_magia(nome)
     if not magia:
         return {"resultado": "bloqueado", "motivo": "magia_desconhecida", "magia": nome}

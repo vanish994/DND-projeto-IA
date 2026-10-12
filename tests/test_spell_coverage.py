@@ -268,12 +268,21 @@ class MagiasForaDoPHB2024Tests(unittest.TestCase):
     """Nomes de 2014 ou de suplementos não são usados pelo projeto (regras 2024)."""
 
     def test_names_from_2014_or_supplements_are_blocked(self):
-        for nome in ["Mão Mágica", "Consertar", "Passos Longos", "Catapulta", "Pedra Mágica"]:
+        for nome in ["Catapulta", "Pedra Mágica", "Armadilha", "Criar Fogueira"]:
             with self.subTest(magia=nome):
                 result = resolver_magia({"magia": nome})
                 self.assertEqual(result["resultado"], "bloqueado")
                 # Sem entrada no catálogo (magia_desconhecida) ou bloqueada pela lista explícita.
                 self.assertIn(result["motivo"], {"magia_desconhecida", "fora_do_phb_2024"})
+
+    def test_old_portuguese_names_are_aliases_of_2024_cantrips(self):
+        self.assertEqual(resolver_magia({"magia": "Mão Mágica"})["magia"], "Mãos Mágicas")
+        self.assertEqual(resolver_magia({"magia": "Consertar"})["magia"], "Reparar")
+
+    def test_passos_longos_is_listed_for_artificer_but_has_no_effect_yet(self):
+        from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS
+        self.assertEqual(ARTIFICER_SPELL_LEVELS["Passos Longos"], 1)
+        self.assertEqual(resolver_magia({"magia": "passos longos"})["resultado"], "nao_implementado")
 
     def test_2024_names_still_resolve(self):
         self.assertEqual(resolver_magia({"magia": "mãos mágicas"})["resultado"], "conjurada")
