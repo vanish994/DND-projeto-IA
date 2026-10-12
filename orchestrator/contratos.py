@@ -8,11 +8,11 @@ Nenhum dos dois lados precisa conhecer o formato interno do outro, e a
 interface continua recebendo o mesmo dicionário de sempre por meio de
 ``ResultadoAcao.para_ferramenta()``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Mapping
-
 
 # Ferramentas que o MJ pode chamar. Qualquer outra coisa é recusada.
 FERRAMENTAS_CONHECIDAS = {"sugerir_monstros", "consultar_monstro", "resolver_regra"}

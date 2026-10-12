@@ -6,22 +6,30 @@ conjuração da ficha, escalonar truques, rolar o dano, gastar espaços de magia
 resolver o Ataque de Sopro do Draconato por salvaguarda — sempre sem inventar
 valores fora do catálogo.
 """
+
 import json
 import unittest
 
 from integrations.deepseek_mj import DeepSeekMJ
 from rule_engine import build_default_engine
-from rule_engine.damage import aplicar_defesas_monstro
 from rule_engine.casting import atributo_de_conjuracao as atributo_de_conjuracao_engine
+from rule_engine.damage import aplicar_defesas_monstro
 from rule_engine.spells import escala_de_truque, mecanica_de_magia
 
 
 def feiticeiro(**extra):
     ficha = {
-        "id": "p1", "nome": "Vanish", "classe": "feiticeiro", "nivel": 3,
+        "id": "p1",
+        "nome": "Vanish",
+        "classe": "feiticeiro",
+        "nivel": 3,
         "atributos": {"carisma": 16, "constituicao": 14, "destreza": 14},
-        "conjuracao": {"truques": ["Raio de Fogo"], "magias_preparadas": ["Bola de Fogo"],
-                       "espacos_totais": {"3": 2}, "espacos_restantes": {"3": 2}},
+        "conjuracao": {
+            "truques": ["Raio de Fogo"],
+            "magias_preparadas": ["Bola de Fogo"],
+            "espacos_totais": {"3": 2},
+            "espacos_restantes": {"3": 2},
+        },
     }
     ficha.update(extra)
     return ficha
@@ -29,8 +37,13 @@ def feiticeiro(**extra):
 
 def draconato(**extra):
     ficha = {
-        "id": "p1", "nome": "Vex", "classe": "guerreiro", "nivel": 5, "especie": "draconato",
-        "heranca_draconica": "vermelho", "atributos": {"forca": 16, "constituicao": 15},
+        "id": "p1",
+        "nome": "Vex",
+        "classe": "guerreiro",
+        "nivel": 5,
+        "especie": "draconato",
+        "heranca_draconica": "vermelho",
+        "atributos": {"forca": 16, "constituicao": 15},
     }
     ficha.update(extra)
     return ficha
@@ -85,7 +98,13 @@ class MotorDeMagiaTests(unittest.TestCase):
             self.assertEqual(rolagens[1]["rotulo"], "Dano de Raio de Fogo")
 
     def test_ataque_de_magia_reproduz_os_mesmos_dados_com_a_mesma_semente(self):
-        fatos = {"type": "attack", "character_id": "p1", "magia": "Raio de Fogo", "target_name": "Goblin", "seed": "abc"}
+        fatos = {
+            "type": "attack",
+            "character_id": "p1",
+            "magia": "Raio de Fogo",
+            "target_name": "Goblin",
+            "seed": "abc",
+        }
         primeiro, _ = self.resolver(dict(fatos), [feiticeiro()])
         segundo, _ = self.resolver(dict(fatos), [feiticeiro()])
         self.assertEqual(primeiro["roll"], segundo["roll"])
@@ -94,7 +113,13 @@ class MotorDeMagiaTests(unittest.TestCase):
     def test_critico_de_magia_dobra_os_dados_de_dano(self):
         for semente in range(400):
             resultado, rolagens = self.resolver(
-                {"type": "attack", "character_id": "p1", "magia": "Raio de Fogo", "target_name": "Goblin", "seed": str(semente)},
+                {
+                    "type": "attack",
+                    "character_id": "p1",
+                    "magia": "Raio de Fogo",
+                    "target_name": "Goblin",
+                    "seed": str(semente),
+                },
                 [feiticeiro(nivel=5)],
             )
             if resultado.get("critical"):
@@ -108,14 +133,30 @@ class MotorDeMagiaTests(unittest.TestCase):
 
     def test_bloqueios_de_magia_com_motivo_explicito(self):
         casos = [
-            ({"type": "attack", "character_id": "p1", "magia": "Magia Inventada", "target_name": "Goblin"}, "magia_desconhecida"),
-            ({"type": "attack", "character_id": "p1", "magia": "Raio de Fogo", "target_name": "Dragão Inventado"}, "monstro_desconhecido_no_bestiario"),
+            (
+                {"type": "attack", "character_id": "p1", "magia": "Magia Inventada", "target_name": "Goblin"},
+                "magia_desconhecida",
+            ),
+            (
+                {"type": "attack", "character_id": "p1", "magia": "Raio de Fogo", "target_name": "Dragão Inventado"},
+                "monstro_desconhecido_no_bestiario",
+            ),
             ({"type": "attack", "character_id": "p1", "magia": "Raio de Fogo"}, "nome_do_alvo_ausente"),
-            ({"type": "attack", "character_id": "p1", "magia": "Bola de Fogo", "target_name": "Goblin"}, "magia_nao_resolve_por_jogada_de_ataque"),
+            (
+                {"type": "attack", "character_id": "p1", "magia": "Bola de Fogo", "target_name": "Goblin"},
+                "magia_nao_resolve_por_jogada_de_ataque",
+            ),
         ]
         for fatos, motivo in casos:
             with self.subTest(motivo=motivo):
-                resultado, rolagens = self.resolver(fatos, [feiticeiro(nivel=5, conjuracao={"truques": ["Raio de Fogo"], "magias_preparadas": ["Bola de Fogo"]})])
+                resultado, rolagens = self.resolver(
+                    fatos,
+                    [
+                        feiticeiro(
+                            nivel=5, conjuracao={"truques": ["Raio de Fogo"], "magias_preparadas": ["Bola de Fogo"]}
+                        )
+                    ],
+                )
                 self.assertEqual(resultado["motivo"], motivo)
                 self.assertEqual(rolagens, [])
 
@@ -162,7 +203,9 @@ class MotorDeMagiaTests(unittest.TestCase):
         self.assertEqual(resultado["aumento"], 2)
 
     def test_dano_de_magia_desconhecida_e_bloqueado(self):
-        resultado, rolagens = self.resolver({"type": "damage", "character_id": "p1", "magia": "Magia Inventada"}, [feiticeiro()])
+        resultado, rolagens = self.resolver(
+            {"type": "damage", "character_id": "p1", "magia": "Magia Inventada"}, [feiticeiro()]
+        )
         self.assertEqual(resultado["motivo"], "magia_desconhecida")
         self.assertEqual(rolagens, [])
 
@@ -170,9 +213,15 @@ class MotorDeMagiaTests(unittest.TestCase):
 
     def test_conjurar_gasta_espaco_e_bloqueia_quando_acaba(self):
         ficha = feiticeiro()
-        primeiro = self.mj._tool("resolver_regra", {"fatos": {"type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}}, [ficha])
-        segundo = self.mj._tool("resolver_regra", {"fatos": {"type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}}, [ficha])
-        terceiro = self.mj._tool("resolver_regra", {"fatos": {"type": "cast_spell", "character_id": "p1", "magia": "Bola de Fogo"}}, [ficha])
+        primeiro = self.mj._tool(
+            "resolver_regra", {"fatos": {"type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}}, [ficha]
+        )
+        segundo = self.mj._tool(
+            "resolver_regra", {"fatos": {"type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}}, [ficha]
+        )
+        terceiro = self.mj._tool(
+            "resolver_regra", {"fatos": {"type": "cast_spell", "character_id": "p1", "magia": "Bola de Fogo"}}, [ficha]
+        )
         self.assertEqual(primeiro["resultado"], "conjurada")
         self.assertEqual(segundo["resultado"], "conjurada")
         self.assertEqual(ficha["conjuracao"]["espacos_restantes"]["3"], 0)
@@ -180,7 +229,9 @@ class MotorDeMagiaTests(unittest.TestCase):
 
     def test_truque_conjura_sem_gastar_espaco(self):
         ficha = feiticeiro()
-        resultado = self.mj._tool("resolver_regra", {"fatos": {"type": "spell", "character_id": "p1", "magia": "Raio de Fogo"}}, [ficha])
+        resultado = self.mj._tool(
+            "resolver_regra", {"fatos": {"type": "spell", "character_id": "p1", "magia": "Raio de Fogo"}}, [ficha]
+        )
         self.assertEqual(resultado["resultado"], "conjurada")
         self.assertEqual(resultado["espaco_usado"], 0)
         self.assertEqual(ficha["conjuracao"]["espacos_restantes"], {"3": 2})
@@ -218,8 +269,14 @@ class MotorDeMagiaTests(unittest.TestCase):
         self.assertIsNone(rolagens[1]["motivo"])
 
     def test_ataque_de_sopro_metade_no_sucesso(self):
-        alvo = {"id": "p1", "nome": "Vex", "nivel": 17, "especie": "draconato", "heranca_draconica": "vermelho",
-                "atributos": {"constituicao": 20, "destreza": 20}}
+        alvo = {
+            "id": "p1",
+            "nome": "Vex",
+            "nivel": 17,
+            "especie": "draconato",
+            "heranca_draconica": "vermelho",
+            "atributos": {"constituicao": 20, "destreza": 20},
+        }
         resultado, _ = self.resolver(
             {"type": "attack", "character_id": "p1", "weapon": "Ataque de Sopro", "target_name": "Goblin", "seed": "2"},
             [alvo],
@@ -239,7 +296,13 @@ class MotorDeMagiaTests(unittest.TestCase):
         self.assertEqual(rolagens, [])
 
     def test_ataque_de_sopro_reproduz_a_mesma_rolagem(self):
-        fatos = {"type": "attack", "character_id": "p1", "weapon": "Ataque de Sopro", "target_name": "Goblin", "seed": "5"}
+        fatos = {
+            "type": "attack",
+            "character_id": "p1",
+            "weapon": "Ataque de Sopro",
+            "target_name": "Goblin",
+            "seed": "5",
+        }
         primeiro, _ = self.resolver(dict(fatos), [draconato()])
         segundo, _ = self.resolver(dict(fatos), [draconato()])
         self.assertEqual(primeiro["dano"], segundo["dano"])
@@ -248,7 +311,13 @@ class MotorDeMagiaTests(unittest.TestCase):
     def test_sopro_de_linhagem_aplicada_contra_defesas_do_alvo(self):
         # O Awakened Shrub é vulnerável a ígneo no SRD: o motor dobra o dano.
         resultado, rolagens = self.resolver(
-            {"type": "attack", "character_id": "p1", "weapon": "Ataque de Sopro", "target_name": "Awakened Shrub", "seed": "3"},
+            {
+                "type": "attack",
+                "character_id": "p1",
+                "weapon": "Ataque de Sopro",
+                "target_name": "Awakened Shrub",
+                "seed": "3",
+            },
             [draconato(heranca_draconica="latao")],
         )
         self.assertEqual(resultado["defesas_dano"]["aplicacao"], "vulnerabilidade")
@@ -268,7 +337,9 @@ class DefesasDeDanoTests(unittest.TestCase):
         self.assertEqual(aplicar_defesas_monstro(7, "contundente", vulneravel)["dano"], 14)
 
     def test_resistencia_e_vulnerabilidade_no_mesmo_tipo_se_cancelam(self):
-        resultado = aplicar_defesas_monstro(9, "fogo", {"resistencias_dano": ["igneo"], "vulnerabilidades_dano": ["fogo"]})
+        resultado = aplicar_defesas_monstro(
+            9, "fogo", {"resistencias_dano": ["igneo"], "vulnerabilidades_dano": ["fogo"]}
+        )
         self.assertEqual(resultado["dano"], 9)
         self.assertEqual(resultado["aplicacao"], "resistencia_e_vulnerabilidade_canceladas")
 
@@ -285,17 +356,25 @@ class AtributoDeConjuracaoTests(unittest.TestCase):
 
     def test_atributo_por_classe(self):
         esperado = {
-            "mago": "inteligencia", "clerigo": "sabedoria", "druida": "sabedoria", "bardo": "carisma",
-            "bruxo": "carisma", "feiticeiro": "carisma", "paladino": "carisma", "guardiao": "sabedoria",
+            "mago": "inteligencia",
+            "clerigo": "sabedoria",
+            "druida": "sabedoria",
+            "bardo": "carisma",
+            "bruxo": "carisma",
+            "feiticeiro": "carisma",
+            "paladino": "carisma",
+            "guardiao": "sabedoria",
             "artifice": "inteligencia",
         }
         from rule_engine.casting import atributo_da_classe
+
         for classe, atributo in esperado.items():
             with self.subTest(classe=classe):
                 self.assertEqual(atributo_da_classe(self.engine, classe, nivel=5), atributo)
 
     def test_classe_marcial_nao_tem_atributo_de_conjuracao(self):
         from rule_engine.casting import atributo_da_classe
+
         self.assertIsNone(atributo_da_classe(self.engine, "guerreiro", nivel=5))
 
     def test_ficha_declarada_tem_precedencia(self):
@@ -314,6 +393,7 @@ try:
 
     from backend import app as backend_app
     from backend.persistencia import RepositorioCampanhas
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover - backend opcional fora do CI
     DEPENDENCIAS = False
@@ -370,16 +450,31 @@ class LacoDoMJTests(unittest.TestCase):
         raise AssertionError("a requisição não levou nenhuma resposta de ferramenta")
 
     def test_modelo_pede_truque_como_ataque_e_recebe_rolagem_do_motor(self):
-        mj, cliente = self._mj([
-            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-                "type": "attack", "character_id": "p1",
-                "magia": "Raio de Fogo", "target_name": "Awakened Shrub",
-            }})]),
-            _Mensagem(content="O Raio de Fogo crepita e atinge o arbusto desperto."),
-        ])
+        mj, cliente = self._mj(
+            [
+                _Mensagem(
+                    tool_calls=[
+                        _Ferramenta(
+                            "resolver_regra",
+                            {
+                                "fatos": {
+                                    "type": "attack",
+                                    "character_id": "p1",
+                                    "magia": "Raio de Fogo",
+                                    "target_name": "Awakened Shrub",
+                                }
+                            },
+                        )
+                    ]
+                ),
+                _Mensagem(content="O Raio de Fogo crepita e atinge o arbusto desperto."),
+            ]
+        )
         rolagens = []
         narracao = mj.responder(
-            "Ataco o arbusto com raio de fogo", personagens=[feiticeiro()], on_roll=rolagens.append,
+            "Ataco o arbusto com raio de fogo",
+            personagens=[feiticeiro()],
+            on_roll=rolagens.append,
         )
         self.assertIn("Raio de Fogo", narracao)
         # O prompt normativo ensina o caminho novo antes de o modelo responder.
@@ -405,12 +500,25 @@ class LacoDoMJTests(unittest.TestCase):
 
     def test_modelo_pede_conjuracao_e_o_motor_gasta_o_espaco(self):
         ficha = feiticeiro(nivel=5)
-        mj, cliente = self._mj([
-            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-                "type": "spell", "character_id": "p1", "magia": "Bola de Fogo",
-            }})]),
-            _Mensagem(content="A Bola de Fogo explode sobre os inimigos."),
-        ])
+        mj, cliente = self._mj(
+            [
+                _Mensagem(
+                    tool_calls=[
+                        _Ferramenta(
+                            "resolver_regra",
+                            {
+                                "fatos": {
+                                    "type": "spell",
+                                    "character_id": "p1",
+                                    "magia": "Bola de Fogo",
+                                }
+                            },
+                        )
+                    ]
+                ),
+                _Mensagem(content="A Bola de Fogo explode sobre os inimigos."),
+            ]
+        )
         mj.responder("Conjuro bola de fogo", personagens=[ficha])
         chamada_ferramenta = self._resposta_do_motor(cliente.requisicoes[1])
         self.assertEqual(chamada_ferramenta["resultado"], "conjurada")
@@ -418,12 +526,25 @@ class LacoDoMJTests(unittest.TestCase):
         self.assertEqual(ficha["conjuracao"]["espacos_restantes"], {"3": 1})
 
     def test_modelo_pede_dano_de_magia_de_area_e_recebe_cd_da_ficha(self):
-        mj, cliente = self._mj([
-            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-                "type": "damage", "character_id": "p1", "magia": "Bola de Fogo",
-            }})]),
-            _Mensagem(content="As chamas varrem a área."),
-        ])
+        mj, cliente = self._mj(
+            [
+                _Mensagem(
+                    tool_calls=[
+                        _Ferramenta(
+                            "resolver_regra",
+                            {
+                                "fatos": {
+                                    "type": "damage",
+                                    "character_id": "p1",
+                                    "magia": "Bola de Fogo",
+                                }
+                            },
+                        )
+                    ]
+                ),
+                _Mensagem(content="As chamas varrem a área."),
+            ]
+        )
         mj.responder("Quanto de dano?", personagens=[feiticeiro(nivel=5)])
         chamada_ferramenta = self._resposta_do_motor(cliente.requisicoes[1])
         self.assertEqual(chamada_ferramenta["dano_expressao"], "8d6")

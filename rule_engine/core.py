@@ -56,13 +56,15 @@ def selecionar_d20(
 
 
 def resolver_teste_d20(
-    dados: Iterable[int], *, modificador: int = 0, cd: int | None = None,
-    vantagem: bool = False, desvantagem: bool = False,
+    dados: Iterable[int],
+    *,
+    modificador: int = 0,
+    cd: int | None = None,
+    vantagem: bool = False,
+    desvantagem: bool = False,
 ) -> ResultadoD20:
     """Resolve a rolagem comum e compara com uma CD quando fornecida."""
-    selecionado, rolados, vantagem, desvantagem = selecionar_d20(
-        dados, vantagem=vantagem, desvantagem=desvantagem
-    )
+    selecionado, rolados, vantagem, desvantagem = selecionar_d20(dados, vantagem=vantagem, desvantagem=desvantagem)
     total = selecionado + int(modificador)
     return ResultadoD20(
         dado_selecionado=selecionado,

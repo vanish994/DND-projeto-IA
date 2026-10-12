@@ -1,7 +1,8 @@
 """Regressões da integração de blocos estruturados do SRD 5.2.1."""
+
 import json
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 from rule_engine.bestiary import BESTIARIO, consultar_monstro
 
@@ -32,6 +33,7 @@ class BestiarySrdIntegrationTests(unittest.TestCase):
         multiattack = next((a for a in monstro["acoes"] if a["nome"] == "Multiattack"), None)
         self.assertIsNotNone(multiattack)
         self.assertIn("three tentacle attacks", multiattack["desc"].casefold())
+
 
 if __name__ == "__main__":
     unittest.main()

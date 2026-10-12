@@ -4,6 +4,7 @@ Usa SQLAlchemy Core para funcionar com SQLite (desenvolvimento) e Postgres
 (produção, via DATABASE_URL). Cada campanha pertence a um jogador_id gerado
 no navegador até que exista login.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,15 +23,15 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    case,
     create_engine,
     delete,
     func,
     insert,
-    select,
-    update,
-    case,
     inspect,
+    select,
     text,
+    update,
 )
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -77,7 +78,8 @@ personagens = Table(
 # Chave única por campanha. Só existe registro para uma operação confirmada;
 # resposta, rolagens, fichas e mensagens participam da mesma transação.
 operacoes_mj = Table(
-    "operacoes_mj", metadata,
+    "operacoes_mj",
+    metadata,
     Column("campanha_id", String(64), ForeignKey("campanhas.id", ondelete="CASCADE"), primary_key=True),
     Column("operacao_id", String(64), primary_key=True),
     Column("pergunta", Text, nullable=False),
@@ -111,9 +113,9 @@ def _rolagens_da_linha(valor: str | None) -> list[dict[str, Any]]:
 def normalizar_url_banco(url: str) -> str:
     """Converte URLs do Render (postgres://) para o driver psycopg 3."""
     if url.startswith("postgres://"):
-        return "postgresql+psycopg://" + url[len("postgres://"):]
+        return "postgresql+psycopg://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
-        return "postgresql+psycopg://" + url[len("postgresql://"):]
+        return "postgresql+psycopg://" + url[len("postgresql://") :]
     return url
 
 
@@ -269,42 +271,43 @@ class RepositorioCampanhas:
         with self.engine.connect() as conn:
             if self._linha(conn, jogador_id, campanha_id) is None:
                 return None
-            consulta = (
-                select(mensagens)
-                .where(mensagens.c.campanha_id == campanha_id)
-                .order_by(mensagens.c.id.desc())
-            )
+            consulta = select(mensagens).where(mensagens.c.campanha_id == campanha_id).order_by(mensagens.c.id.desc())
             if limite is not None:
                 consulta = consulta.limit(limite)
             linhas = list(reversed(conn.execute(consulta).all()))
         return [
             {
-                "id": l.id,
-                "papel": l.papel,
-                "conteudo": l.conteudo,
-                "rolagens": _rolagens_da_linha(l.rolagens),
-                "criada_em": _iso(l.criada_em),
+                "id": linha.id,
+                "papel": linha.papel,
+                "conteudo": linha.conteudo,
+                "rolagens": _rolagens_da_linha(linha.rolagens),
+                "criada_em": _iso(linha.criada_em),
             }
-            for l in linhas
+            for linha in linhas
         ]
 
     def historico_llm(self, jogador_id: str, campanha_id: str, limite: int) -> list[dict[str, str]]:
         registros = self.mensagens(jogador_id, campanha_id, limite) or []
         return [{"role": r["papel"], "content": r["conteudo"]} for r in registros]
 
-    def obter_operacao(self, jogador_id: str, campanha_id: str, operacao_id: str,
-                       pergunta: str) -> dict[str, Any] | None:
+    def obter_operacao(
+        self, jogador_id: str, campanha_id: str, operacao_id: str, pergunta: str
+    ) -> dict[str, Any] | None:
         with self.engine.connect() as conn:
             if not self._da_campanha(conn, jogador_id, campanha_id):
                 raise ConflitoEstadoCampanha("Campanha indisponível")
-            linha = conn.execute(select(operacoes_mj).where(
-                operacoes_mj.c.campanha_id == campanha_id,
-                operacoes_mj.c.operacao_id == operacao_id,
-            )).first()
+            linha = conn.execute(
+                select(operacoes_mj).where(
+                    operacoes_mj.c.campanha_id == campanha_id,
+                    operacoes_mj.c.operacao_id == operacao_id,
+                )
+            ).first()
         if linha is None:
             return None
         if linha.pergunta != pergunta:
-            raise OperacaoIncompativel("Identificador já utilizado por outra mensagem. Use um novo envio para outra ação.")
+            raise OperacaoIncompativel(
+                "Identificador já utilizado por outra mensagem. Use um novo envio para outra ação."
+            )
         return {"resposta": linha.resposta, "rolagens": _rolagens_da_linha(linha.rolagens)}
 
     def registrar_troca(
@@ -337,35 +340,61 @@ class RepositorioCampanhas:
                 if operacao_id:
                     # Inserir antes das fichas: disputas pela mesma chave são decididas
                     # pela restrição única, antes de qualquer segundo gasto.
-                    conn.execute(insert(operacoes_mj).values(
-                        campanha_id=campanha_id, operacao_id=operacao_id,
-                        pergunta=pergunta, resposta=resposta,
-                        rolagens=json.dumps(rolagens or [], ensure_ascii=False), criada_em=agora,
-                    ))
+                    conn.execute(
+                        insert(operacoes_mj).values(
+                            campanha_id=campanha_id,
+                            operacao_id=operacao_id,
+                            pergunta=pergunta,
+                            resposta=resposta,
+                            rolagens=json.dumps(rolagens or [], ensure_ascii=False),
+                            criada_em=agora,
+                        )
+                    )
                 for personagem_id, ficha in sorted((atualizacoes_ficha or {}).items()):
                     esperado = (fichas_esperadas or {}).get(personagem_id)
-                    linha = conn.execute(select(personagens).where(
-                        personagens.c.id == personagem_id,
-                        personagens.c.campanha_id == campanha_id,
-                    )).first()
-                    if (esperado is None or linha is None
-                            or _iso(linha.atualizado_em) != esperado["atualizado_em"]
-                            or linha.pv_atual != esperado["pv_atual"]):
+                    linha = conn.execute(
+                        select(personagens).where(
+                            personagens.c.id == personagem_id,
+                            personagens.c.campanha_id == campanha_id,
+                        )
+                    ).first()
+                    if (
+                        esperado is None
+                        or linha is None
+                        or _iso(linha.atualizado_em) != esperado["atualizado_em"]
+                        or linha.pv_atual != esperado["pv_atual"]
+                    ):
                         raise ConflitoEstadoCampanha("A ficha mudou durante a resposta")
-                    atualizado = conn.execute(update(personagens).where(
-                        personagens.c.id == personagem_id,
-                        personagens.c.campanha_id == campanha_id,
-                        personagens.c.atualizado_em == linha.atualizado_em,
-                        personagens.c.ficha == linha.ficha,
-                        personagens.c.pv_atual == linha.pv_atual,
-                    ).values(ficha=json.dumps(ficha, ensure_ascii=False), atualizado_em=agora))
+                    atualizado = conn.execute(
+                        update(personagens)
+                        .where(
+                            personagens.c.id == personagem_id,
+                            personagens.c.campanha_id == campanha_id,
+                            personagens.c.atualizado_em == linha.atualizado_em,
+                            personagens.c.ficha == linha.ficha,
+                            personagens.c.pv_atual == linha.pv_atual,
+                        )
+                        .values(ficha=json.dumps(ficha, ensure_ascii=False), atualizado_em=agora)
+                    )
                     if atualizado.rowcount != 1:
                         raise ConflitoEstadoCampanha("A ficha mudou durante a confirmação")
                 conn.execute(
                     insert(mensagens),
                     [
-                        {"campanha_id": campanha_id, "papel": "user", "conteudo": pergunta, "rolagens": None, "criada_em": agora},
-                        {"campanha_id": campanha_id, "papel": "assistant", "conteudo": resposta, "rolagens": rolagens_json, "criada_em": agora},
+                        {
+                            "campanha_id": campanha_id,
+                            "papel": "user",
+                            "conteudo": pergunta,
+                            "rolagens": None,
+                            "criada_em": agora,
+                        },
+                        {
+                            "campanha_id": campanha_id,
+                            "papel": "assistant",
+                            "conteudo": resposta,
+                            "rolagens": rolagens_json,
+                            "criada_em": agora,
+                        },
                     ],
                 )
                 conn.execute(
@@ -398,7 +427,9 @@ class RepositorioCampanhas:
     def _da_campanha(self, conn: Any, jogador_id: str, campanha_id: str) -> bool:
         return self._linha(conn, jogador_id, campanha_id) is not None
 
-    def criar_personagem(self, jogador_id: str, campanha_id: str, entrada: dict[str, Any], ficha: dict[str, Any]) -> dict[str, Any] | None:
+    def criar_personagem(
+        self, jogador_id: str, campanha_id: str, entrada: dict[str, Any], ficha: dict[str, Any]
+    ) -> dict[str, Any] | None:
         agora = _agora()
         registro = {
             "id": f"personagem-{uuid.uuid4().hex[:12]}",
@@ -420,7 +451,9 @@ class RepositorioCampanhas:
             if not self._da_campanha(conn, jogador_id, campanha_id):
                 return None
             linhas = conn.execute(
-                select(personagens).where(personagens.c.campanha_id == campanha_id).order_by(personagens.c.criado_em, personagens.c.id)
+                select(personagens)
+                .where(personagens.c.campanha_id == campanha_id)
+                .order_by(personagens.c.criado_em, personagens.c.id)
             ).all()
         return [self._personagem(linha) for linha in linhas]
 
@@ -459,7 +492,9 @@ class RepositorioCampanhas:
             conn.execute(update(personagens).where(personagens.c.id == personagem_id).values(**valores))
         return self.obter_personagem(jogador_id, campanha_id, personagem_id)
 
-    def atualizar_dados_ficha(self, jogador_id: str, campanha_id: str, personagem_id: str, ficha: dict[str, Any]) -> dict[str, Any] | None:
+    def atualizar_dados_ficha(
+        self, jogador_id: str, campanha_id: str, personagem_id: str, ficha: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Atualiza escolhas complementares sem alterar PV ou dados de criação."""
         if self.obter_personagem(jogador_id, campanha_id, personagem_id) is None:
             return None
@@ -471,7 +506,9 @@ class RepositorioCampanhas:
             )
         return self.obter_personagem(jogador_id, campanha_id, personagem_id)
 
-    def ajustar_pv_personagem(self, jogador_id: str, campanha_id: str, personagem_id: str, delta: int) -> dict[str, Any] | None:
+    def ajustar_pv_personagem(
+        self, jogador_id: str, campanha_id: str, personagem_id: str, delta: int
+    ) -> dict[str, Any] | None:
         """Aplica dano/cura como operação atômica, sem valores absolutos obsoletos."""
         atual = self.obter_personagem(jogador_id, campanha_id, personagem_id)
         if atual is None:

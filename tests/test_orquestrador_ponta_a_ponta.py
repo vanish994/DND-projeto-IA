@@ -9,8 +9,10 @@ O que ele prova:
 - o espaço de magia gasto foi gravado no banco, não contado pela IA;
 - repetir a mesma operação não gasta recurso duas vezes.
 """
+
 import copy
 import json
+import logging
 import unittest
 
 try:
@@ -20,28 +22,33 @@ try:
 
     from backend import app as backend
     from backend.persistencia import RepositorioCampanhas
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover - dependências opcionais fora do CI
     DEPENDENCIAS = False
 
 from integrations.deepseek_mj import DeepSeekMJ
 
-
 FICHA = {
-    "nome": "Tessa", "classe": "feiticeiro", "especie": "humano", "nivel": 3,
+    "nome": "Tessa",
+    "classe": "feiticeiro",
+    "especie": "humano",
+    "nivel": 3,
     "pv_maximo": 18,
     "atributos": {"carisma": 16, "constituicao": 14, "destreza": 14},
-    "conjuracao": {"truques": ["Raio de Fogo"], "magias_preparadas": ["Bola de Fogo"],
-                   "espacos_totais": {"3": 2}, "espacos_restantes": {"3": 2}},
+    "conjuracao": {
+        "truques": ["Raio de Fogo"],
+        "magias_preparadas": ["Bola de Fogo"],
+        "espacos_totais": {"3": 2},
+        "espacos_restantes": {"3": 2},
+    },
 }
 
 
 class _Ferramenta:
     def __init__(self, nome, argumentos, identificador="call-1"):
         self.id = identificador
-        self.function = type(
-            "Funcao", (), {"name": nome, "arguments": json.dumps(argumentos, ensure_ascii=False)}
-        )()
+        self.function = type("Funcao", (), {"name": nome, "arguments": json.dumps(argumentos, ensure_ascii=False)})()
 
 
 class _Mensagem:
@@ -72,21 +79,16 @@ class _ClienteRoteirizado:
 @unittest.skipUnless(DEPENDENCIAS, "fastapi/sqlalchemy/httpx não instalados")
 class FluxoCompletoTests(unittest.TestCase):
     def setUp(self):
-        self.db = create_engine(
-            "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-        )
+        self.db = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
         self.repo = RepositorioCampanhas(engine=self.db)
         self.jogador = "jogador-ponta-a-ponta"
         self.cid = self.repo.criar(self.jogador, "Forja")["id"]
-        self.personagem = self.repo.criar_personagem(
-            self.jogador, self.cid, {}, copy.deepcopy(FICHA)
-        )
-        self.log_disabled = backend.logger.disabled
-        backend.logger.disabled = True
+        self.personagem = self.repo.criar_personagem(self.jogador, self.cid, {}, copy.deepcopy(FICHA))
+        logging.disable(logging.CRITICAL)
 
     def tearDown(self):
         backend.app.dependency_overrides.clear()
-        backend.logger.disabled = self.log_disabled
+        logging.disable(logging.NOTSET)
         self.db.dispose()
 
     def _mj(self, mensagens):
@@ -119,12 +121,25 @@ class FluxoCompletoTests(unittest.TestCase):
         return ficha["conjuracao"]["espacos_restantes"]["3"]
 
     def test_conjuracao_atravessa_todas_as_camadas_e_persiste_o_gasto(self):
-        cliente = self._mj([
-            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-                "type": "spell", "character_id": self.personagem["id"], "magia": "Bola de Fogo",
-            }})]),
-            _Mensagem(content="A Bola de Fogo explode sobre os inimigos."),
-        ])
+        cliente = self._mj(
+            [
+                _Mensagem(
+                    tool_calls=[
+                        _Ferramenta(
+                            "resolver_regra",
+                            {
+                                "fatos": {
+                                    "type": "spell",
+                                    "character_id": self.personagem["id"],
+                                    "magia": "Bola de Fogo",
+                                }
+                            },
+                        )
+                    ]
+                ),
+                _Mensagem(content="A Bola de Fogo explode sobre os inimigos."),
+            ]
+        )
 
         resposta = self._enviar("Conjuro Bola de Fogo.", "op-1")
         self.assertEqual(resposta.status_code, 200, resposta.text)
@@ -140,12 +155,25 @@ class FluxoCompletoTests(unittest.TestCase):
         self.assertEqual(self._espacos(), 1)
 
     def test_repetir_a_mesma_operacao_nao_gasta_o_espaco_de_novo(self):
-        cliente = self._mj([
-            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-                "type": "spell", "character_id": self.personagem["id"], "magia": "Bola de Fogo",
-            }})]),
-            _Mensagem(content="A Bola de Fogo explode sobre os inimigos."),
-        ])
+        cliente = self._mj(
+            [
+                _Mensagem(
+                    tool_calls=[
+                        _Ferramenta(
+                            "resolver_regra",
+                            {
+                                "fatos": {
+                                    "type": "spell",
+                                    "character_id": self.personagem["id"],
+                                    "magia": "Bola de Fogo",
+                                }
+                            },
+                        )
+                    ]
+                ),
+                _Mensagem(content="A Bola de Fogo explode sobre os inimigos."),
+            ]
+        )
         primeira = self._enviar("Conjuro Bola de Fogo.", "op-repetida")
         self.assertEqual(primeira.status_code, 200, primeira.text)
         self.assertEqual(self._espacos(), 1)
@@ -164,13 +192,26 @@ class FluxoCompletoTests(unittest.TestCase):
         # "Bola de Fogo em dois alvos" em UMA rodada de ferramenta: o fluxo
         # manual equivalente (spell, damage, 2 salvaguardas, narração) seriam
         # 5 chamadas ao modelo — cada uma reenviando o contexto inteiro.
-        cliente = self._mj([
-            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-                "type": "area_spell", "character_id": self.personagem["id"],
-                "magia": "Bola de Fogo", "alvos": ["Goblin", "Zombie"],
-            }})]),
-            _Mensagem(content="A Bola de Fogo varre a sala; o goblin é engolido pelas chamas."),
-        ])
+        cliente = self._mj(
+            [
+                _Mensagem(
+                    tool_calls=[
+                        _Ferramenta(
+                            "resolver_regra",
+                            {
+                                "fatos": {
+                                    "type": "area_spell",
+                                    "character_id": self.personagem["id"],
+                                    "magia": "Bola de Fogo",
+                                    "alvos": ["Goblin", "Zombie"],
+                                }
+                            },
+                        )
+                    ]
+                ),
+                _Mensagem(content="A Bola de Fogo varre a sala; o goblin é engolido pelas chamas."),
+            ]
+        )
 
         resposta = self._enviar("Lanço Bola de Fogo no goblin e no zumbi.", "op-area")
         self.assertEqual(resposta.status_code, 200, resposta.text)
@@ -197,13 +238,26 @@ class FluxoCompletoTests(unittest.TestCase):
         self.assertTrue(all(r["origem"] == "rule_engine" for r in rolagens))
 
     def test_teste_de_habilidade_devolve_a_rolagem_do_motor_para_a_interface(self):
-        self._mj([
-            _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-                "type": "ability_check", "character_id": self.personagem["id"],
-                "skill": "persuasao", "dc": 12,
-            }})]),
-            _Mensagem(content="Você empurra a pedra."),
-        ])
+        self._mj(
+            [
+                _Mensagem(
+                    tool_calls=[
+                        _Ferramenta(
+                            "resolver_regra",
+                            {
+                                "fatos": {
+                                    "type": "ability_check",
+                                    "character_id": self.personagem["id"],
+                                    "skill": "persuasao",
+                                    "dc": 12,
+                                }
+                            },
+                        )
+                    ]
+                ),
+                _Mensagem(content="Você empurra a pedra."),
+            ]
+        )
         resposta = self._enviar("Empurro a pedra.", "op-teste")
         self.assertEqual(resposta.status_code, 200, resposta.text)
         rolagens = resposta.json()["rolagens"]
@@ -213,9 +267,9 @@ class FluxoCompletoTests(unittest.TestCase):
         self.assertEqual(rolagens[0]["origem"], "rule_engine")
 
         # Reabrir a campanha devolve a mesma rolagem, sem rolar de novo.
-        reaberta = TestClient(backend.app).get(
-            f"/v1/campanhas/{self.cid}", headers={"X-Jogador-Id": self.jogador}
-        ).json()
+        reaberta = (
+            TestClient(backend.app).get(f"/v1/campanhas/{self.cid}", headers={"X-Jogador-Id": self.jogador}).json()
+        )
         self.assertEqual(reaberta["mensagens"][-1]["rolagens"], rolagens)
 
 

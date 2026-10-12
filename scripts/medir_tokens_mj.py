@@ -13,6 +13,7 @@ Uso:
     python scripts/medir_tokens_mj.py
     python scripts/medir_tokens_mj.py --json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,9 +50,7 @@ def _serializar(objeto):
 class _Ferramenta:
     def __init__(self, nome, argumentos, identificador="call-1"):
         self.id = identificador
-        self.function = type(
-            "Funcao", (), {"name": nome, "arguments": json.dumps(argumentos, ensure_ascii=False)}
-        )()
+        self.function = type("Funcao", (), {"name": nome, "arguments": json.dumps(argumentos, ensure_ascii=False)})()
 
 
 class _Mensagem:
@@ -80,22 +79,29 @@ class ClienteMedidor:
 
 
 FICHA = {
-    "id": "p1", "nome": "Tessa", "classe": "feiticeiro", "especie": "draconato",
-    "antecedente": "sabio", "nivel": 5, "pv_atual": 24, "pv_maximo": 30,
+    "id": "p1",
+    "nome": "Tessa",
+    "classe": "feiticeiro",
+    "especie": "draconato",
+    "antecedente": "sabio",
+    "nivel": 5,
+    "pv_atual": 24,
+    "pv_maximo": 30,
     "bonus_proficiencia": 3,
-    "atributos": {"forca": 8, "destreza": 14, "constituicao": 14,
-                  "inteligencia": 12, "sabedoria": 10, "carisma": 16},
-    "modificadores": {"forca": -1, "destreza": 2, "constituicao": 2,
-                      "inteligencia": 1, "sabedoria": 0, "carisma": 3},
+    "atributos": {"forca": 8, "destreza": 14, "constituicao": 14, "inteligencia": 12, "sabedoria": 10, "carisma": 16},
+    "modificadores": {"forca": -1, "destreza": 2, "constituicao": 2, "inteligencia": 1, "sabedoria": 0, "carisma": 3},
     "pericias": ["arcanismo", "enganacao", "persuasao"],
     "pericias_classe": ["arcanismo", "persuasao"],
     "proficiencias_salvaguarda": ["constituicao", "carisma"],
-    "talentos": ["Sortudo"], "deslocamento": 9,
+    "talentos": ["Sortudo"],
+    "deslocamento": 9,
     "heranca_draconica": None,
-    "conjuracao": {"truques": ["Raio de Fogo", "Ilusao Menor"],
-                   "magias_preparadas": ["Bola de Fogo", "Escudo", "Misseis Magicos"],
-                   "espacos_totais": {"1": 3, "2": 2, "3": 2},
-                   "espacos_restantes": {"1": 3, "2": 2, "3": 2}},
+    "conjuracao": {
+        "truques": ["Raio de Fogo", "Ilusao Menor"],
+        "magias_preparadas": ["Bola de Fogo", "Escudo", "Misseis Magicos"],
+        "espacos_totais": {"1": 3, "2": 2, "3": 2},
+        "espacos_restantes": {"1": 3, "2": 2, "3": 2},
+    },
 }
 
 HISTORICO_TIPICO = 20  # mensagens anteriores na campanha
@@ -129,18 +135,54 @@ CENARIOS = {
         _Mensagem(content="Você descreve a taverna e o homem de capa cinza."),
     ],
     "ataque com arma (1 ferramenta)": [
-        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-            "type": "attack", "character_id": "p1", "weapon": "Adaga", "target_name": "Goblin",
-        }})]),
+        _Mensagem(
+            tool_calls=[
+                _Ferramenta(
+                    "resolver_regra",
+                    {
+                        "fatos": {
+                            "type": "attack",
+                            "character_id": "p1",
+                            "weapon": "Adaga",
+                            "target_name": "Goblin",
+                        }
+                    },
+                )
+            ]
+        ),
         _Mensagem(content="Sua adaga encontra o flanco do goblin."),
     ],
     "conjuração + dano de área (2 ferramentas)": [
-        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-            "type": "spell", "character_id": "p1", "magia": "Bola de Fogo",
-        }}, "call-1")]),
-        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-            "type": "damage", "character_id": "p1", "magia": "Bola de Fogo",
-        }}, "call-2")]),
+        _Mensagem(
+            tool_calls=[
+                _Ferramenta(
+                    "resolver_regra",
+                    {
+                        "fatos": {
+                            "type": "spell",
+                            "character_id": "p1",
+                            "magia": "Bola de Fogo",
+                        }
+                    },
+                    "call-1",
+                )
+            ]
+        ),
+        _Mensagem(
+            tool_calls=[
+                _Ferramenta(
+                    "resolver_regra",
+                    {
+                        "fatos": {
+                            "type": "damage",
+                            "character_id": "p1",
+                            "magia": "Bola de Fogo",
+                        }
+                    },
+                    "call-2",
+                )
+            ]
+        ),
         _Mensagem(content="A Bola de Fogo varre a sala e o goblin cai."),
     ],
     "consulta de monstro (1 ferramenta de bestiário)": [
@@ -148,22 +190,61 @@ CENARIOS = {
         _Mensagem(content="O goblin avança com a lâmina torta."),
     ],
     "magia de área MANUAL (4 ferramentas, 2 alvos)": [
-        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-            "type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}}, "call-1")]),
-        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-            "type": "damage", "character_id": "p1", "magia": "Bola de Fogo"}}, "call-2")]),
-        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-            "type": "saving_throw", "ability": "destreza", "target_name": "Goblin",
-            "dc": 14}}, "call-3")]),
-        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-            "type": "saving_throw", "ability": "destreza", "target_name": "Zombie",
-            "dc": 14}}, "call-4")]),
+        _Mensagem(
+            tool_calls=[
+                _Ferramenta(
+                    "resolver_regra",
+                    {"fatos": {"type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}},
+                    "call-1",
+                )
+            ]
+        ),
+        _Mensagem(
+            tool_calls=[
+                _Ferramenta(
+                    "resolver_regra",
+                    {"fatos": {"type": "damage", "character_id": "p1", "magia": "Bola de Fogo"}},
+                    "call-2",
+                )
+            ]
+        ),
+        _Mensagem(
+            tool_calls=[
+                _Ferramenta(
+                    "resolver_regra",
+                    {"fatos": {"type": "saving_throw", "ability": "destreza", "target_name": "Goblin", "dc": 14}},
+                    "call-3",
+                )
+            ]
+        ),
+        _Mensagem(
+            tool_calls=[
+                _Ferramenta(
+                    "resolver_regra",
+                    {"fatos": {"type": "saving_throw", "ability": "destreza", "target_name": "Zombie", "dc": 14}},
+                    "call-4",
+                )
+            ]
+        ),
         _Mensagem(content="A Bola de Fogo atinge os dois alvos; o zumbi resiste à metade."),
     ],
     "magia de área COMPOSTA (1 ferramenta, 2 alvos)": [
-        _Mensagem(tool_calls=[_Ferramenta("resolver_regra", {"fatos": {
-            "type": "area_spell", "character_id": "p1", "magia": "Bola de Fogo",
-            "alvos": ["Goblin", "Zombie"]}}, "call-1")]),
+        _Mensagem(
+            tool_calls=[
+                _Ferramenta(
+                    "resolver_regra",
+                    {
+                        "fatos": {
+                            "type": "area_spell",
+                            "character_id": "p1",
+                            "magia": "Bola de Fogo",
+                            "alvos": ["Goblin", "Zombie"],
+                        }
+                    },
+                    "call-1",
+                )
+            ]
+        ),
         _Mensagem(content="A Bola de Fogo atinge os dois alvos; o zumbi resiste à metade."),
     ],
 }
@@ -176,8 +257,11 @@ def medir(nome: str, mensagens, contar_tokens) -> dict:
     historico = historico_simulado()
     contexto = __import__("orchestrator").resumo_autoritativo(personagens)
 
-    mj.responder("Ataco o goblin.", [{**m, "role": m["role"]} for m in [{"role": "system", "content": contexto}, *historico]],
-                 personagens=personagens)
+    mj.responder(
+        "Ataco o goblin.",
+        [{**m, "role": m["role"]} for m in [{"role": "system", "content": contexto}, *historico]],
+        personagens=personagens,
+    )
 
     entrada = 0
     saida = 0
@@ -212,16 +296,23 @@ def main() -> None:
     resultados = [medir(nome, mensagens, contar_tokens) for nome, mensagens in CENARIOS.items()]
 
     if argumentos.json:
-        print(json.dumps({"metodo": metodo, "resultados": resultados, "historico_mensagens": HISTORICO_TIPICO},
-                         ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {"metodo": metodo, "resultados": resultados, "historico_mensagens": HISTORICO_TIPICO},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return
 
     print(f"Contagem de tokens: {metodo} | histórico simulado: {HISTORICO_TIPICO} mensagens")
     print(f"{'cenário':<48}{'chamadas':>9}{'entrada':>10}{'saída':>8}{'total':>9}")
     print("-" * 84)
     for resultado in resultados:
-        print(f"{resultado['cenario']:<48}{resultado['chamadas_ao_modelo']:>9}"
-              f"{resultado['tokens_entrada']:>10}{resultado['tokens_saida']:>8}{resultado['tokens_total']:>9}")
+        print(
+            f"{resultado['cenario']:<48}{resultado['chamadas_ao_modelo']:>9}"
+            f"{resultado['tokens_entrada']:>10}{resultado['tokens_saida']:>8}{resultado['tokens_total']:>9}"
+        )
     total = sum(r["tokens_total"] for r in resultados)
     print("-" * 84)
     print(f"{'total dos quatro cenários':<48}{'':>9}{'':>10}{'':>8}{total:>9}")

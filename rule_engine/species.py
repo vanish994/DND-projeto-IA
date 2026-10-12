@@ -7,7 +7,7 @@ inventada aqui: os valores abaixo são transcritos da tabela do livro.
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any
 
 # Herança Dracônica — tabela do traço "Herança Dracônica" do Draconato.
 # A escolha define o tipo de dano do Ataque de Sopro e da Resistência a Dano.

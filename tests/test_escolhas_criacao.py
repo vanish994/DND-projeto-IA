@@ -3,6 +3,7 @@
 Cobre a Herança Dracônica do Draconato (Livro do Jogador 2024, p. 188-194),
 a ferramenta do antecedente e o pacote de equipamento A/B.
 """
+
 import unittest
 
 from fastapi.testclient import TestClient
@@ -14,22 +15,28 @@ from backend.persistencia import RepositorioCampanhas
 from rule_engine.catalog import INSTRUMENTOS_MUSICAIS, KITS_DE_JOGOS
 from rule_engine.character import (
     CATEGORIAS_FERRAMENTA_ANTECEDENTE,
-    escolha_ferramenta_do_antecedente,
     criar_personagem,
+    escolha_ferramenta_do_antecedente,
     ficha_personagem,
 )
 from rule_engine.species import HERANCA_DRACONICA, dado_sopro
 
-
 ATRIBUTOS = {
-    "forca": 8, "destreza": 14, "constituicao": 12,
-    "inteligencia": 15, "sabedoria": 12, "carisma": 14,
+    "forca": 8,
+    "destreza": 14,
+    "constituicao": 12,
+    "inteligencia": 15,
+    "sabedoria": 12,
+    "carisma": 14,
 }
 
 
 def fatos(**extra):
     dados = {
-        "name": "Vanish", "species": "draconato", "class": "artifice", "level": 1,
+        "name": "Vanish",
+        "species": "draconato",
+        "class": "artifice",
+        "level": 1,
         "ability_scores": dict(ATRIBUTOS),
         "background": "artesao",
         "class_skill_proficiencies": ["arcanismo", "investigacao"],
@@ -81,7 +88,9 @@ class HerancaDraconicaTests(unittest.TestCase):
 
 class FerramentaAntecedenteTests(unittest.TestCase):
     def test_categorias_vem_do_catalogo_oficial(self):
-        self.assertEqual(sorted(CATEGORIAS_FERRAMENTA_ANTECEDENTE), ["ferramentas de artesão", "instrumento musical", "kit de jogos"])
+        self.assertEqual(
+            sorted(CATEGORIAS_FERRAMENTA_ANTECEDENTE), ["ferramentas de artesão", "instrumento musical", "kit de jogos"]
+        )
         self.assertIn("Violino", INSTRUMENTOS_MUSICAIS)
         self.assertIn("Xadrez-do-Dragão", KITS_DE_JOGOS)
 
@@ -124,7 +133,9 @@ class EquipamentoAntecedenteTests(unittest.TestCase):
         self.assertIn("Equipamento de antecedente (A ou B)", ficha["escolhas_pendentes"])
 
     def test_pacote_a_recebe_a_ferramenta_escolhida(self):
-        ficha = ficha_personagem(criar_personagem(fatos(ferramenta_antecedente="Ferramentas de Ferreiro", equipamento_antecedente="a")))
+        ficha = ficha_personagem(
+            criar_personagem(fatos(ferramenta_antecedente="Ferramentas de Ferreiro", equipamento_antecedente="a"))
+        )
         equipamento = ficha["equipamento_antecedente"]
         self.assertEqual(equipamento["escolha"], "A")
         self.assertIn("Ferramentas de Ferreiro", equipamento["A"])
@@ -148,17 +159,30 @@ class BackendEscolhasCriacaoTests(unittest.TestCase):
         backend_app.app.dependency_overrides[backend_app.obter_repositorio] = lambda: self.repo
         self.client = TestClient(backend_app.app)
         self.headers = {"X-Jogador-Id": "jogador-escolhas"}
-        self.campaign_id = self.client.post("/v1/campanhas", json={"titulo": "Escolhas"}, headers=self.headers).json()["id"]
+        self.campaign_id = self.client.post("/v1/campanhas", json={"titulo": "Escolhas"}, headers=self.headers).json()[
+            "id"
+        ]
 
     def tearDown(self):
         backend_app.app.dependency_overrides.clear()
 
     def payload(self, **extra):
         dados = {
-            "nome": "Vanish", "especie": "draconato", "classe": "artifice", "nivel": 1,
+            "nome": "Vanish",
+            "especie": "draconato",
+            "classe": "artifice",
+            "nivel": 1,
             "metodo_atributos": "matriz_padrao",
-            "atributos": {"forca": 8, "destreza": 13, "constituicao": 10, "inteligencia": 15, "sabedoria": 12, "carisma": 14},
-            "antecedente": "artesao", "aumentos_antecedente": {"inteligencia": 2, "destreza": 1},
+            "atributos": {
+                "forca": 8,
+                "destreza": 13,
+                "constituicao": 10,
+                "inteligencia": 15,
+                "sabedoria": 12,
+                "carisma": 14,
+            },
+            "antecedente": "artesao",
+            "aumentos_antecedente": {"inteligencia": 2, "destreza": 1},
             "pericias_classe": ["arcanismo", "investigacao"],
             "ferramenta_artesao": "Ferramentas de Ferreiro",
             "heranca_draconica": "ouro",
@@ -205,7 +229,11 @@ class BackendEscolhasCriacaoTests(unittest.TestCase):
         self.assertEqual(ficha["escolhas_pendentes"], [])
 
     def test_criacao_aceita_as_magias_iniciais_do_conjurador(self):
-        magias = {"truques": ["Luz", "Raio de Gelo"], "magias_preparadas": ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"], "espacos_totais": {"1": 2}}
+        magias = {
+            "truques": ["Luz", "Raio de Gelo"],
+            "magias_preparadas": ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"],
+            "espacos_totais": {"1": 2},
+        }
         resposta = self.client.post(self.url(), json=self.payload(magias_iniciais=magias), headers=self.headers)
         self.assertEqual(resposta.status_code, 201, resposta.text)
         self.assertEqual(resposta.json()["conjuracao"]["truques"], ["Luz", "Raio de Gelo"])
@@ -218,23 +246,36 @@ class BackendEscolhasCriacaoTests(unittest.TestCase):
 
     def test_ficha_antiga_pode_ser_concluida_sem_perder_a_conjuracao(self):
         criado = self.client.post(self.url(), json=self.payload(), headers=self.headers).json()
-        magias = {"truques": ["Luz", "Raio de Gelo"], "magias_preparadas": ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"], "espacos_totais": {"1": 2}}
+        magias = {
+            "truques": ["Luz", "Raio de Gelo"],
+            "magias_preparadas": ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"],
+            "espacos_totais": {"1": 2},
+        }
         self.client.patch(self.url(f"/{criado['id']}/magias"), json=magias, headers=self.headers)
         # Simula uma ficha criada antes das escolhas existirem.
         personagem = self.repo.obter_personagem("jogador-escolhas", self.campaign_id, criado["id"])
         entrada = dict(personagem["entrada"])
         entrada.pop("equipamento_antecedente", None)
         entrada.pop("ferramenta_antecedente", None)
-        ficha_antiga = {chave: valor for chave, valor in personagem.items()
-                        if chave not in {"id", "campanha_id", "pv_atual", "entrada", "criado_em", "atualizado_em"}}
-        self.repo.atualizar_personagem("jogador-escolhas", self.campaign_id, criado["id"], entrada=entrada, ficha=ficha_antiga)
+        ficha_antiga = {
+            chave: valor
+            for chave, valor in personagem.items()
+            if chave not in {"id", "campanha_id", "pv_atual", "entrada", "criado_em", "atualizado_em"}
+        }
+        self.repo.atualizar_personagem(
+            "jogador-escolhas", self.campaign_id, criado["id"], entrada=entrada, ficha=ficha_antiga
+        )
 
-        resposta = self.client.patch(self.url(f"/{criado['id']}/proficiencias"), json={
-            "pericias_classe": ["arcanismo", "investigacao"],
-            "ferramenta_artesao": "Ferramentas de Ferreiro",
-            "ferramenta_antecedente": "Ferramentas de Ferreiro",
-            "equipamento_antecedente": "B",
-        }, headers=self.headers)
+        resposta = self.client.patch(
+            self.url(f"/{criado['id']}/proficiencias"),
+            json={
+                "pericias_classe": ["arcanismo", "investigacao"],
+                "ferramenta_artesao": "Ferramentas de Ferreiro",
+                "ferramenta_antecedente": "Ferramentas de Ferreiro",
+                "equipamento_antecedente": "B",
+            },
+            headers=self.headers,
+        )
         self.assertEqual(resposta.status_code, 200, resposta.text)
         ficha = resposta.json()
         self.assertEqual(ficha["equipamento_antecedente"]["escolha"], "B")

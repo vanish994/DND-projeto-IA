@@ -13,6 +13,7 @@ canônico sem duplicar efeitos e devolve um resultado estruturado.
     }})
     resultado = orquestrador.executar(acao, personagens=[ficha])
 """
+
 from .contratos import FERRAMENTAS_CONHECIDAS, Acao, ResultadoAcao
 from .estado import consumir_espaco, resumo_autoritativo, texto_equipamento_antecedente
 from .orquestrador import OrquestradorAcoes

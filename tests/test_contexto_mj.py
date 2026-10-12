@@ -1,6 +1,6 @@
 import unittest
 
-from backend.app import _resumo_grupo
+from backend.services.campanha_service import resumo_grupo
 from integrations.deepseek_mj import PROMPT_NORMATIVO
 
 
@@ -26,12 +26,20 @@ class ContextoMestreTests(unittest.TestCase):
             "pv_maximo": 8,
             "bonus_proficiencia": 2,
             "atributos": {
-                "forca": 8, "destreza": 13, "constituicao": 10,
-                "inteligencia": 16, "sabedoria": 12, "carisma": 16,
+                "forca": 8,
+                "destreza": 13,
+                "constituicao": 10,
+                "inteligencia": 16,
+                "sabedoria": 12,
+                "carisma": 16,
             },
             "modificadores": {
-                "forca": -1, "destreza": 1, "constituicao": 0,
-                "inteligencia": 3, "sabedoria": 1, "carisma": 3,
+                "forca": -1,
+                "destreza": 1,
+                "constituicao": 0,
+                "inteligencia": 3,
+                "sabedoria": 1,
+                "carisma": 3,
             },
             "pericias": ["investigacao", "percepcao"],
             "ferramenta": "ferramentas de ladrão",
@@ -40,7 +48,7 @@ class ContextoMestreTests(unittest.TestCase):
             "equipamento_antecedente": {"A": "kit de investigador"},
             "conjuracao": {"truques": [], "magias_preparadas": [], "espacos_totais": {}},
         }
-        contexto = _resumo_grupo(RepositorioFalso([personagem]), "jogador", "campanha")
+        contexto = resumo_grupo(RepositorioFalso([personagem]), "jogador", "campanha")
 
         self.assertIn("nome=Vex", contexto)
         self.assertIn("espécie=draconato", contexto)
@@ -51,7 +59,7 @@ class ContextoMestreTests(unittest.TestCase):
         self.assertIn("não invente nome", contexto)
 
     def test_sem_personagem_instrui_mj_a_nao_inventar_um(self):
-        contexto = _resumo_grupo(RepositorioFalso([]), "jogador", "campanha")
+        contexto = resumo_grupo(RepositorioFalso([]), "jogador", "campanha")
         self.assertIn("nenhum personagem está cadastrado", contexto)
         self.assertIn("Não invente nem presuma nome", contexto)
 

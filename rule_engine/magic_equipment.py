@@ -5,10 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-
 PROPRIEDADES_ARMAS = {
-    "acuidade", "alcance", "arremesso", "duas_maos", "extensao", "leve",
-    "municao", "pesada", "recarga", "versatil",
+    "acuidade",
+    "alcance",
+    "arremesso",
+    "duas_maos",
+    "extensao",
+    "leve",
+    "municao",
+    "pesada",
+    "recarga",
+    "versatil",
 }
 MAESTRIAS_ARMAS = {"afligir", "agil", "derrubar", "drenar", "empurrar", "garantido", "lentidao", "trespassar"}
 
@@ -126,8 +133,11 @@ def resolver_conjuracao(fatos: Mapping[str, Any]) -> dict[str, Any]:
         return {"resultado": "bloqueado", "motivo": "componentes_ausentes", "faltantes": sorted(faltantes)}
     anterior = fatos.get("concentrating_on")
     return {
-        "resultado": "conjurada", "magia": magia, "nivel": nivel,
-        "ritual": ritual, "tempo_extra_minutos": 10 if ritual else 0,
+        "resultado": "conjurada",
+        "magia": magia,
+        "nivel": nivel,
+        "ritual": ritual,
+        "tempo_extra_minutos": 10 if ritual else 0,
         "encerra_concentracao_anterior": bool(anterior),
     }
 
@@ -142,8 +152,10 @@ def resolver_salvaguarda_concentracao(fatos: Mapping[str, Any]) -> dict[str, Any
     if incapacitado or morto:
         motivo = "morto" if morto else "incapacitado"
         return {
-            "resultado": "concentracao_encerrada", "concentracao_mantida": False,
-            "requer_salvaguarda": False, "motivo": motivo,
+            "resultado": "concentracao_encerrada",
+            "concentracao_mantida": False,
+            "requer_salvaguarda": False,
+            "motivo": motivo,
         }
     dano = int(fatos.get("damage", fatos.get("dano", 0)))
     if dano <= 0:
@@ -167,13 +179,22 @@ def resolver_salvaguarda_concentracao(fatos: Mapping[str, Any]) -> dict[str, Any
         rolagem = int(fatos.get("roll", fatos.get("rolagem")))
         if not 1 <= rolagem <= 20:
             raise ValueError("A rolagem deve ser um valor de d20 entre 1 e 20")
-    modificador = int(fatos.get("constitution_modifier", fatos.get("modificador_constituicao", fatos.get("modifier", fatos.get("modificador", 0)))))
+    modificador = int(
+        fatos.get(
+            "constitution_modifier",
+            fatos.get("modificador_constituicao", fatos.get("modifier", fatos.get("modificador", 0))),
+        )
+    )
     total = rolagem + modificador
     sucesso = total >= cd
     return {
         "resultado": "sucesso" if sucesso else "falha",
-        "rolagem": rolagem, "modificador": modificador, "total": total, "cd": cd,
-        "dano_sofrido": dano, "concentracao_mantida": sucesso,
+        "rolagem": rolagem,
+        "modificador": modificador,
+        "total": total,
+        "cd": cd,
+        "dano_sofrido": dano,
+        "concentracao_mantida": sucesso,
         "requer_salvaguarda": True,
         "motivo": "cd_atingida" if sucesso else "cd_nao_atingida",
     }

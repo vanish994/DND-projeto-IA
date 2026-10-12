@@ -1,4 +1,5 @@
 """Inicia uma conversa local com o DeepSeek como MJ."""
+
 from integrations.deepseek_mj import DeepSeekMJ
 
 
@@ -20,10 +21,12 @@ def main() -> None:
             continue
         resposta = mj.responder(texto, historico)
         print(f"\nMJ> {resposta}")
-        historico.extend([
-            {"role": "user", "content": texto},
-            {"role": "assistant", "content": resposta},
-        ])
+        historico.extend(
+            [
+                {"role": "user", "content": texto},
+                {"role": "assistant", "content": resposta},
+            ]
+        )
 
 
 if __name__ == "__main__":

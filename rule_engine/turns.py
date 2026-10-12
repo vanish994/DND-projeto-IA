@@ -115,14 +115,22 @@ class RastreadorCombate:
             return {"acao": nome, "resultado": "executada", "movimento_restante": movimento}
 
         nomes_acao = {
-            "ajudar", "atacar", "analisar", "desengajar", "esconder", "esquivar",
-            "influenciar", "preparar", "procurar", "usar_magia", "usar_objeto",
+            "ajudar",
+            "atacar",
+            "analisar",
+            "desengajar",
+            "esconder",
+            "esquivar",
+            "influenciar",
+            "preparar",
+            "procurar",
+            "usar_magia",
+            "usar_objeto",
         }
         if nome not in nomes_acao:
             raise ValueError(f"Ação inválida: {nome}")
         if nome == "preparar" and (
-            not parametros.get("gatilho", "").strip()
-            or not parametros.get("resposta", "").strip()
+            not parametros.get("gatilho", "").strip() or not parametros.get("resposta", "").strip()
         ):
             raise ValueError("Preparar exige gatilho e resposta")
         self.gastar("acao")

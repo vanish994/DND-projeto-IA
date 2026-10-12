@@ -4,6 +4,7 @@ O motor continua sendo a única fonte do d20: estes testes garantem que a
 normalização copia valor, modificador, total, CD/CA e veredito sem recalcular
 nada e que a resposta da API inclui a lista de rolagens.
 """
+
 import unittest
 from unittest.mock import patch
 
@@ -17,6 +18,7 @@ try:
 
     from backend import app as backend_app
     from backend.persistencia import RepositorioCampanhas
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover - backend opcional fora do CI
     DEPENDENCIAS = False
@@ -44,9 +46,15 @@ class NormalizacaoDeRolagemTests(unittest.TestCase):
 
     def test_ataque_marca_ca_critico_e_dano_previsto(self):
         fatos = {
-            "type": "attack", "modifier": 6, "target_ac": 15, "character_id": "p1",
-            "weapon": "Espada Longa", "target_name": "Goblin",
-            "weapon_damage": "1d8", "damage_modifier": 4, "damage_type": "cortante",
+            "type": "attack",
+            "modifier": 6,
+            "target_ac": 15,
+            "character_id": "p1",
+            "weapon": "Espada Longa",
+            "target_name": "Goblin",
+            "weapon_damage": "1d8",
+            "damage_modifier": 4,
+            "damage_type": "cortante",
         }
         resultado = self.engine.evaluate(fatos).outcome
         rolagem = normalizar_rolagem(resultado, fatos, self.personagens)
@@ -102,9 +110,18 @@ class BackendRolagensTests(unittest.TestCase):
         engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
         self.repo = RepositorioCampanhas(engine=engine)
         self.rolagem = {
-            "tipo": "teste", "dado": "d20", "lados": 20, "valor": 14, "rolagens": [14],
-            "modificador": 5, "total": 19, "dificuldade": 15, "dificuldade_tipo": "cd",
-            "resultado": "sucesso", "sucesso": True, "rotulo": "Teste de Persuasão (Carisma)",
+            "tipo": "teste",
+            "dado": "d20",
+            "lados": 20,
+            "valor": 14,
+            "rolagens": [14],
+            "modificador": 5,
+            "total": 19,
+            "dificuldade": 15,
+            "dificuldade_tipo": "cd",
+            "resultado": "sucesso",
+            "sucesso": True,
+            "rotulo": "Teste de Persuasão (Carisma)",
         }
         self.mj = _MJFalsoRolagens([self.rolagem])
         backend_app.app.dependency_overrides[backend_app.obter_repositorio] = lambda: self.repo
@@ -122,7 +139,9 @@ class BackendRolagensTests(unittest.TestCase):
         self.assertEqual(rolagem["origem"], "rule_engine")
 
     def test_mensagem_devolve_e_persiste_rolagens(self):
-        resposta = self.client.post(f"/v1/campanhas/{self.cid}/mensagens", json={"mensagem": "Tento convencer."}, headers=self.headers)
+        resposta = self.client.post(
+            f"/v1/campanhas/{self.cid}/mensagens", json={"mensagem": "Tento convencer."}, headers=self.headers
+        )
         self.assertEqual(resposta.status_code, 200)
         corpo = resposta.json()
         self.assertEqual(len(corpo["rolagens"]), 1)
@@ -132,7 +151,9 @@ class BackendRolagensTests(unittest.TestCase):
         self.assertEqual(detalhe["mensagens"][0]["rolagens"], [])
 
     def test_rota_legada_tambem_entrega_rolagens(self):
-        resposta = self.client.post("/v1/mj/mensagem", json={"sessao_id": self.cid, "mensagem": "Tento de novo."}, headers=self.headers)
+        resposta = self.client.post(
+            "/v1/mj/mensagem", json={"sessao_id": self.cid, "mensagem": "Tento de novo."}, headers=self.headers
+        )
         self.assertEqual(resposta.status_code, 200)
         self.assertEqual(len(resposta.json()["rolagens"]), 1)
         self._conferir_rolagem(resposta.json()["rolagens"][0])
@@ -142,9 +163,15 @@ class BackendRolagensTests(unittest.TestCase):
 
         with self.repo.engine.begin() as conn:
             conn.execute(text("ALTER TABLE mensagens RENAME TO mensagens_antigas"))
-            conn.execute(text("CREATE TABLE mensagens (id INTEGER PRIMARY KEY, campanha_id VARCHAR(64), papel VARCHAR(16), conteudo TEXT, criada_em DATETIME)"))
+            conn.execute(
+                text(
+                    "CREATE TABLE mensagens (id INTEGER PRIMARY KEY, campanha_id VARCHAR(64), papel VARCHAR(16), conteudo TEXT, criada_em DATETIME)"
+                )
+            )
         RepositorioCampanhas(engine=self.repo.engine)
-        resposta = self.client.post(f"/v1/campanhas/{self.cid}/mensagens", json={"mensagem": "Depois da migração."}, headers=self.headers)
+        resposta = self.client.post(
+            f"/v1/campanhas/{self.cid}/mensagens", json={"mensagem": "Depois da migração."}, headers=self.headers
+        )
         self.assertEqual(resposta.status_code, 200)
 
 
@@ -153,9 +180,20 @@ class ToolRegistraRolagemTests(unittest.TestCase):
         self.mj = DeepSeekMJ.__new__(DeepSeekMJ)
         self.mj.engine = build_default_engine()
         self.personagem = {
-            "id": "hero-1", "nome": "Heroi", "classe": "guerreiro", "nivel": 1,
-            "atributos": {"forca": 16, "destreza": 12, "constituicao": 14, "inteligencia": 10, "sabedoria": 10, "carisma": 10},
-            "bonus_proficiencia": 2, "pericias": ["atletismo"],
+            "id": "hero-1",
+            "nome": "Heroi",
+            "classe": "guerreiro",
+            "nivel": 1,
+            "atributos": {
+                "forca": 16,
+                "destreza": 12,
+                "constituicao": 14,
+                "inteligencia": 10,
+                "sabedoria": 10,
+                "carisma": 10,
+            },
+            "bonus_proficiencia": 2,
+            "pericias": ["atletismo"],
             "equipamento": {"arma": "Espada Longa", "armadura": None, "escudo": False},
         }
 
@@ -164,7 +202,9 @@ class ToolRegistraRolagemTests(unittest.TestCase):
         resultado = self.mj._tool(
             "resolver_regra",
             {"fatos": {"type": "ability_check", "skill": "atletismo", "dc": 12}},
-            [self.personagem], None, lambda rolagem: coletadas.append(rolagem),
+            [self.personagem],
+            None,
+            lambda rolagem: coletadas.append(rolagem),
         )
         self.assertEqual(len(coletadas), 1)
         rolagem = coletadas[0]
@@ -183,7 +223,9 @@ class ToolRegistraRolagemTests(unittest.TestCase):
         resultado = self.mj._tool(
             "resolver_regra",
             {"fatos": {"type": "saving_throw", "ability": "constituicao", "dc": 13}},
-            [self.personagem], None, coletadas.append,
+            [self.personagem],
+            None,
+            coletadas.append,
         )
         self.assertEqual(resultado["status"], "resolved")
         self.assertEqual(resultado["type"], "saving_throw")
@@ -197,7 +239,9 @@ class ToolRegistraRolagemTests(unittest.TestCase):
         resultado = self.mj._tool(
             "resolver_regra",
             {"fatos": {"type": "saving_throw_check", "ability": "constituicao", "roll": 12, "dc": 13, "modifier": 99}},
-            [self.personagem], None, coletadas.append,
+            [self.personagem],
+            None,
+            coletadas.append,
         )
         self.assertEqual(resultado["resultado"], "sucesso")
         self.assertEqual(resultado["modifier_source"], "ficha_autoritativa")
@@ -207,5 +251,3 @@ class ToolRegistraRolagemTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

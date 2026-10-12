@@ -11,16 +11,35 @@ import unicodedata
 
 # Tipos do catálogo PT-BR e do SRD mapeados para uma chave comparável.
 ALIASES_TIPO_DANO = {
-    "contundente": "bludgeoning", "bludgeoning": "bludgeoning",
-    "perfurante": "piercing", "piercing": "piercing",
-    "cortante": "slashing", "slashing": "slashing",
-    "acido": "acid", "acid": "acid", "frio": "cold", "cold": "cold",
-    "fogo": "fire", "fire": "fire", "igneo": "fire", "forca": "force", "force": "force",
-    "eletrico": "lightning", "raio": "lightning", "lightning": "lightning",
-    "necrotico": "necrotic", "necrotic": "necrotic",
-    "veneno": "poison", "venenoso": "poison", "poison": "poison",
-    "psiquico": "psychic", "psychic": "psychic",
-    "radiante": "radiant", "radiant": "radiant", "trovejante": "thunder", "thunder": "thunder",
+    "contundente": "bludgeoning",
+    "bludgeoning": "bludgeoning",
+    "perfurante": "piercing",
+    "piercing": "piercing",
+    "cortante": "slashing",
+    "slashing": "slashing",
+    "acido": "acid",
+    "acid": "acid",
+    "frio": "cold",
+    "cold": "cold",
+    "fogo": "fire",
+    "fire": "fire",
+    "igneo": "fire",
+    "forca": "force",
+    "force": "force",
+    "eletrico": "lightning",
+    "raio": "lightning",
+    "lightning": "lightning",
+    "necrotico": "necrotic",
+    "necrotic": "necrotic",
+    "veneno": "poison",
+    "venenoso": "poison",
+    "poison": "poison",
+    "psiquico": "psychic",
+    "psychic": "psychic",
+    "radiante": "radiant",
+    "radiant": "radiant",
+    "trovejante": "thunder",
+    "thunder": "thunder",
 }
 
 # Palavras que o catálogo em PT-BR e a Herança Dracônica usam para o mesmo tipo.
@@ -47,17 +66,18 @@ def aplicar_defesas_monstro(dano: int, tipo_dano: str, defesas: dict) -> dict:
     vulnerabilidades = {normalizar_tipo_dano(x) for x in (defesas.get("vulnerabilidades_dano") or [])}
     bruto = max(0, int(dano))
     if tipo in imunidades:
-        return {"dano": 0, "dano_bruto": bruto, "tipo_dano": tipo,
-                "aplicacao": "imunidade", "fator": 0}
+        return {"dano": 0, "dano_bruto": bruto, "tipo_dano": tipo, "aplicacao": "imunidade", "fator": 0}
     # Pela regra de D&D, resistência e vulnerabilidade ao mesmo dano se cancelam.
     if tipo in resistencias and tipo in vulnerabilidades:
-        return {"dano": bruto, "dano_bruto": bruto, "tipo_dano": tipo,
-                "aplicacao": "resistencia_e_vulnerabilidade_canceladas", "fator": 1}
+        return {
+            "dano": bruto,
+            "dano_bruto": bruto,
+            "tipo_dano": tipo,
+            "aplicacao": "resistencia_e_vulnerabilidade_canceladas",
+            "fator": 1,
+        }
     if tipo in resistencias:
-        return {"dano": bruto // 2, "dano_bruto": bruto, "tipo_dano": tipo,
-                "aplicacao": "resistencia", "fator": 0.5}
+        return {"dano": bruto // 2, "dano_bruto": bruto, "tipo_dano": tipo, "aplicacao": "resistencia", "fator": 0.5}
     if tipo in vulnerabilidades:
-        return {"dano": bruto * 2, "dano_bruto": bruto, "tipo_dano": tipo,
-                "aplicacao": "vulnerabilidade", "fator": 2}
-    return {"dano": bruto, "dano_bruto": bruto, "tipo_dano": tipo,
-            "aplicacao": "normal", "fator": 1}
+        return {"dano": bruto * 2, "dano_bruto": bruto, "tipo_dano": tipo, "aplicacao": "vulnerabilidade", "fator": 2}
+    return {"dano": bruto, "dano_bruto": bruto, "tipo_dano": tipo, "aplicacao": "normal", "fator": 1}

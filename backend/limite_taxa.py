@@ -5,6 +5,7 @@ Janela deslizante em memória, por processo. Configurável por ambiente:
 - MJ_LIMITE_JANELA_SEGUNDOS (padrão 60): tamanho da janela.
 Valores inválidos voltam ao padrão. Quando o limite é atingido, responde 429 com Retry-After.
 """
+
 from __future__ import annotations
 
 import math

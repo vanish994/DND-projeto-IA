@@ -14,18 +14,27 @@ class CombatIntegrationTests(unittest.TestCase):
             "classe": "guerreiro",
             "nivel": 1,
             "atributos": {
-                "forca": 16, "destreza": 12, "constituicao": 14,
-                "inteligencia": 10, "sabedoria": 10, "carisma": 10,
+                "forca": 16,
+                "destreza": 12,
+                "constituicao": 14,
+                "inteligencia": 10,
+                "sabedoria": 10,
+                "carisma": 10,
             },
         }
 
     def test_attack_derives_modifier_from_character_weapon_and_bestiary(self):
         result = self.mj._tool(
             "resolver_regra",
-            {"fatos": {
-                "type": "attack", "character_id": "hero-1",
-                "weapon": "Adaga", "target_name": "Baboon", "seed": "integration-test",
-            }},
+            {
+                "fatos": {
+                    "type": "attack",
+                    "character_id": "hero-1",
+                    "weapon": "Adaga",
+                    "target_name": "Baboon",
+                    "seed": "integration-test",
+                }
+            },
             [self.personagem],
         )
         self.assertEqual(result.get("roll_source"), "rule_engine")
@@ -40,10 +49,15 @@ class CombatIntegrationTests(unittest.TestCase):
     def test_attack_ignores_model_supplied_ac_and_uses_bestiary(self):
         result = self.mj._tool(
             "resolver_regra",
-            {"fatos": {
-                "type": "attack", "weapon": "Adaga", "target_name": "Baboon",
-                "target_ac": 99, "seed": "official-ac-test",
-            }},
+            {
+                "fatos": {
+                    "type": "attack",
+                    "weapon": "Adaga",
+                    "target_name": "Baboon",
+                    "target_ac": 99,
+                    "seed": "official-ac-test",
+                }
+            },
             [self.personagem],
         )
         self.assertNotEqual(result.get("target_ac"), 99)

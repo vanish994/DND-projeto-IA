@@ -9,6 +9,7 @@ Cobertura exigida para considerar a operação concluída:
 - efeito aplicado uma única vez, com qualquer número de alvos;
 - a salvaguarda usa o modificador do bloco do monstro, não o do personagem.
 """
+
 import unittest
 
 from orchestrator import OrquestradorAcoes
@@ -17,14 +18,36 @@ from rule_engine import build_default_engine
 
 def feiticeiro() -> dict:
     return {
-        "id": "p1", "nome": "Tessa", "classe": "feiticeiro", "especie": "humano",
-        "nivel": 5, "pv_atual": 24, "pv_maximo": 30, "bonus_proficiencia": 3,
-        "atributos": {"forca": 8, "destreza": 14, "constituicao": 14,
-                      "inteligencia": 12, "sabedoria": 10, "carisma": 16},
-        "modificadores": {"forca": -1, "destreza": 2, "constituicao": 2,
-                          "inteligencia": 1, "sabedoria": 0, "carisma": 3},
-        "conjuracao": {"truques": [], "magias_preparadas": ["Bola de Fogo", "Enfeitiçar Pessoa"],
-                       "espacos_totais": {"1": 2, "3": 2}, "espacos_restantes": {"1": 2, "3": 2}},
+        "id": "p1",
+        "nome": "Tessa",
+        "classe": "feiticeiro",
+        "especie": "humano",
+        "nivel": 5,
+        "pv_atual": 24,
+        "pv_maximo": 30,
+        "bonus_proficiencia": 3,
+        "atributos": {
+            "forca": 8,
+            "destreza": 14,
+            "constituicao": 14,
+            "inteligencia": 12,
+            "sabedoria": 10,
+            "carisma": 16,
+        },
+        "modificadores": {
+            "forca": -1,
+            "destreza": 2,
+            "constituicao": 2,
+            "inteligencia": 1,
+            "sabedoria": 0,
+            "carisma": 3,
+        },
+        "conjuracao": {
+            "truques": [],
+            "magias_preparadas": ["Bola de Fogo", "Enfeitiçar Pessoa"],
+            "espacos_totais": {"1": 2, "3": 2},
+            "espacos_restantes": {"1": 2, "3": 2},
+        },
     }
 
 
@@ -50,18 +73,23 @@ class EquivalenciaMecanicaTests(unittest.TestCase):
         # Manual: spell → damage → salvaguardas com os modificadores dos monstros.
         manual = OrquestradorAcoes(build_default_engine())
         ficha_manual = feiticeiro()
-        manual.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}}, [ficha_manual])
-        dano_manual = manual.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "damage", "character_id": "p1", "magia": "Bola de Fogo", "seed": "eq-1"}},
-            [ficha_manual])
+        manual.executar_ferramenta(
+            "resolver_regra",
+            {"fatos": {"type": "spell", "character_id": "p1", "magia": "Bola de Fogo"}},
+            [ficha_manual],
+        )
+        dano_manual = manual.executar_ferramenta(
+            "resolver_regra",
+            {"fatos": {"type": "damage", "character_id": "p1", "magia": "Bola de Fogo", "seed": "eq-1"}},
+            [ficha_manual],
+        )
         cd = dano_manual.dados["cd_magia"]
-        goblin = manual.engine.evaluate({
-            "type": "saving_throw", "ability": "destreza", "modifier": 2,
-            "dc": cd, "seed": "eq-1:area-0"}).outcome
-        zombie = manual.engine.evaluate({
-            "type": "saving_throw", "ability": "destreza", "modifier": -2,
-            "dc": cd, "seed": "eq-1:area-1"}).outcome
+        goblin = manual.engine.evaluate(
+            {"type": "saving_throw", "ability": "destreza", "modifier": 2, "dc": cd, "seed": "eq-1:area-0"}
+        ).outcome
+        zombie = manual.engine.evaluate(
+            {"type": "saving_throw", "ability": "destreza", "modifier": -2, "dc": cd, "seed": "eq-1:area-1"}
+        ).outcome
 
         self.assertEqual(area.dados["resultado"], "conjurada")
         self.assertEqual(area.dados["dano"], dano_manual.dados["dano"])
@@ -105,8 +133,7 @@ class FluxoCompostoTests(unittest.TestCase):
 
     def test_sucesso_na_salvaguarda_aplica_metade_e_falha_aplica_inteiro(self):
         # Semente fixa: Goblin rola d20 20 (sucesso), Zombie rola d20 3 (falha).
-        area = executar_area(self.orquestrador, self.ficha, ["Goblin", "Zombie"],
-                             seed="area-succ-3")
+        area = executar_area(self.orquestrador, self.ficha, ["Goblin", "Zombie"], seed="area-succ-3")
         por_nome = {alvo["nome"]: alvo for alvo in area.dados["alvos"]}
         dano_base = area.dados["dano"]
         self.assertTrue(area.dados["magia_sucesso_metade"])
@@ -116,9 +143,11 @@ class FluxoCompostoTests(unittest.TestCase):
         self.assertEqual(por_nome["Zombie"]["dano_aplicado"], dano_base)
 
     def test_alias_magia_de_area_e_aceito(self):
-        resultado = self.orquestrador.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "magia_de_area", "character_id": "p1", "magia": "Bola de Fogo",
-            "alvos": ["Goblin"]}}, [self.ficha])
+        resultado = self.orquestrador.executar_ferramenta(
+            "resolver_regra",
+            {"fatos": {"type": "magia_de_area", "character_id": "p1", "magia": "Bola de Fogo", "alvos": ["Goblin"]}},
+            [self.ficha],
+        )
         self.assertEqual(resultado.status, "resolvido")
 
 
@@ -148,8 +177,7 @@ class RecusaCompostaTests(unittest.TestCase):
     def test_mecanica_ausente_no_catalogo_nada_gasta_nem_rola(self):
         # Enfeitiçar Pessoa existe no catálogo e na ficha, mas não tem mecânica
         # de dano estruturada: a operação atômica recusa antes do gasto.
-        area = executar_area(self.orquestrador, self.ficha, ["Goblin"],
-                             magia="Enfeitiçar Pessoa")
+        area = executar_area(self.orquestrador, self.ficha, ["Goblin"], magia="Enfeitiçar Pessoa")
         self.assertEqual(area.status, "bloqueado")
         self.assertEqual(area.dados["motivo"], "magia_sem_mecanica_estruturada_no_catalogo")
         self.assertEqual(self.ficha["conjuracao"]["espacos_restantes"]["1"], 2)
@@ -170,9 +198,18 @@ class RecusaCompostaTests(unittest.TestCase):
         self.assertEqual(area.dados["motivo"], "alvos_de_area_ausentes")
 
     def test_personagem_ausente_bloqueia(self):
-        resultado = self.orquestrador.executar_ferramenta("resolver_regra", {"fatos": {
-            "type": "area_spell", "character_id": "inexistente", "magia": "Bola de Fogo",
-            "alvos": ["Goblin"]}}, [self.ficha])
+        resultado = self.orquestrador.executar_ferramenta(
+            "resolver_regra",
+            {
+                "fatos": {
+                    "type": "area_spell",
+                    "character_id": "inexistente",
+                    "magia": "Bola de Fogo",
+                    "alvos": ["Goblin"],
+                }
+            },
+            [self.ficha],
+        )
         self.assertEqual(resultado.status, "bloqueado")
         self.assertEqual(resultado.dados["motivo"], "personagem_ausente_ou_nao_identificado")
 

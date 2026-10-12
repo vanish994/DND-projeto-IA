@@ -1,0 +1,10 @@
+# Ferramentas de qualidade (lint/format/cobertura). Instale com:
+#   pip install -r requirements-dev.txt
+#
+# Versões fixadas para o CI reproduzir exatamente o resultado local
+# (formatação e lint não podem divergir entre ferramentas ">=x").
+black==26.10.1
+isort==9.0.2
+ruff==0.17.0
+pytest==9.1.1
+pytest-cov==7.1.0

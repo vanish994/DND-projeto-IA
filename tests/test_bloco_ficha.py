@@ -1,4 +1,5 @@
 """O bloco derivado da ficha é calculado pelo servidor, nunca no cliente."""
+
 import unittest
 
 try:
@@ -8,24 +9,34 @@ try:
 
     from backend import app as backend_app
     from backend.persistencia import RepositorioCampanhas
+
     DEPENDENCIAS = True
 except ImportError:  # pragma: no cover
     DEPENDENCIAS = False
 
 
 GUERREIRO = {
-    "nome": "Vex", "especie": "humano", "classe": "guerreiro", "nivel": 1,
+    "nome": "Vex",
+    "especie": "humano",
+    "classe": "guerreiro",
+    "nivel": 1,
     "metodo_atributos": "matriz_padrao",
     "atributos": {"forca": 15, "destreza": 14, "constituicao": 13, "inteligencia": 12, "sabedoria": 10, "carisma": 8},
-    "antecedente": "soldado", "aumentos_antecedente": {"forca": 2, "constituicao": 1},
-    "ferramenta_antecedente": "Dados", "equipamento_antecedente": "A",
+    "antecedente": "soldado",
+    "aumentos_antecedente": {"forca": 2, "constituicao": 1},
+    "ferramenta_antecedente": "Dados",
+    "equipamento_antecedente": "A",
 }
 
 MAGO = {
-    "nome": "Niv", "especie": "elfo", "classe": "mago", "nivel": 1,
+    "nome": "Niv",
+    "especie": "elfo",
+    "classe": "mago",
+    "nivel": 1,
     "metodo_atributos": "matriz_padrao",
     "atributos": {"forca": 8, "destreza": 14, "constituicao": 13, "inteligencia": 15, "sabedoria": 12, "carisma": 10},
-    "antecedente": "sabio", "aumentos_antecedente": {"inteligencia": 2, "constituicao": 1},
+    "antecedente": "sabio",
+    "aumentos_antecedente": {"inteligencia": 2, "constituicao": 1},
     "equipamento_antecedente": "A",
     "pericias_classe": ["arcanismo", "historia"],
 }
@@ -52,7 +63,8 @@ class BlocoFichaTests(unittest.TestCase):
     def equipar(self, personagem_id, corpo):
         return self.client.patch(
             f"/v1/campanhas/{self.cid}/personagens/{personagem_id}/equipamento",
-            headers=self.headers, json=corpo,
+            headers=self.headers,
+            json=corpo,
         )
 
     def test_ficha_devolve_bloco_derivado(self):
@@ -133,7 +145,8 @@ class BlocoFichaTests(unittest.TestCase):
         personagem = self.criar(GUERREIRO)
         resposta = self.client.patch(
             f"/v1/campanhas/{self.cid}/personagens/{personagem['id']}",
-            headers=self.headers, json={"ajuste_pv": -1},
+            headers=self.headers,
+            json={"ajuste_pv": -1},
         )
         self.assertEqual(resposta.status_code, 200, resposta.text)
         self.assertEqual(resposta.json()["pv_atual"], personagem["pv_maximo"] - 1)
