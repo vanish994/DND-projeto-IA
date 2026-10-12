@@ -2,15 +2,23 @@
 
 ## 1. Objetivo do projeto
 
-Este projeto é um **Mestre de Jogo de Dungeons & Dragons em português do Brasil**, com duas camadas separadas:
+Este projeto é um **Mestre de Jogo de Dungeons & Dragons em português do Brasil**, com três camadas separadas:
 
 ```text
-Interface + DeepSeek
+Interface + DeepSeek (MJ)
   = narrativa, criatividade, condução da sessão e decisões do MJ
 
-Rule Engine
+Orquestrador de Ações (orchestrator/)
+  = fluxo determinístico: intenção → pré-condições → motor → estado → resultado
+
+Rule Engine (rule_engine/)
   = autoridade determinística para mecânicas e regras oficiais
 ```
+
+O orquestrador **não é um terceiro cérebro e não contém regra de D&D**: ele
+encaminha a ação ao subsistema certo, confere pré-condições, aplica ao estado
+canônico apenas o que o motor confirmou e devolve o resultado estruturado. Se
+algo não está implementado, ele responde `bloqueado` com motivo.
 
 O objetivo não é criar uma aventura pré-fabricada. O MJ deve manter liberdade total para criar mundo, história, cenas, NPCs, conflitos, mistérios, diálogos e consequências narrativas.
 
@@ -41,7 +49,7 @@ Não apagar, reextrair ou recriar o bestiário, os catálogos ou o prompt do MJ 
 - GitHub: `https://github.com/vanish994/DND-projeto-IA`
 - Branch principal: `main`
 - Deploy automático: GitHub `main` → Render
-- Último estado validado: 235 testes aprovados no workflow [38156565465](https://github.com/vanish994/DND-projeto-IA/actions/runs/38156565465), após correções de progressão de conjuração e validação de magias
+- Último estado validado: 496 testes aprovados (473 anteriores + 23 do Orquestrador de Ações), após a extração da camada de orquestração
 
 ### Serviço online
 
@@ -120,6 +128,29 @@ A personalidade editável está em:
 - `config/mj_personalidade.txt`
 
 O prompt permite narrativa e decisões livres do MJ, mas exige que afirmações mecânicas passem pelo motor.
+
+### Orquestrador de Ações
+
+Arquivos:
+
+- `orchestrator/contratos.py` — `Acao` (intenção estruturada do MJ) e `ResultadoAcao` (`status` `dados` `alteracoes` `rolagens`).
+- `orchestrator/orquestrador.py` — `OrquestradorAcoes`: pré-condições, despacho por subsistema, chamada ao motor, aplicação no estado e coleta das rolagens.
+- `orchestrator/preparo.py` — derivação ficha/catálogo → fatos do motor (modificador, proficiência, atributo de conjuração, CD de magia, CA do alvo, dados de dano) e o Ataque de Sopro do Draconato.
+- `orchestrator/estado.py` — `resumo_autoritativo` (contexto do MJ) e `consumir_espaco` (única escrita de recurso).
+- `orchestrator/rolagens.py` — `normalizar_rolagem`: traduz a resolução do motor para o cartão da interface, sem sortear nada.
+
+Seis responsabilidades, e nada além delas: interpretar o pedido estruturado,
+despachar a ação, controlar pré-condições, executar e registrar sem duplicar
+efeito, devolver resultado estruturado com motivo de recusa e manter MJ, ficha
+e banco no mesmo estado.
+
+Fronteira que não pode ser cruzada: **não criar uma segunda implementação de
+regra**. O orquestrador prepara fatos e chama `engine.evaluate`; quem decide é o
+motor. Ele não narra, não escolhe dificuldade e não inventa conteúdo mecânico.
+
+O MJ (`integrations/deepseek_mj.py`) mantém apenas o que é dele: provedor,
+prompt, histórico, laço de ferramentas e a lista `ultimas_rolagens`. O método
+`_tool` virou adaptador de formato para o orquestrador.
 
 ## 4. Rolagens: contrato atual e obrigatório
 
@@ -242,7 +273,8 @@ O motor retorna candidatos; o MJ escolhe. Não inventar monstros para atingir um
 
 ### Prioridade 1 — Persistência de campanha
 
-Campanhas e mensagens já são persistidas. Falta armazenar:
+Campanhas e mensagens já são persistidas, e toda escrita mecânica passa pelo
+Orquestrador de Ações (`alteracoes` em `ResultadoAcao`). Falta armazenar:
 
 - Usuários e permissões.
 - Estado de personagens.
@@ -267,6 +299,8 @@ Criar contratos de dados versionados para:
 - Decisões narrativas relevantes.
 
 O estado narrativo pode continuar livre; o estado mecânico precisa ser estruturado e auditável.
+As primeiras peças já existem: `ResultadoAcao.alteracoes` é o contrato de mudança de
+estado e `orchestrator/estado.py` é o único ponto de escrita de recurso.
 
 ### Prioridade 3 — Interface de campanha
 
@@ -352,7 +386,7 @@ git diff --check
 git status --short
 ```
 
-A suíte deve permanecer verde. O último número validado é 235; se diminuir, investigar antes de continuar.
+A suíte deve permanecer verde. O último número validado é 496; se diminuir, investigar antes de continuar.
 
 Para verificar o serviço online:
 
@@ -446,3 +480,37 @@ não tinha registro da magia. Causas corrigidas:
 - Validação: 235 testes aprovados no workflow indicado acima.
 
 Estas correções aumentam a precisão, mas o motor continua incompleto. Permanecem pendentes efeitos mecânicos das magias catalogadas, características e subclasses sem resolução específica, traços completos de espécies, integração de estado de recursos/combate e validação sistemática de todas as regras do PHB 2024.
+
+## Atualização — Orquestrador de Ações extraído do MJ (2026-10-12)
+
+O MJ conversacional estava acumulando orquestração: `integrations/deepseek_mj.py`
+tinha 1336 linhas, das quais apenas 41 eram o laço real do MJ (`responder`). O
+resto era preparo mecânico, pré-condições, despacho, aplicação de estado e
+normalização de rolagem — ou seja, a camada intermediária existia, mas espalhada
+dentro do adaptador da IA.
+
+- Criado o pacote `orchestrator/` com contratos estruturados (`Acao`,
+  `ResultadoAcao`), preparo, estado e rolagens.
+- `integrations/deepseek_mj.py` caiu de 1336 para ~340 linhas e ficou com o que é
+  seu: provedor, prompt, histórico e laço de ferramentas. `_tool` é agora um
+  adaptador que devolve `resultado.para_ferramenta()`.
+- `backend/app.py::_resumo_grupo` passou a delegar para
+  `orchestrator.estado.resumo_autoritativo`, para o MJ ler o estado por um único
+  caminho.
+- `_preparar_ataque_de_sopro` virou `orchestrator/preparo.py::resolver_ataque_de_sopro`;
+  a referência em `scripts/gerar_matriz_cobertura.py` e `docs/matriz_cobertura.csv`
+  foi atualizada.
+- O gasto de espaço de magia passou a ser registrado como alteração explícita
+  (`de`/`para`), aplicado no estado e devolvido em `ResultadoAcao.alteracoes`.
+- Testes novos: `tests/test_orquestrador.py` (contratos, pré-condições, estado,
+  rolagens, resumo autoritativo) e `tests/test_orquestrador_ponta_a_ponta.py`
+  (HTTP → MJ → orquestrador → motor → banco, incluindo replay sem novo gasto).
+- Nenhum comportamento mecânico mudou: as 473 asserções anteriores continuam
+  passando; quatro testes de `tests/test_mecanicas_corrigidas.py` foram
+  reapontados para o novo endereço de `preparar_dano_de_magia`, com as mesmas
+  asserções. Total: 496 testes aprovados.
+- Fica registrada uma duplicação conhecida para uma próxima passada: a
+  classificação de proficiência de arma em
+  `orchestrator/orquestrador.py::_verificar_proficiencia_na_arma` usa uma lista de
+  armas simples própria; o lugar dela é `rule_engine/character.py`
+  (`PROFICIENCIAS_CLASSE`), como função de regra testável.
