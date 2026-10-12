@@ -16,7 +16,7 @@ O catálogo original mantém **232 entradas** extraídas do `SRD_CC_v5.2.1.pdf`.
 
 A origem e os termos de atribuição CC BY 4.0 estão registrados no próprio JSON. O conjunto importado tem mais entradas que o catálogo original; isso não significa que todas as 322 sejam nomes distintos presentes na extração local do PDF. Dados não publicados pela fonte, como alinhamento de algumas entradas adicionais, não são inventados.
 
-O motor converte esses registros para o formato interno e os disponibiliza em `consultar_monstro`/`bloco_completo`. O ataque tático agora reconhece descrições de ataque no formato SRD 5.2.1 (`Melee Weapon Attack: +X to hit`) além do formato anterior. Multiataques com sequência explícita são executados como ataques separados; alternativas ambíguas são recusadas. Efeitos de ataque com salvaguarda reconhecida podem aplicar condições como Caído ou Envenenado ao token. O mapa guarda as condições, mas a duração e a remoção automática ainda dependem do controle de turnos, que não está implementado.
+O motor converte esses registros para o formato interno e os disponibiliza em `consultar_monstro`/`bloco_completo`. O ataque tático agora reconhece descrições de ataque no formato SRD 5.2.1 (`Melee Weapon Attack: +X to hit`) além do formato anterior. Multiataques com sequência explícita são executados como ataques separados; alternativas ambíguas são recusadas. Efeitos de ataque com salvaguarda reconhecida podem aplicar condições como Caído ou Envenenado ao token.
 
 Também estão disponíveis a tabela de XP por ND, filtros por tipo/ND, consulta por nome e cálculo do XP bruto de um encontro. A regra do motor usa entradas como:
 
@@ -26,7 +26,7 @@ Também estão disponíveis a tabela de XP por ND, filtros por tipo/ND, consulta
 {"type": "bestiary", "operacao": "xp_encontro", "nomes": ["Bandit", "Wolf"]}
 ```
 
-Os ataques individuais extraídos dos blocos importados podem ser apresentados ao resolvedor tático quando bônus, alcance e dano estão explícitos. As salvaguardas estruturadas também alimentam as magias de área, e o traço **Undead Fortitude** do Zombie já tem resolução específica. **Limite atual:** importar um bloco completo não significa que todos os efeitos especiais, multiataques, agarrões, engolir, conjuração de monstros, resistências e reações já estejam simulados no mapa; esses efeitos ainda precisam de resolutores mecânicos próprios e testes.
+Os ataques individuais extraídos dos blocos importados podem ser apresentados ao resolvedor quando bônus, alcance e dano estão explícitos. **Limite atual:** importar um bloco completo não significa que todos os efeitos especiais, multiataques, agarrões, engolir, conjuração de monstros, resistências e reações já estejam simulados; esses efeitos ainda precisam de resolutores mecânicos próprios e testes.
 
 ### Fluxo de seleção para o MJ
 
@@ -168,7 +168,7 @@ Toda resposta do MJ carrega `rolagens`: a lista de dados que o Rule Engine rolou
 
 O navegador não sorteia nada: ele apenas apresenta o que o motor decidiu. Sempre que `rolagens` não está vazio, a interface mostra o dado girando antes da narração e deixa o resumo fixo abaixo da mensagem. As rolagens ficam salvas com a mensagem, então reabrir a campanha devolve o mesmo dado — sem recálculo e sem nova rolagem.
 
-Na API de personagens e de mapa tático a mesma informação aparece em campos próprios: `rolagens`, `rolagem`, `bonus_ataque`, `ca_alvo`, `ataque` e `dados_dano` (todos os dados de dano efetivamente rolagos). A página `/dados-preview.html` demonstra a animação sem precisar de campanha.
+Na API de personagens a mesma informação aparece em campos próprios: `rolagens`, `rolagem`, `bonus_ataque`, `ca_alvo`, `ataque` e `dados_dano` (todos os dados de dano efetivamente rolagos). A página `/dados-preview.html` demonstra a animação sem precisar de campanha.
 
 ### Testes de habilidade com rolagem do motor
 

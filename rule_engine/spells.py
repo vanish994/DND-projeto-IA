@@ -357,10 +357,10 @@ def suporte_magia(nome: str) -> dict[str, Any]:
     parcial = chave == "onda trovejante"  # Empurrão ainda não move os tokens.
     if not mecanica:
         rotulo = "Sem mecânica implementada"
-    elif tatico:
-        rotulo = "Mapa (Artífice): parcial, sem empurrão" if parcial else "Mapa (Artífice): resolução disponível"
+    elif parcial:
+        rotulo = "Regra estruturada, parcial"
     else:
-        rotulo = "Regra estruturada; sem execução no mapa"
+        rotulo = "Regra estruturada"
     return {"mecanica_estruturada": mecanica is not None, "mapa_tatico": tatico,
             "parcial": parcial, "rotulo": rotulo,
             "restricao_mapa": "Apenas Artífice; exige registro na ficha"}

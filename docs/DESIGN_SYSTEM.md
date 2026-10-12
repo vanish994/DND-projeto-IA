@@ -61,8 +61,6 @@ Três superfícies em camadas: o diálogo usa `--color-surface`, os painéis usa
 - **Chips de dados:** `d20 +5`, `1d8 + 3` e `CD 15` aparecem como chips com ícone de dado, tanto na ficha quanto no texto da narração — o texto da mensagem não é alterado, apenas marcado visualmente.
 - **Dado do motor (`frontend/dado.js` + `dado.css`):** sempre que o Rule Engine rola um d20, a camada `.dado-camada` apresenta o dado girando antes de a narração aparecer, com rótulo, fórmula (`17 + 6 = 23 contra CA 15`) e veredito (Acerto, Erro, Crítico, Sucesso, Falha). Rolagens de dano usam a bandeja `.dado-bandeja` com um dado por valor. Depois da animação, o mesmo resumo fica fixo abaixo da mensagem em `.rolagem-cartao`, com o botão “Ver o dado” para rever. Nenhum número é sorteado no navegador: valor, modificador, total, CD/CA e veredito vêm prontos do motor.
 - **Camada de dado é modal:** bloqueia clique, toque e foco no resto da tela enquanto gira. `Esc`, `Espaço`, `Enter` ou um toque fecham a camada imediatamente; passar o ponteiro sobre o painel pausa o fechamento automático, para dar tempo de ler.
-- **Mapa tático (organização):** os controles ficam em bancadas rotuladas — Encontro, Combate, Ataques, Magia e Mapa — em vez de uma fileira corrida de botões. No celular as bancadas rolam na horizontal; no desktop (≥ 1000 px) quebram em linhas. A barra de topo guarda só "← Campanha" e "Salvar mapa".
-- **Mapa tático (rolagens):** as mesmas classes de cartão resumem as rolagens do encontro — iniciativa, ataque do personagem, ataque do monstro, salvaguardas de fim de condição e magias em área. O rótulo nomeia a origem (“Scimitar de Bandit contra Vex”) e a fórmula só usa números do motor.
 - **Dano ajustado:** quando o motor reduz ou dobra o dano (resistência, imunidade, metade por salvaguarda), a conta mostra a seta — `5 + 6 + 3 + 2 → 8` — em vez de fingir que a soma fecha. O cartão cita a aplicação (“resistência: metade”) quando o motor a informa.
 - **Pré-visualização:** `frontend/dados-preview.html` (rota `/dados-preview.html`) mostra os estados do dado — acerto, crítico, teste com vantagem, salvaguarda falha, magia em área e rodada completa — sem precisar de campanha ou chave de API.
 - **Perícias e salvaguardas:** lista com marca de proficiência (círculo âmbar), nome da perícia, atributo entre parênteses e total. A marca nunca é o único indicador: a linha traz o valor por extenso.
@@ -116,7 +114,7 @@ Listas de 2 a 6 itens após um convite explícito (“Escolha o que fazer”, �
 
 ### Disponibilidade de magias
 
-Os cartões de escolha exibem o rótulo `suporte.rotulo` da API, diferenciando ausência de mecânica, regra estruturada e execução no mapa do Artífice. Não excluir escolhas já registradas. O seletor de conjuração do mapa é carregado da ficha atual; opções sem resolução ficam desabilitadas e efeitos parciais recebem aviso textual. Círculo desconhecido (`null`) não deve ser convertido em truque.
+Os cartões de escolha exibem o rótulo `suporte.rotulo` da API, diferenciando ausência de mecânica, regra estruturada e efeitos parciais. Não excluir escolhas já registradas. Círculo desconhecido (`null`) não deve ser convertido em truque.
 
 
 ### Repetição de mensagens
