@@ -22,15 +22,22 @@ const avisos = document.querySelector('#avisos');
 const optionsDialog = document.querySelector('#options-dialog');
 const renameInput = document.querySelector('#rename-input');
 const helpDialog = document.querySelector('#help-dialog');
+const confirmDialog = document.querySelector('#confirm-dialog');
+const confirmText = document.querySelector('#confirm-text');
 const desktop = window.matchMedia('(min-width: 900px)');
 // Animação de dados do motor (frontend/dado.js). Sem o módulo, tudo continua funcionando.
 const Dados = window.Dados || {animar: async () => [], cartao: () => null, interromper() {}, frase: () => ''};
+
+// Campanha aguardando a confirmação de exclusão no diálogo.
+let campanhaParaApagar = null;
 
 const state = {
   campanhas: [],
   atual: null,
   pendentes: new Set(),
   rascunhos: lerJson(RASCUNHOS_KEY, {}),
+  // Mensagens que chegaram enquanto o leitor estava no meio do histórico.
+  novas: 0,
 };
 
 function lerJson(chave, padrao) {
@@ -163,8 +170,11 @@ function textoComDados(texto) {
   return fragmento;
 }
 
-function addMessage(papel, texto, extraClass = '', rolagens = []) {
+function addMessage(papel, texto, extraClass = '', rolagens = [], criadaEm = null) {
   messages.querySelector('.empty-state')?.remove();
+  // Decidido antes de inserir: só desce sozinho quem já estava acompanhando.
+  const acompanhando = estaAcompanhando();
+  marcarDia(criadaEm);
   const role = papel === 'user' ? 'user' : 'mj';
   const article = document.createElement('article');
   article.className = `message message-${role} ${extraClass}`.trim();
@@ -173,12 +183,17 @@ function addMessage(papel, texto, extraClass = '', rolagens = []) {
   const cartao = Dados.cartao ? Dados.cartao(rolagens) : null;
   if (cartao) article.querySelector('.bubble').append(cartao);
   messages.append(article);
-  rolarParaOFim();
+  if (acompanhando || papel === 'user') rolarParaOFim();
+  else {
+    state.novas += 1;
+    atualizarBotaoDeRolagem();
+  }
   return article;
 }
 
 function renderEmpty(texto, comDado = false) {
   messages.replaceChildren();
+  messages.dataset.dia = '';
   const p = document.createElement('p');
   p.className = 'empty-state';
   if (comDado) {
@@ -202,15 +217,67 @@ function addTyping() {
   return article;
 }
 
+// Quanto o leitor pode estar longe do fim e ainda querer acompanhar a conversa.
+const LIMITE_PARA_ACOMPANHAR = 220;
+
+function distanciaDoFim() {
+  return messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+}
+
+function estaAcompanhando() {
+  return distanciaDoFim() < LIMITE_PARA_ACOMPANHAR;
+}
+
 function rolarParaOFim() {
   messages.scrollTop = messages.scrollHeight;
+  state.novas = 0;
   atualizarBotaoDeRolagem();
 }
 
 function atualizarBotaoDeRolagem() {
   if (!scrollBottom) return;
-  const distancia = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
-  scrollBottom.hidden = distancia < 220;
+  const mostrar = !estaAcompanhando();
+  scrollBottom.hidden = !mostrar;
+  // Ler o histórico não pode custar o aviso de que chegou coisa nova.
+  scrollBottom.dataset.novas = state.novas ? String(state.novas) : '';
+  scrollBottom.setAttribute(
+    'aria-label',
+    state.novas
+      ? `Ir para as mensagens mais recentes (${state.novas} nova${state.novas > 1 ? 's' : ''})`
+      : 'Ir para as mensagens mais recentes',
+  );
+}
+
+function aoRolarConversa() {
+  if (estaAcompanhando()) state.novas = 0;
+  atualizarBotaoDeRolagem();
+}
+
+/* Marca o dia da conversa: "Hoje", "Ontem" ou a data, quando o dia muda. */
+function diaDe(iso) {
+  const data = iso ? new Date(iso) : new Date();
+  return Number.isNaN(data.getTime()) ? null : data.toDateString();
+}
+
+function rotuloDoDia(iso) {
+  const data = new Date(iso);
+  const hoje = new Date();
+  const ontem = new Date(hoje);
+  ontem.setDate(hoje.getDate() - 1);
+  if (data.toDateString() === hoje.toDateString()) return 'Hoje';
+  if (data.toDateString() === ontem.toDateString()) return 'Ontem';
+  return data.toLocaleDateString('pt-BR', {day: '2-digit', month: 'long'});
+}
+
+function marcarDia(criadaEm) {
+  const dia = diaDe(criadaEm);
+  if (!dia || dia === messages.dataset.dia) return;
+  messages.dataset.dia = dia;
+  const separador = document.createElement('p');
+  separador.className = 'separador-dia';
+  separador.setAttribute('role', 'presentation');
+  separador.textContent = rotuloDoDia(criadaEm);
+  messages.append(separador);
 }
 
 async function animarRolagens(rolagens) {
@@ -253,8 +320,10 @@ async function abrirCampanha(id) {
     if (state.atual !== id) return;
     title.textContent = detalhe.titulo;
     messages.replaceChildren();
+    messages.dataset.dia = '';
+    state.novas = 0;
     if (!detalhe.mensagens.length) renderEmpty('Ainda não há mensagens. Conte onde a cena começa.', true);
-    for (const m of detalhe.mensagens) addMessage(m.papel, m.conteudo, '', m.rolagens || []);
+    for (const m of detalhe.mensagens) addMessage(m.papel, m.conteudo, '', m.rolagens || [], m.criada_em);
     if (state.pendentes.has(id)) addTyping();
     rolarParaOFim();
   } catch (erro) {
@@ -379,8 +448,10 @@ input.addEventListener('input', () => {
   guardarRascunhoAtual();
 });
 
-messages.addEventListener('scroll', atualizarBotaoDeRolagem);
+messages.addEventListener('scroll', aoRolarConversa);
 scrollBottom?.addEventListener('click', () => {
+  state.novas = 0;
+  atualizarBotaoDeRolagem();
   messages.scrollTo({top: messages.scrollHeight, behavior: 'smooth'});
   input.focus({preventScroll: true});
 });
@@ -404,18 +475,44 @@ optionsDialog.addEventListener('close', async () => {
       atualizarCampanha(dados);
       if (state.atual === id) title.textContent = dados.titulo;
     } else if (acao === 'delete') {
-      const c = campanha(id);
-      if (!window.confirm(`Apagar "${c ? c.titulo : 'esta campanha'}" e todo o histórico?`)) return;
-      await api(`/v1/campanhas/${encodeURIComponent(id)}`, {method: 'DELETE'});
-      state.campanhas = state.campanhas.filter((x) => x.id !== id);
-      delete state.rascunhos[id];
-      salvarRascunhos();
-      fecharCampanha();
+      // A confirmação é um diálogo do app, não o pop-up do navegador.
+      pedirConfirmacaoDeExclusao(id);
     }
   } catch (erro) {
     avisar(`Não foi possível concluir a ação. ${erro.message}`);
   }
 });
+
+/** Abre o diálogo de exclusão nomeando exatamente o que será perdido. */
+function pedirConfirmacaoDeExclusao(id) {
+  const c = campanha(id);
+  campanhaParaApagar = id;
+  confirmText.textContent = c
+    ? `"${c.titulo}" e todo o histórico desta campanha serão removidos. Não há como desfazer.`
+    : 'Todo o histórico desta campanha será removido. Não há como desfazer.';
+  confirmDialog.showModal();
+}
+
+confirmDialog.addEventListener('close', async () => {
+  const id = campanhaParaApagar;
+  const confirmado = confirmDialog.returnValue === 'confirm';
+  campanhaParaApagar = null;
+  if (!id || !confirmado) return;
+  try {
+    await api(`/v1/campanhas/${encodeURIComponent(id)}`, {method: 'DELETE'});
+    state.campanhas = state.campanhas.filter((x) => x.id !== id);
+    delete state.rascunhos[id];
+    salvarRascunhos();
+    if (state.atual === id) fecharCampanha();
+    else renderList();
+    avisar('Campanha apagada.', 'info');
+  } catch (erro) {
+    avisar(`Não foi possível apagar a campanha. ${erro.message}`);
+  }
+});
+
+document.querySelector('#confirm-cancel')?.addEventListener('click', () => confirmDialog.close('cancel'));
+document.querySelector('#confirm-delete')?.addEventListener('click', () => confirmDialog.close('confirm'));
 
 mapButton.addEventListener('click', () => {
   if (!state.atual) return;
