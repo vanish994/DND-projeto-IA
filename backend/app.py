@@ -26,7 +26,7 @@ from backend.dependencies import (  # noqa: F401
     obter_repositorio,
 )
 from backend.erros import registrar_tratadores_de_erro
-from backend.routes import campanhas, catalogo, personagens, sistema
+from backend.routes import biblioteca, campanhas, catalogo, personagens, sistema
 
 app = FastAPI(
     title="D&D Projeto IA — MJ",
@@ -44,6 +44,7 @@ app.include_router(sistema.router)
 app.include_router(campanhas.router)
 app.include_router(catalogo.router)
 app.include_router(personagens.router)
+app.include_router(biblioteca.router)
 
 _frontend = Path(__file__).resolve().parents[1] / "frontend"
 app.mount("/", StaticFiles(directory=_frontend, html=True), name="interface")
