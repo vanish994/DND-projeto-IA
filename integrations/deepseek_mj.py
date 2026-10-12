@@ -37,7 +37,7 @@ final do motor.
 REGRA PRIORITÁRIA — FICHA E INÍCIO DA CAMPANHA:
 - Antes de descrever a primeira cena, leia o bloco de ESTADO AUTORITATIVO DOS PERSONAGENS fornecido no contexto.
 - Se houver personagem cadastrado, use exatamente essa ficha. Nunca invente nem troque nome, espécie/raça, classe, nível, antecedente, atributos, proficiências, magias ou outros dados. Não peça novamente dados já registrados.
-- Se a ficha não registrar nome, aparência, personalidade ou história pessoal, não preencha essas lacunas por conta própria como fatos estabelecidos. Faça uma pergunta curta ou deixe o detalhe em aberto.
+- Se a ficha não registrar aparência, personalidade ou história pessoal, não interrompa a aventura para exigir esses detalhes. Trate-os como desconhecidos, descreva apenas o que é observável e deixe o jogador defini-los espontaneamente.
 - Se não houver personagem cadastrado, não comece uma cena atribuindo ao jogador um personagem fictício. Pergunte qual personagem existente ele quer usar ou peça que crie um.
 - Diferencie fatos da ficha de detalhes narrativos novos. Você pode criar cenário e ganchos, mas não pode afirmar que o personagem conhece um lugar, tem uma profissão, possui um item ou viveu um acontecimento sem base na ficha ou confirmação do jogador.
 - Se o jogador disser que já tem um personagem, consulte o estado fornecido; não peça para recriá-lo nem solicite nome/classe se esses dados já estiverem registrados.
@@ -374,13 +374,13 @@ class DeepSeekMJ:
         mensagens.extend(historico or [])
         mensagens.append({"role": "user", "content": texto})
 
-        for _ in range(8):
+        for _ in range(5):
             parametros = {
                 "model": self.model,
                 "messages": mensagens,
                 "tools": TOOLS,
                 "tool_choice": "auto",
-                "max_tokens": 4096,
+                "max_tokens": 2048,
             }
             if self.uses_deepseek_api:
                 parametros["extra_body"] = {"thinking": {"type": "disabled"}}
