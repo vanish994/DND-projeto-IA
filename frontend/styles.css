@@ -52,7 +52,7 @@ h1, h2, h3, p, ul, ol { margin: 0; }
   padding: 0 var(--space-6);
   letter-spacing: .01em;
 }
-.primary-button:hover:not(:disabled) { background: linear-gradient(180deg, #f7d3a6, var(--color-accent-hover)); }
+.primary-button:hover:not(:disabled) { background: linear-gradient(180deg, var(--color-accent-glow), var(--color-accent-hover)); }
 .primary-button:active:not(:disabled) { transform: translateY(1px); }
 .primary-button:disabled { opacity: .55; cursor: not-allowed; }
 .button-glyph { font-size: var(--text-lg); line-height: 1; }
