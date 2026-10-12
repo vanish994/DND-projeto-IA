@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 # Ferramentas que o MJ pode chamar. Qualquer outra coisa é recusada.
-FERRAMENTAS_CONHECIDAS = {"sugerir_monstros", "consultar_monstro", "resolver_regra"}
+FERRAMENTAS_CONHECIDAS = {"sugerir_monstros", "consultar_monstro", "resolver_regra", "criar_personagem"}
 
 
 @dataclass(frozen=True)
@@ -47,6 +47,8 @@ class Acao:
             fatos = {"type": "bestiary", "operacao": "bloco_completo", **argumentos}
         elif nome == "resolver_regra":
             fatos = dict(argumentos.get("fatos") or {})
+        elif nome == "criar_personagem":
+            fatos = {"type": "character_creation", **dict(argumentos.get("fatos") or {})}
         else:
             return cls(ferramenta=nome, tipo="desconhecida", parametros=argumentos)
         return cls(

@@ -25,7 +25,7 @@ from typing import Any, Callable, Mapping
 from rule_engine import PERICIAS, RuleEngine, build_default_engine
 from rule_engine.bestiary import consultar_monstro
 from rule_engine.catalog import CATALOGO_ARMAS
-from rule_engine.character import PROFICIENCIAS_CLASSE
+from rule_engine.character import PROFICIENCIAS_CLASSE, ficha_personagem
 from rule_engine.damage import aplicar_defesas_monstro
 from rule_engine.spellcasting import (
     ARTIFICER_SPELL_LEVELS,
@@ -151,10 +151,34 @@ class OrquestradorAcoes:
         on_rolagem: Callable[[dict[str, Any]], None] | None = None,
     ) -> ResultadoAcao:
         """Executa a ação: pré-condições, motor, estado e rolagens."""
-        if acao.ferramenta not in {"sugerir_monstros", "consultar_monstro", "resolver_regra"}:
+        if acao.ferramenta not in {"sugerir_monstros", "consultar_monstro", "resolver_regra", "criar_personagem"}:
             return ResultadoAcao.bloqueado("ferramenta_desconhecida")
 
         fatos = acao.para_fatos()
+        if acao.ferramenta == "criar_personagem":
+            obrigatorios = ("name", "species", "class", "ability_scores")
+            faltantes = [campo for campo in obrigatorios if campo not in fatos or fatos[campo] in (None, "")]
+            if faltantes:
+                return ResultadoAcao("incomplete", {
+                    "resultado": "incompleto",
+                    "campos_obrigatorios_ausentes": faltantes,
+                    "reason": "A criação exige escolhas explícitas do jogador."
+                })
+            try:
+                resolucao = self.engine.evaluate(fatos)
+                if resolucao.status != "resolved":
+                    return ResultadoAcao(resolucao.status, dict(resolucao.outcome))
+                personagem = resolucao.outcome.get("personagem")
+                if personagem is None:
+                    return ResultadoAcao.bloqueado("motor_nao_retornou_personagem")
+                ficha = ficha_personagem(personagem)
+                return ResultadoAcao("resolved", {
+                    "resultado": "ficha_validada",
+                    "personagem": ficha,
+                    "rule_source": resolucao.outcome.get("rule_source", "D&D 2024 — criação de personagens")
+                })
+            except (KeyError, TypeError, ValueError) as exc:
+                return ResultadoAcao.bloqueado("dados_de_criacao_invalidos", detalhe=str(exc))
         preparo = _Preparo(fatos)
         personagem_magia: dict[str, Any] | None = None
         slot_a_consumir: str | None = None

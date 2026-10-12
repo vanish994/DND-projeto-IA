@@ -129,6 +129,55 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "criar_personagem",
+            "description": "Cria e valida uma ficha usando exclusivamente o Rule Engine D&D 2024. Não invente nem complete escolhas do jogador. Chame apenas quando tiver nome, espécie, classe e os seis atributos; inclua escolhas confirmadas como antecedente, aumentos do antecedente, perícias, ferramentas e equipamento.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fatos": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "species": {"type": "string"},
+                            "class": {"type": "string"},
+                            "level": {"type": "integer", "minimum": 1, "maximum": 20},
+                            "ability_scores": {
+                                "type": "object",
+                                "properties": {
+                                    "forca": {"type": "integer"},
+                                    "destreza": {"type": "integer"},
+                                    "constituicao": {"type": "integer"},
+                                    "inteligencia": {"type": "integer"},
+                                    "sabedoria": {"type": "integer"},
+                                    "carisma": {"type": "integer"}
+                                },
+                                "required": ["forca", "destreza", "constituicao", "inteligencia", "sabedoria", "carisma"],
+                                "additionalProperties": false
+                            },
+                            "background": {"type": "string"},
+                            "background_increases": {"type": "object"},
+                            "background_feat": {"type": "string"},
+                            "class_skill_proficiencies": {"type": "array", "items": {"type": "string"}},
+                            "artisan_tool_proficiency": {"type": "string"},
+                            "background_tool": {"type": "string"},
+                            "background_equipment": {"type": "string", "enum": ["A", "B"]},
+                            "subclass": {"type": "string"},
+                            "feats": {"type": "array", "items": {"type": "string"}},
+                            "species_choice": {"type": "string"}
+                        },
+                        "required": ["name", "species", "class", "ability_scores"],
+                        "additionalProperties": true
+                    }
+                },
+                "required": ["fatos"],
+                "additionalProperties": false
+            }
+        }
+    },
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
             "name": "sugerir_monstros",
             "description": "Lista candidatos oficiais do bestiário para o MJ escolher; não escolhe nem inventa monstros.",
             "parameters": {
