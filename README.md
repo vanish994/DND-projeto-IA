@@ -99,6 +99,82 @@ python3 run_mj.py
 
 O `.env` é carregado automaticamente, está excluído pelo `.gitignore` e não é publicado no GitHub.
 
+## Orquestrador de Ações
+
+Entre o MJ e o motor existe uma camada determinística: `orchestrator/`. Ela **não é
+um terceiro cérebro de IA e não contém regra de D&D**. Recebe a intenção
+estruturada do MJ (`Acao`), confere pré-condições, encaminha ao subsistema certo do
+Rule Engine, aplica ao estado canônico apenas o que o motor confirmou e devolve
+`ResultadoAcao` com `status`, `dados`, `alteracoes` e `rolagens`.
+
+```python
+from orchestrator import Acao, OrquestradorAcoes
+
+orquestrador = OrquestradorAcoes()
+acao = Acao.de_ferramenta("resolver_regra", {"fatos": {
+    "type": "spell", "character_id": "p1", "magia": "Bola de Fogo",
+}})
+resultado = orquestrador.executar(acao, personagens=[ficha])
+
+print(resultado.dados["resultado"])       # conjurada
+print(resultado.alteracoes)               # [{'campo': 'conjuracao.espacos_restantes', 'de': 2, 'para': 1, ...}]
+```
+
+Magias de salvaguarda em área têm uma operação composta — conjuração, dano
+rolado uma vez e a salvaguarda de cada alvo em **uma única chamada**:
+
+```python
+acao = Acao.de_ferramenta("resolver_regra", {"fatos": {
+    "type": "area_spell", "character_id": "p1", "magia": "Bola de Fogo",
+    "alvos": ["Goblin", "Zombie"],
+}})
+resultado = orquestrador.executar(acao, personagens=[ficha])
+
+print(resultado.dados["dano"])                     # rolado uma vez para a área
+for alvo in resultado.dados["alvos"]:
+    print(alvo["nome"], alvo["salvaguarda"]["sucesso"], alvo["dano_aplicado"])
+```
+
+A operação é atômica (mecânica ausente ou alvo desconhecido nada gasta) e
+equivalente ao fluxo manual — mesmas sementes, mesmos números
+(`tests/test_orquestrador_composto.py`).
+
+Os arquivos: `orchestrator/contratos.py` (contratos), `orchestrator/preparo.py`
+(derivação ficha/catálogo → fatos do motor), `orchestrator/estado.py` (leitura
+autoritativa e única escrita de recurso), `orchestrator/rolagens.py` (tradução da
+rolagem do motor para a interface) e `orchestrator/orquestrador.py` (o fluxo em si).
+
+Duas garantias que interessam a quem for mexer:
+
+- **Não duplicar efeito.** Uma conjuração bloqueada não consome espaço; uma
+  rolagem de dano não altera PV. Só a operação confirmada gera alteração, e a
+  alteração nasce da ficha que o motor decidiu — não de um contador paralelo.
+- **Não duplicar regra.** O orquestrador não decide mecânica: ele prepara fatos,
+  chama `engine.evaluate` e relata. Sem implementação, a resposta é `bloqueado`
+  com motivo, nunca um palpite.
+
+O MJ (`integrations/deepseek_mj.py`) ficou com o que é dele — provedor, prompt,
+histórico, laço de ferramentas e `ultimas_rolagens` — e delega a execução das
+ferramentas a essa camada.
+
+### Custo de tokens do MJ
+
+Cada rodada de ferramenta reenvia ao modelo o contexto inteiro (prompt + estado
++ histórico + schemas ≈ 5.500 tokens). Para medir de verdade — não estimar —
+
+```bash
+python scripts/medir_tokens_mj.py
+```
+
+O script roda o `DeepSeekMJ` de produção com um cliente roteirizado (sem rede)
+e mostra chamadas, entrada e saída por cenário. Dois resultados registrados:
+
+- **Prompt comprimido**: 7.698 → ~5.000 chars, guardrails intactos e fixados em
+  testes — o orquestrador calcula em código o que o prompt ensinava ao modelo.
+- **Magia de área composta** (`type=area_spell`, alvos em lista): mesma tarefa
+  ("Bola de Fogo em 2 alvos") caiu de 5 chamadas/34.685 tokens para
+  2 chamadas/12.598 — **−64%**, com equivalência mecânica provada por sementes.
+
 ### Backend recomendado
 
 Para uso real, o cliente não deve falar diretamente com o TokenHarbor. O backend FastAPI mantém `TOKENHARBOR_API_KEY` no servidor, recebe mensagens do MJ e expõe o Rule Engine por trás do adaptador DeepSeek. O `run_mj.py` continua útil apenas para testes locais no terminal.

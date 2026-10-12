@@ -153,7 +153,7 @@ def gerar_linhas():
     for nome in sorted(ESPECIES):
         add('especie', 'criacao', nome, 'rule_engine/character.py::ESPECIES', prioridade='P2',
             integracao='Criação e ficha; Draconato também tem sopro no chat' if nome == 'draconato' else 'Criação e campos básicos da ficha',
-            rotas_relacionadas='rule_engine/species.py; integrations/deepseek_mj.py::_preparar_ataque_de_sopro' if nome == 'draconato' else '',
+            rotas_relacionadas='rule_engine/species.py; orchestrator/preparo.py::resolver_ataque_de_sopro' if nome == 'draconato' else '',
             lacuna='Inventário é por espécie, não por todos os traços do livro; faltam provas de usos, recarga e efeitos de cada traço.')
     for nome in sorted(ANTECEDENTES):
         add('antecedente', 'criacao', nome, 'rule_engine/backgrounds.py; rule_engine/character.py', prioridade='P2',
