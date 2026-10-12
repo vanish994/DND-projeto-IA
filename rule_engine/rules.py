@@ -48,7 +48,7 @@ from .class_features import resolver_caracteristica
 from .bestiary import resolver_bestiario
 from .dice import (
     rolar_d20_auditavel, rolar_ataque_auditavel, rolar_iniciativa_auditavel,
-    rolar_salvaguarda_auditavel,
+    rolar_salvaguarda_auditavel, rolar_dano_auditavel,
 )
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
@@ -182,6 +182,19 @@ def build_default_engine() -> RuleEngine:
             "target_ac": int(f["target_ac"]),
         },
         source="D&D 2024 — jogadas de ataque",
+    ))
+    engine.register(Rule(
+        rule_id="damage.engine-roll",
+        description=(
+            "O motor rola os dados de dano a partir da expressão oficial "
+            "(arma, magia ou truque) e mantém o resultado auditável pela seed."
+        ),
+        priority=110,
+        # Só rola quando existe uma expressão oficial. Ataque desarmado e dano
+        # fixo continuam sem dados e caem nas regras de dano existentes.
+        when=lambda f: f["type"] == "damage" and not f.get("damage_dice") and bool(f.get("damage_expression")),
+        resolve=rolar_dano_auditavel,
+        source="D&D 2024 — dano",
     ))
     engine.register(Rule(
         rule_id="damage.critical",

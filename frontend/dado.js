@@ -119,11 +119,13 @@
       total: paraInteiro(entrada.total),
       expressao: entrada.expressao || null,
       dificuldade: paraInteiro(entrada.dificuldade),
-      dificuldadeTipo: entrada.dificuldade_tipo || null,
+      // Aceita o formato da API (snake_case) e o já normalizado (camelCase),
+      // para que renormalizar um cartão não perca CD/CA nem o 1 natural.
+      dificuldadeTipo: entrada.dificuldadeTipo || entrada.dificuldade_tipo || null,
       resultado: String(entrada.resultado || 'rolado').toLowerCase(),
       sucesso: entrada.sucesso === true ? true : entrada.sucesso === false ? false : null,
       critico: Boolean(entrada.critico),
-      naturalUm: Boolean(entrada.natural_1) || (lados === 20 && valor === 1),
+      naturalUm: Boolean(entrada.naturalUm || entrada.natural_1) || (lados === 20 && valor === 1),
       vantagem: Boolean(entrada.vantagem),
       desvantagem: Boolean(entrada.desvantagem),
       rotulo: entrada.rotulo || extras.rotulo || ROTULOS_TIPO[tipo] || 'Rolagem',
@@ -179,7 +181,8 @@
     const monstro = String(resposta.monstro || '').trim();
     const acao = String(resposta.acao || '').trim();
     let base;
-    if (magia) base = arma && arma !== magia ? `${magia} (${arma})` : magia;
+    // Ataque com magia (truque ou magia de ataque) é identificado como tal.
+    if (magia) base = `Ataque de magia: ${magia}${arma && arma !== magia ? ` (${arma})` : ''}`;
     else if (monstro && acao) base = `${acao} de ${monstro}`;
     else if (monstro) base = `Ataque de ${monstro}`;
     else if (/^ataque/i.test(arma)) base = arma;
@@ -204,6 +207,12 @@
     const nomePorId = typeof extras.nomePorId === 'function' ? extras.nomePorId : () => null;
     const quem = (indicador) => (indicador ? nomePorId(indicador) || String(indicador) : null);
 
+    // Vantagem/desvantagem vêm da geometria do motor; com dois dados, o que fica
+    // é o maior (vantagem) ou o menor (desvantagem).
+    const estadoJogada = String((resposta.geometria || {}).estado_jogada || '').toLowerCase();
+    const temVantagem = Boolean(ataque.advantage) || estadoJogada === 'vantagem' || (rolagens.length > 1 && valor === Math.max(...rolagens));
+    const temDesvantagem = Boolean(ataque.disadvantage) || estadoJogada === 'desvantagem' || (rolagens.length > 1 && valor === Math.min(...rolagens));
+
     if (valor !== null) {
       registros.push(normalizar({
         tipo: 'ataque',
@@ -219,8 +228,8 @@
         sucesso: ataque.result === 'hit',
         critico: Boolean(ataque.critical),
         natural_1: ataque.reason === 'natural_1',
-        vantagem: Boolean(ataque.advantage),
-        desvantagem: Boolean(ataque.disadvantage),
+        vantagem: temVantagem,
+        desvantagem: temDesvantagem,
         rotulo: rotuloDoAtaque(resposta, extras.alvo),
         personagem: extras.personagem || resposta.monstro || null,
         alvo: extras.alvo || quem(resposta.alvo_id) || null,
@@ -245,7 +254,9 @@
         expressao: expressao || (dadosDano.length ? `${dadosDano.length}d6` : null),
         resultado: 'dano',
         critico: Boolean(ataque.critical),
-        rotulo: resposta.tipo_dano ? `Dano ${resposta.tipo_dano}` : 'Dano',
+        rotulo: resposta.magia ? `Dano de ${resposta.magia}`
+          : resposta.arma ? `Dano de ${resposta.arma}`
+          : resposta.tipo_dano ? `Dano ${resposta.tipo_dano}` : 'Dano',
         personagem: extras.personagem || resposta.monstro || null,
         alvo: extras.alvo || null,
         motivo: APLICACAO_DANO[aplicacao] || null,

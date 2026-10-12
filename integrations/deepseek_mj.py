@@ -16,6 +16,10 @@ from rule_engine.catalog import CATALOGO_ARMAS
 from rule_engine.character import PROFICIENCIAS_CLASSE
 from rule_engine.bestiary import consultar_monstro
 from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS, normalizar_nome_magia, progresso_artifice
+from rule_engine.casting import atributo_de_conjuracao
+from rule_engine.damage import aplicar_defesas_monstro
+from rule_engine.species import HERANCA_DRACONICA, bloco_heranca_draconica
+from rule_engine.spells import mecanica_de_magia, obter_magia
 
 
 PROMPT_NORMATIVO = """Você é o Mestre de Jogo (MJ) da campanha.
@@ -40,6 +44,51 @@ final do motor.
 Para salvaguardas, chame resolver_regra com type=saving_throw, ability (ou
 atributo), modifier derivado da ficha e dc quando o efeito já definir a CD. O
 motor gera o d20 auditável; nunca forneça o resultado da salvaguarda.
+
+CONJURAR MAGIA (registro de espaço):
+- Para conjurar, chame resolver_regra com type=spell, character_id, magia (nome
+  exato do catálogo) e, quando gastar um espaço maior que o círculo da magia,
+  espaco. O motor confere se a magia está na ficha, gasta o espaço e responde
+  resultado=conjurada; sem espaço disponível a resposta é bloqueado com
+  motivo=sem_espacos_restantes. Truques não gastam espaço.
+- Nunca conte espaços de magia de cabeça: use espacos_restantes da resposta.
+
+ATAQUES DE MAGIA (truques e magias com jogada de ataque):
+- Quando a magia do catálogo tem resolução de ataque mágico, chame
+  resolver_regra com type=attack, magia (nome exato do catálogo) e target_name
+  (monstro do bestiário). Não informe modifier nem target_ac.
+- O motor deriva o bônus de ataque do atributo de conjuração da ficha, confere
+  a CA no bestiário e rola o d20 e o dano da magia. Truques escalam pelo nível
+  do personagem (5, 11 e 17) e o motor já aplica esse escalonamento.
+- O truque precisa estar registrado na ficha (conjuracao.truques) e a magia de
+  círculo 1+ em conjuracao.magias_preparadas. Se não estiver, o motor bloqueia;
+  diga ao jogador para registrar a magia, sem inventar o efeito.
+- Se o motor responder magia_sem_mecanica_estruturada_no_catalogo ou
+  magia_nao_resolve_por_jogada_de_ataque, informe a limitação com clareza e não
+  narre dano oficial.
+- Magias que pedem salvaguarda do alvo (como Bola de Fogo, Mãos Flamejantes e
+  Onda Trovejante) NÃO são jogadas de ataque: nunca as envie como attack.
+
+MAGIAS DE DANO POR SALVAGUARDA (Bola de Fogo, Mãos Flamejantes, Onda Trovejante):
+- Passo 1: chame resolver_regra com type=damage, character_id e magia (nome exato
+  do catálogo); se o jogador gastar um espaço maior, informe espaco. O motor
+  devolve dados_dano, dano, tipo_dano e cd_magia. NÃO invente os dados: eles vêm
+  do catálogo, já escalonados.
+- Passo 2: para cada alvo na área, chame resolver_regra com type=saving_throw,
+  ability = magia_salvaguarda, target_name e dc = cd_magia. O motor rola a
+  salvaguarda.
+- Passo 3: aplique o passo 1 a quem falhou e, quando magia_sucesso_metade for
+  verdadeiro, metade (arredondada para baixo) a quem passou. O dano é o mesmo
+  para todos os alvos da área: role uma vez e use o mesmo total.
+- Sem cd_magia na resposta (ficha ausente), não invente a CD: informe o jogador.
+
+ATAQUE DE SOPRO (Draconato):
+- Envie type=attack com weapon="Ataque de Sopro" e target_name. O motor confere a
+  Herança Dracônica da ficha, rola a salvaguarda de Destreza do alvo, rola o dano
+  por nível (1d10/2d10/3d10/4d10), aplica metade no sucesso e as resistências do
+  bloco, e devolve usos_por_descanso_longo.
+- Se a resposta for ataque_de_sopro_exige_draconato_com_heranca_draconica_na_ficha,
+  o personagem não é um Draconato com herança registrada: diga isso ao jogador.
 
 REGRA PRIORITÁRIA — FICHA E INÍCIO DA CAMPANHA:
 - Antes de descrever a primeira cena, leia o bloco de ESTADO AUTORITATIVO DOS PERSONAGENS fornecido no contexto.
@@ -108,7 +157,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "resolver_regra",
-            "description": "Resolve fatos mecânicos. Em attack, recebe modifier e target_ac e gera d20 auditável para hit/miss/crítico. Em initiative, gera d20 e aplica desvantagem quando surprised=true. Em ability_check e em saving_throw sem roll, gera d20 auditável e compara com dc quando fornecida.",
+            "description": "Resolve fatos mecânicos. Em spell, o motor confere a magia na ficha, gasta o espaço e responde conjurada. Em attack com weapon, o motor deriva bônus e dano da ficha e consulta a CA do bestiário. Em attack com magia, o motor deriva o bônus de conjuração da ficha, aplica o escalonamento de truque e rola o dano da magia. Em initiative, gera d20 e aplica desvantagem quando surprised=true. Em ability_check e em saving_throw sem roll, gera d20 auditável e compara com dc quando fornecida.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -138,6 +187,14 @@ ROTULOS_PERICIA = {
 
 # Tipos de rolagem que a interface sabe animar. Qualquer outro tipo cai em "rolagem".
 TIPOS_ROLAGEM = {"ataque", "iniciativa", "teste", "salvaguarda", "dano", "rolagem"}
+
+
+def _normalizar_texto(valor: Any) -> str:
+    """Compara nomes de mesa sem acento, caixa ou espaço duplicado."""
+    import unicodedata
+    texto = unicodedata.normalize("NFKD", str(valor or "").casefold())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return " ".join(texto.replace("_", " ").split())
 
 
 def _primeiro_valor(dados: Any, *chaves: str) -> Any:
@@ -210,16 +267,23 @@ def _rotulo_da_rolagem(tipo: str, fatos: Mapping[str, Any], alvo: str | None) ->
     atributo = str(atributo).strip().lower() if atributo else None
     nome_pericia = ROTULOS_PERICIA.get(pericia or "")
     nome_atributo = ROTULOS_ATRIBUTO.get(atributo or "")
+    magia = fatos.get("magia") or fatos.get("spell")
     if tipo == "ataque":
-        arma = fatos.get("weapon") or fatos.get("arma")
-        rotulo = f"Ataque com {arma}" if arma else "Jogada de ataque"
+        if magia:
+            rotulo = f"Ataque de magia: {magia}"
+        else:
+            arma = fatos.get("weapon") or fatos.get("arma")
+            rotulo = f"Ataque com {arma}" if arma else "Jogada de ataque"
         return f"{rotulo} contra {alvo}" if alvo else rotulo
     if tipo == "iniciativa":
         return "Iniciativa"
     if tipo == "salvaguarda":
         return f"Salvaguarda de {nome_atributo}" if nome_atributo else "Salvaguarda"
     if tipo == "dano":
-        return f"Dano de {fatos.get('weapon') or fatos.get('arma') or 'arma'}" if (fatos.get("weapon") or fatos.get("arma")) else "Rolagem de dano"
+        if magia:
+            return f"Dano de {magia}"
+        fonte = fatos.get("weapon") or fatos.get("arma")
+        return f"Dano de {fonte}" if fonte else "Rolagem de dano"
     if nome_pericia:
         return f"Teste de {nome_pericia} ({nome_atributo})" if nome_atributo else f"Teste de {nome_pericia}"
     if nome_atributo:
@@ -430,6 +494,294 @@ class DeepSeekMJ:
         # Rolagens do motor registradas na última resposta, em ordem de resolução.
         self.ultimas_rolagens: list[dict[str, Any]] = []
 
+    # Nomes com que mesa e ficha costumam chamar o traço do Draconato. O traço
+    # não é arma do catálogo: ele resolve por salvaguarda de Destreza em área.
+    NOMES_ATAQUE_DE_SOPRO = (
+        "arma de sopro", "ataque de sopro", "sopro", "sopro de dragao", "sopro do dragao",
+    )
+
+    def _registrar_rolagens(self, on_roll: Any, rolagens: list[dict[str, Any]]) -> None:
+        """Anuncia ao MJ/à interface todas as rolagens que o motor acabou de gerar."""
+        for rolagem in rolagens:
+            if not rolagem:
+                continue
+            registro = getattr(self, "ultimas_rolagens", None)
+            if registro is None:
+                registro = self.ultimas_rolagens = []
+            registro.append(rolagem)
+            if on_roll is not None:
+                on_roll(rolagem)
+
+    def _modificador_do_atributo(self, personagem: Mapping[str, Any], atributo: str) -> int | None:
+        """Modificador do atributo usando a ficha; calcula só se o valor bruto existir."""
+        modificadores = personagem.get("modificadores") or {}
+        if atributo in modificadores:
+            return int(modificadores[atributo])
+        atributos = personagem.get("atributos") or {}
+        if atributo in atributos:
+            return (int(atributos[atributo]) - 10) // 2
+        return None
+
+    def _atributo_de_conjuracao(self, personagem: Mapping[str, Any]) -> str | None:
+        """Atributo de conjuração: ficha primeiro, depois as regras de classe."""
+        return atributo_de_conjuracao(self.engine, personagem)
+
+    def _preparar_ataque_de_magia(
+        self,
+        facts: dict[str, Any],
+        personagem: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Deriva bônus de ataque e dano de um truque/magia a partir do catálogo.
+
+        O modelo informa apenas ``magia`` e ``target_name``: o atributo de
+        conjuração vem da ficha, a proficiência vem da ficha, a CA vem do
+        bestiário e o dano vem da mecânica estruturada da magia. Nada disso é
+        inventado pelo MJ.
+        """
+        nome = str(facts.get("magia", facts.get("spell", ""))).strip()
+        magia = obter_magia(nome)
+        if not magia:
+            return {"resultado": "bloqueado", "motivo": "magia_desconhecida", "magia": nome}
+        circulo = magia.get("circulo")
+        if circulo is None:
+            return {
+                "resultado": "bloqueado", "motivo": "magia_sem_circulo_confirmado_no_catalogo",
+                "magia": magia["nome"],
+            }
+
+        nome_canonico = str(magia["nome"])
+        conjuracao = personagem.get("conjuracao") or {}
+        chave_magia = normalizar_nome_magia(nome_canonico)
+        if circulo == 0:
+            registradas = conjuracao.get("truques") or []
+        else:
+            registradas = conjuracao.get("magias_preparadas") or conjuracao.get("magias") or []
+        registradas = {normalizar_nome_magia(n) for n in registradas}
+        if not registradas:
+            return {
+                "resultado": "bloqueado", "motivo": "magia_nao_registrada_na_ficha",
+                "magia": nome_canonico, "dica": "Registre o truque ou a magia na ficha antes de conjurar.",
+            }
+        if chave_magia not in registradas:
+            return {"resultado": "bloqueado", "motivo": "magia_nao_registrada_na_ficha", "magia": nome_canonico}
+
+        nivel = max(1, int(personagem.get("nivel", 1) or 1))
+        mecanica = mecanica_de_magia(nome_canonico, nivel_personagem=nivel)
+        if not mecanica:
+            return {
+                "resultado": "bloqueado", "motivo": "magia_sem_mecanica_estruturada_no_catalogo",
+                "magia": nome_canonico,
+                "dica": "O catálogo ainda não tem dados de dano para esta magia; não narre dano oficial.",
+            }
+        if str(mecanica.get("tipo")) != "ataque_magico":
+            return {
+                "resultado": "bloqueado", "motivo": "magia_nao_resolve_por_jogada_de_ataque",
+                "magia": nome_canonico, "tipo_de_mecanica": mecanica.get("tipo"),
+                "dica": "Esta magia não usa jogada de ataque; resolva pelo efeito próprio dela.",
+            }
+
+        atributo = self._atributo_de_conjuracao(personagem)
+        if not atributo:
+            return {
+                "resultado": "bloqueado", "motivo": "atributo_de_conjuracao_ausente_na_ficha",
+                "classe": personagem.get("classe"),
+            }
+        modificador = self._modificador_do_atributo(personagem, atributo)
+        if modificador is None:
+            return {
+                "resultado": "bloqueado", "motivo": "atributo_de_conjuracao_sem_valor_na_ficha",
+                "atributo": atributo,
+            }
+        bonus_proficiencia = int(personagem.get("bonus_proficiencia", 2 + (nivel - 1) // 4))
+
+        alvo_nome = str(facts.get("target_name", facts.get("alvo", ""))).strip()
+        if not alvo_nome:
+            return {"resultado": "bloqueado", "motivo": "nome_do_alvo_ausente"}
+        alvo = consultar_monstro(alvo_nome)
+        if alvo is None:
+            return {"resultado": "bloqueado", "motivo": "monstro_desconhecido_no_bestiario", "alvo": alvo_nome}
+
+        return {
+            "fatos": {
+                **facts,
+                "modifier": modificador + bonus_proficiencia,
+                "character_id": personagem.get("id"),
+                "proficiency_applied": bonus_proficiencia,
+                "modifier_source": "ficha_autoritativa",
+                "magia": nome_canonico,
+                "spell_attack": True,
+                "spell_attack_ability": atributo,
+                "magia_dano": mecanica.get("dados_dano"),
+                "magia_tipo_dano": mecanica.get("tipo_dano"),
+                "magia_alcance_m": mecanica.get("alcance_m"),
+                "escala_truque": mecanica.get("escala_truque", 1),
+                "target_ac": int(alvo["ca"]),
+                "target_name": alvo["nome"],
+            }
+        }
+
+    def _preparar_dano_de_magia(
+        self,
+        facts: dict[str, Any],
+        personagem: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Deriva o dano de uma magia do catálogo, já escalonado por espaço.
+
+        Serve para magias resolvidas por salvaguarda (Bola de Fogo, Mãos
+        Flamejantes, Onda Trovejante): o modelo informa a magia e, opcionalmente,
+        o espaço usado; os dados de dano e a CD saem do catálogo e da ficha.
+        """
+        nome = str(facts.get("magia", facts.get("spell", ""))).strip()
+        magia = obter_magia(nome)
+        if not magia:
+            return {"resultado": "bloqueado", "motivo": "magia_desconhecida", "magia": nome}
+        nome_canonico = str(magia["nome"])
+        circulo = int(magia.get("circulo") or 0)
+        if personagem is not None:
+            conjuracao = personagem.get("conjuracao") or {}
+            registradas = conjuracao.get("truques") if circulo == 0 else (
+                conjuracao.get("magias_preparadas") or conjuracao.get("magias")
+            )
+            registradas = {normalizar_nome_magia(x) for x in (registradas or [])}
+            if registradas and normalizar_nome_magia(nome_canonico) not in registradas:
+                return {
+                    "resultado": "bloqueado", "motivo": "magia_nao_registrada_na_ficha",
+                    "magia": nome_canonico,
+                }
+
+        nivel = max(1, int((personagem or {}).get("nivel", 1) or 1))
+        espaco = facts.get("espaco", facts.get("slot_level"))
+        aumento = facts.get("aumento", facts.get("upcast"))
+        if aumento is None:
+            try:
+                aumento = max(0, int(espaco) - circulo) if espaco is not None else 0
+            except (TypeError, ValueError):
+                return {"resultado": "bloqueado", "motivo": "espaco_de_magia_invalido"}
+        mecanica = mecanica_de_magia(nome_canonico, nivel_personagem=nivel, aumento=max(0, int(aumento)))
+        if not mecanica:
+            return {
+                "resultado": "bloqueado", "motivo": "magia_sem_mecanica_estruturada_no_catalogo",
+                "magia": nome_canonico,
+                "dica": "O catálogo ainda não tem dano para esta magia; não narre dano oficial.",
+            }
+        expressao = mecanica.get("dados_dano") or mecanica.get("dados_dano_base")
+        if not expressao:
+            return {
+                "resultado": "bloqueado", "motivo": "magia_sem_dano_no_catalogo",
+                "magia": nome_canonico, "tipo_de_mecanica": mecanica.get("tipo"),
+            }
+
+        fatos = {
+            **facts,
+            "magia": nome_canonico,
+            "damage_expression": str(expressao),
+            "aumento": max(0, int(aumento)),
+            "magia_tipo_dano": mecanica.get("tipo_dano"),
+            "magia_salvaguarda": mecanica.get("salvaguarda"),
+            "magia_sucesso_metade": bool(mecanica.get("sucesso_metade", False)),
+            "magia_area": mecanica.get("area"),
+        }
+        if personagem is not None:
+            atributo = self._atributo_de_conjuracao(personagem)
+            modificador = self._modificador_do_atributo(personagem, atributo) if atributo else None
+            if atributo and modificador is not None:
+                proficiencia = int(personagem.get("bonus_proficiencia", 2 + (nivel - 1) // 4))
+                # CD de magia = 8 + proficiência + modificador do atributo de conjuração.
+                fatos["cd_magia"] = 8 + proficiencia + modificador
+                fatos["magia_atributo"] = atributo
+            fatos["character_id"] = personagem.get("id")
+        return {"fatos": fatos}
+
+    def _preparar_ataque_de_sopro(
+        self,
+        facts: dict[str, Any],
+        personagem: Mapping[str, Any],
+        personagens: list[dict[str, Any]] | None,
+        on_roll: Any,
+    ) -> dict[str, Any]:
+        """Resolve o Ataque de Sopro do Draconato pela regra do traço.
+
+        O sopro não é uma arma do catálogo: ele pede uma salvaguarda de Destreza
+        contra a CD do traço (8 + Constituição + proficiência), com dano por
+        nível de personagem e metade no sucesso. O motor rola a salvaguarda do
+        alvo e o dano, e aplica as defesas do bloco do monstro.
+        """
+        especie = str(personagem.get("especie", "")).strip().lower()
+        chave = str(personagem.get("heranca_draconica") or "").strip().lower().replace("-", "_")
+        if not chave or chave not in HERANCA_DRACONICA:
+            return {
+                "resultado": "bloqueado",
+                "motivo": "ataque_de_sopro_exige_draconato_com_heranca_draconica_na_ficha",
+                "especie": especie,
+                "dica": "O Ataque de Sopro vem da Herança Dracônica; registre a herança na ficha.",
+            }
+        modificador_constituicao = self._modificador_do_atributo(personagem, "constituicao")
+        if modificador_constituicao is None:
+            return {"resultado": "bloqueado", "motivo": "constituicao_ausente_na_ficha"}
+
+        nivel = max(1, int(personagem.get("nivel", 1) or 1))
+        bonus_proficiencia = int(personagem.get("bonus_proficiencia", 2 + (nivel - 1) // 4))
+        bloco = bloco_heranca_draconica(chave, nivel, modificador_constituicao, bonus_proficiencia)
+        sopro = bloco["sopro"]
+
+        alvo_nome = str(facts.get("target_name", facts.get("alvo", ""))).strip()
+        if not alvo_nome:
+            return {"resultado": "bloqueado", "motivo": "nome_do_alvo_ausente"}
+        alvo = consultar_monstro(alvo_nome)
+        if alvo is None:
+            return {"resultado": "bloqueado", "motivo": "monstro_desconhecido_no_bestiario", "alvo": alvo_nome}
+
+        # Salvaguarda do alvo: usa a proficiência do bloco quando ela existe,
+        # senão o modificador de Destreza puro.
+        atributo_save = "destreza"
+        salvaguardas_alvo = alvo.get("salvaguardas") or {}
+        if atributo_save in salvaguardas_alvo:
+            modificador_alvo = int(salvaguardas_alvo[atributo_save])
+        else:
+            modificador_alvo = int((alvo.get("modificadores") or {}).get(atributo_save, 0))
+
+        semente = str(facts.get("seed") or "")
+        salvaguarda = self.engine.evaluate({
+            "type": "saving_throw", "ability": atributo_save, "modifier": modificador_alvo,
+            "dc": int(sopro["cd"]), "seed": f"{semente}:sopro" if semente else None,
+        }).outcome
+        dano_rolado = self.engine.evaluate({
+            "type": "damage", "damage_expression": str(sopro["dado"]), "damage_modifier": 0,
+            "seed": f"{semente}:sopro-dano" if semente else None,
+        }).outcome
+        dano = int(dano_rolado.get("total", 0))
+        sucesso = salvaguarda.get("result") == "success"
+        if sucesso:
+            dano = dano // 2
+        defesas = aplicar_defesas_monstro(dano, str(sopro["tipo_dano"]), alvo)
+
+        resultado = {
+            "resultado": "resolvido",
+            "tipo_resolucao": "salvaguarda_de_area",
+            "ataque": "Ataque de Sopro",
+            "character_id": personagem.get("id"),
+            "target_name": alvo["nome"],
+            "heranca_draconica": bloco["nome"],
+            "tipo_dano": sopro["tipo_dano"],
+            "formas": list(sopro["formas"]),
+            "salvaguarda": {"atributo": atributo_save, "cd": int(sopro["cd"]),
+                            "rolagem": salvaguarda.get("roll"), "total": salvaguarda.get("total"),
+                            "sucesso": sucesso, "resultado": salvaguarda.get("result")},
+            "dano": int(defesas["dano"]),
+            "dano_bruto": int(defesas["dano_bruto"]),
+            "defesas_dano": defesas,
+            "dados_dano": list(dano_rolado.get("damage_dice") or []),
+            "dano_expressao": dano_rolado.get("damage_expression"),
+            "usos_por_descanso_longo": int(sopro["usos"]),
+            "seed": semente or None,
+            "fonte": "Livro do Jogador 2024 — Ataque de Sopro do Draconato",
+        }
+        self._registrar_rolagens(on_roll, [
+            normalizar_rolagem(salvaguarda, {**facts, "ability": atributo_save, "target_name": alvo["nome"]}, personagens),
+            normalizar_rolagem(dano_rolado, {**facts, "magia": None, "weapon": "Ataque de Sopro"}, personagens),
+        ])
+        return resultado
+
     def _tool(
         self,
         name: str,
@@ -467,8 +819,23 @@ class DeepSeekMJ:
                     facts["modifier"] = modifier
                     facts["character_id"] = personagem.get("id")
                     facts["modifier_source"] = "ficha_autoritativa"
+                elif str(facts.get("magia", facts.get("spell", ""))).strip():
+                    # Truques e magias com jogada de ataque: o motor deriva o bônus
+                    # de conjuração da ficha e a CA do bestiário, como faz com armas.
+                    preparo = self._preparar_ataque_de_magia(facts, personagem)
+                    if "fatos" not in preparo:
+                        return preparo
+                    facts.update(preparo["fatos"])
                 else:
                     nome_arma = str(facts.get("weapon", facts.get("arma", ""))).strip()
+                    # O Ataque de Sopro do Draconato é um traço de espécie, não uma
+                    # arma: resolve por salvaguarda de Destreza, com CD e dano do traço.
+                    arma_normalizada = _normalizar_texto(nome_arma)
+                    if arma_normalizada in {_normalizar_texto(x) for x in self.NOMES_ATAQUE_DE_SOPRO} or (
+                        "sopro" in arma_normalizada
+                        and any(palavra in arma_normalizada for palavra in ("arma", "ataque"))
+                    ):
+                        return self._preparar_ataque_de_sopro(facts, personagem, personagens, on_roll)
                     nome_canonico = next((k for k in CATALOGO_ARMAS if k.casefold() == nome_arma.casefold()), None)
                     arma = CATALOGO_ARMAS.get(nome_canonico) if nome_canonico else None
                     if arma is None:
@@ -549,6 +916,17 @@ class DeepSeekMJ:
                     # A CA vem sempre do catálogo oficial; nunca confiar numa CA fornecida pelo modelo.
                     facts["target_ac"] = int(alvo["ca"])
                     facts["target_name"] = alvo["nome"]
+            if facts.get("type") == "damage" and str(facts.get("magia", facts.get("spell", ""))).strip():
+                # Dano de magia: os dados saem do catálogo, já escalonados pelo espaço.
+                grupo = personagens or []
+                personagem_id = facts.get("character_id")
+                personagem = next((p for p in grupo if p.get("id") == personagem_id), None)
+                if personagem is None and not personagem_id and len(grupo) == 1:
+                    personagem = grupo[0]
+                preparo = self._preparar_dano_de_magia(facts, personagem)
+                if "fatos" not in preparo:
+                    return preparo
+                facts.update(preparo["fatos"])
             if facts.get("type") == "ability_check":
                 grupo = personagens or []
                 personagem_id = facts.get("character_id")
@@ -667,7 +1045,8 @@ class DeepSeekMJ:
                 facts["type"] = "saving_throw_check" if tem_rolagem else "saving_throw"
                 if facts.get("dc") is None and facts.get("cd") is not None:
                     facts["dc"] = int(facts["cd"])
-            if facts.get("type") in {"spell", "spell_cast"} and facts.get("magia"):
+            # O modelo pode chegar com qualquer um destes nomes; o motor normaliza.
+            if facts.get("type") in {"spell", "spell_cast", "cast_spell", "conjurar"} and facts.get("magia"):
                 grupo = personagens or []
                 personagem_id = facts.get("character_id")
                 personagem_magia = next((p for p in grupo if p.get("id") == personagem_id), None)
@@ -675,8 +1054,13 @@ class DeepSeekMJ:
                     personagem_magia = grupo[0]
                 if personagem_magia is None:
                     return {"resultado": "bloqueado", "motivo": "personagem_ausente_ou_nao_identificado"}
-                if personagem_magia.get("classe") == "artifice":
-                    nome_magia = normalizar_nome_magia(facts.get("magia"))
+                magia = obter_magia(facts.get("magia"))
+                if not magia:
+                    return {"resultado": "bloqueado", "motivo": "magia_desconhecida", "magia": facts.get("magia")}
+                nome_canonico = str(magia["nome"])
+                nome_magia = normalizar_nome_magia(nome_canonico)
+                classe = str(personagem_magia.get("classe", "")).strip().lower()
+                if classe == "artifice":
                     circulo = next(
                         (nivel for nome, nivel in ARTIFICER_SPELL_LEVELS.items()
                          if normalizar_nome_magia(nome) == nome_magia),
@@ -684,34 +1068,68 @@ class DeepSeekMJ:
                     )
                     if circulo is None:
                         return {"resultado": "bloqueado", "motivo": "magia_nao_disponivel_para_artifice", "magia": facts.get("magia")}
-                    conjuracao = personagem_magia.get("conjuracao") or {}
-                    escolhidas = conjuracao.get("truques", []) if circulo == 0 else conjuracao.get("magias_preparadas", [])
-                    if nome_magia not in {normalizar_nome_magia(x) for x in escolhidas}:
-                        return {"resultado": "bloqueado", "motivo": "magia_nao_escolhida_na_ficha", "magia": facts.get("magia")}
                     progresso = progresso_artifice(
                         int(personagem_magia.get("nivel", 1)),
                         int((personagem_magia.get("atributos") or {}).get("inteligencia", 10)),
                     )
-                    if circulo > progresso["circulo_maximo"]:
-                        return {"resultado": "bloqueado", "motivo": "circulo_indisponivel_para_nivel", "circulo": circulo}
-                    facts["character_id"] = personagem_magia.get("id")
-                    if circulo > 0:
-                        try:
-                            slot = int(facts.get("espaco", facts.get("slot_level", circulo)))
-                        except (TypeError, ValueError):
-                            return {"resultado": "bloqueado", "motivo": "espaco_de_magia_invalido"}
-                        if slot < circulo or slot > progresso["circulo_maximo"]:
-                            return {"resultado": "bloqueado", "motivo": "espaco_incompativel_com_magia", "circulo_magia": circulo, "espaco_solicitado": slot}
-                        totais = conjuracao.get("espacos_totais") or progresso["espacos_totais"]
-                        restantes = conjuracao.get("espacos_restantes") or totais
-                        if int(restantes.get(str(slot), 0)) < 1:
-                            return {"resultado": "bloqueado", "motivo": "sem_espacos_restantes", "espaco": slot}
-                        facts["espaco"] = slot
-                        slot_a_consumir = str(slot)
+                    circulo_maximo = int(progresso["circulo_maximo"])
+                else:
+                    # Qualquer classe conjuradora usa o círculo do catálogo; a lista
+                    # de magias preparadas da própria ficha é a autoridade.
+                    circulo = int(magia.get("circulo") or 0)
+                    circulo_maximo = max(
+                        [int(k) for k in ((personagem_magia.get("conjuracao") or {}).get("espacos_totais") or {}) if str(k).isdigit()]
+                        or [max(1, (int(personagem_magia.get("nivel", 1)) + 1) // 2)]
+                    )
+                conjuracao = personagem_magia.get("conjuracao") or {}
+                if not conjuracao:
+                    return {"resultado": "bloqueado", "motivo": "ficha_sem_dados_de_conjuracao", "classe": classe}
+                escolhidas = conjuracao.get("truques", []) if circulo == 0 else conjuracao.get("magias_preparadas", [])
+                if nome_magia not in {normalizar_nome_magia(x) for x in escolhidas}:
+                    return {"resultado": "bloqueado", "motivo": "magia_nao_escolhida_na_ficha", "magia": facts.get("magia")}
+                if circulo > circulo_maximo:
+                    return {"resultado": "bloqueado", "motivo": "circulo_indisponivel_para_nivel", "circulo": circulo}
+                facts["character_id"] = personagem_magia.get("id")
+                facts["magia"] = nome_canonico
+                facts["spell_level"] = circulo
+                facts["concentration_required"] = bool(
+                    (magia.get("concentracao") if isinstance(magia, dict) else None)
+                    or (personagem_magia.get("concentracao") or {}).get("magia")
+                )
+                facts["concentrating"] = bool((personagem_magia.get("concentracao") or {}).get("magia"))
+                if circulo == 0:
+                    # Truques não gastam espaço: o motor valida como conjuração sem espaço.
+                    facts["slot_level"] = 0
+                    facts["has_slot"] = True
+                else:
+                    try:
+                        slot = int(facts.get("espaco", facts.get("slot_level", circulo)))
+                    except (TypeError, ValueError):
+                        return {"resultado": "bloqueado", "motivo": "espaco_de_magia_invalido"}
+                    if slot < circulo or slot > circulo_maximo:
+                        return {"resultado": "bloqueado", "motivo": "espaco_incompativel_com_magia", "circulo_magia": circulo, "espaco_solicitado": slot}
+                    totais = conjuracao.get("espacos_totais") or {}
+                    restantes = conjuracao.get("espacos_restantes") or totais
+                    if int(restantes.get(str(slot), 0)) < 1:
+                        return {"resultado": "bloqueado", "motivo": "sem_espacos_restantes", "espaco": slot}
+                    facts["espaco"] = slot
+                    facts["slot_level"] = slot
+                    facts["has_slot"] = True
+                    slot_a_consumir = str(slot)
+                facts["type"] = "spell_cast"
         else:
             return {"resultado": "bloqueado", "motivo": "ferramenta_desconhecida"}
         resolution = self.engine.evaluate(facts)
         resultado = {"status": resolution.status, **dict(resolution.outcome)}
+        if facts.get("type") == "spell_cast":
+            resultado["magia"] = facts.get("magia")
+            resultado["circulo"] = int(facts.get("spell_level", 0))
+            resultado["espaco_usado"] = int(facts.get("slot_level", 0))
+            if resultado.get("result") == "cast":
+                resultado["resultado"] = "conjurada"
+            elif resultado.get("result") == "blocked":
+                resultado["resultado"] = "bloqueado"
+                resultado["motivo"] = resultado.get("reason")
         if name == "resolver_regra" and personagem_magia is not None and slot_a_consumir is not None and resultado.get("resultado") == "conjurada":
             conjuracao = dict(personagem_magia.get("conjuracao") or {})
             totais = dict(conjuracao.get("espacos_totais") or {})
@@ -725,19 +1143,52 @@ class DeepSeekMJ:
         for chave in (
             "character_id", "proficiency_applied", "modifier_source", "weapon",
             "weapon_damage", "damage_type", "damage_modifier", "attack_ability",
-            "target_name",
+            "target_name", "magia", "spell_attack", "spell_attack_ability",
+            "magia_tipo_dano", "magia_alcance_m", "escala_truque", "aumento",
+            "magia_salvaguarda", "magia_sucesso_metade", "magia_area",
+            "cd_magia", "magia_atributo",
         ):
             if chave in facts:
                 resultado[chave] = facts[chave]
+        # Dano de magia resolvido pelo motor: o total e os dados ficam explícitos
+        # para o MJ narrar exatamente o que a engine rolou.
+        if facts.get("type") == "damage" and resultado.get("result") == "damage" and facts.get("magia"):
+            resultado.update({
+                "dano": int(resultado.get("total", 0)),
+                "dano_bruto": int(resultado.get("total", 0)),
+                "dados_dano": list(resultado.get("damage_dice") or []),
+                "dano_expressao": resultado.get("damage_expression"),
+                "tipo_dano": facts.get("magia_tipo_dano"),
+            })
+        # Ataque de magia: com o acerto confirmado, o motor rola o dano da magia
+        # pela semente do próprio ataque. O acerto crítico dobra os dados rolados
+        # dentro do motor; nada de aritmética de dano fora dele.
+        rolagem_dano = None
+        if facts.get("spell_attack") and resultado.get("result") == "hit" and facts.get("magia_dano"):
+            dano = self.engine.evaluate({
+                "type": "damage", "damage_expression": str(facts["magia_dano"]), "damage_modifier": 0,
+                "critical": bool(resultado.get("critical")), "seed": resultado.get("seed"),
+            }).outcome
+            if dano.get("result") == "damage":
+                resultado.update({
+                    "dano": int(dano["total"]),
+                    "dano_bruto": int(dano["total"]),
+                    "dados_dano": list(dano["damage_dice"]),
+                    "dano_expressao": dano.get("damage_expression"),
+                    "tipo_dano": facts.get("magia_tipo_dano"),
+                })
+                rolagem_dano = normalizar_rolagem(dano, facts, personagens)
         # Toda rolagem gerada pelo motor é anunciada para a interface animar o dado.
         rolagem = normalizar_rolagem(resultado, facts, personagens)
-        if rolagem is not None:
+        for registro_atual in (rolagem, rolagem_dano):
+            if registro_atual is None:
+                continue
             registro = getattr(self, "ultimas_rolagens", None)
             if registro is None:
                 registro = self.ultimas_rolagens = []
-            registro.append(rolagem)
+            registro.append(registro_atual)
             if on_roll is not None:
-                on_roll(rolagem)
+                on_roll(registro_atual)
         return resultado
 
     @staticmethod

@@ -32,7 +32,9 @@ from rule_engine import (
 )
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
-from rule_engine.spells import listar_magias, obter_magia, resolver_magia
+from rule_engine.casting import atributo_de_conjuracao
+from rule_engine.damage import aplicar_defesas_monstro, normalizar_tipo_dano
+from rule_engine.spells import listar_magias, mecanica_de_magia, obter_magia, resolver_magia
 from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE, CATEGORIAS_FERRAMENTA_ANTECEDENTE, escolha_ferramenta_do_antecedente
 from rule_engine.spellcasters import CASTING_ABILITY, resolver_progressao_conjuracao
 from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA, escolha_de_especie
@@ -1920,46 +1922,10 @@ def atacar_token_tatico(
 
 
 
-def _normalizar_tipo_dano(tipo: str) -> str:
-    """Mapeia tipos do catálogo PT-BR e do SRD em uma chave comparável."""
-    import unicodedata
-    texto = unicodedata.normalize("NFKD", str(tipo or "").casefold())
-    texto = "".join(c for c in texto if not unicodedata.combining(c)).strip()
-    aliases = {
-        "contundente": "bludgeoning", "bludgeoning": "bludgeoning",
-        "perfurante": "piercing", "piercing": "piercing",
-        "cortante": "slashing", "slashing": "slashing",
-        "acido": "acid", "acid": "acid", "frio": "cold", "cold": "cold",
-        "fogo": "fire", "fire": "fire", "forca": "force", "force": "force",
-        "eletrico": "lightning", "raio": "lightning", "lightning": "lightning",
-        "necrotico": "necrotic", "necrotic": "necrotic",
-        "veneno": "poison", "poison": "poison", "psiquico": "psychic", "psychic": "psychic",
-        "radiante": "radiant", "radiant": "radiant", "trovejante": "thunder", "thunder": "thunder",
-    }
-    return aliases.get(texto, texto)
-
-
-def _aplicar_defesas_monstro(dano: int, tipo_dano: str, monstro: dict) -> dict:
-    """Aplica imunidade, resistência e vulnerabilidade conforme o bloco SRD."""
-    tipo = _normalizar_tipo_dano(tipo_dano)
-    resistencias = {_normalizar_tipo_dano(x) for x in (monstro.get("resistencias_dano") or [])}
-    imunidades = {_normalizar_tipo_dano(x) for x in (monstro.get("imunidades_dano") or [])}
-    vulnerabilidades = {_normalizar_tipo_dano(x) for x in (monstro.get("vulnerabilidades_dano") or [])}
-    if tipo in imunidades:
-        return {"dano": 0, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-                "aplicacao": "imunidade", "fator": 0}
-    # Pela regra de D&D, resistência e vulnerabilidade ao mesmo dano se cancelam.
-    if tipo in resistencias and tipo in vulnerabilidades:
-        return {"dano": max(0, int(dano)), "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-                "aplicacao": "resistencia_e_vulnerabilidade_canceladas", "fator": 1}
-    if tipo in resistencias:
-        return {"dano": max(0, int(dano)) // 2, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-                "aplicacao": "resistencia", "fator": 0.5}
-    if tipo in vulnerabilidades:
-        return {"dano": max(0, int(dano)) * 2, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-                "aplicacao": "vulnerabilidade", "fator": 2}
-    return {"dano": max(0, int(dano)), "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-            "aplicacao": "normal", "fator": 1}
+# Defesas de dano vivem no Rule Engine e são reexportadas aqui para as rotas e
+# os testes existentes. Nada de regra duplicada entre backend e MJ.
+_normalizar_tipo_dano = normalizar_tipo_dano
+_aplicar_defesas_monstro = aplicar_defesas_monstro
 
 
 def _defesas_personagem(ficha: dict) -> dict:
@@ -2478,6 +2444,8 @@ def conjurar_no_mapa_tatico(
     dy = abs(int(conjurador["y"]) - int(alvo["y"]))
     distancia_pes = max(dx, dy) * 5
     engine = build_default_engine()
+    # Atributo de conjuração vem da ficha, com as regras de classe como reserva.
+    atributo_conjuracao = atributo_de_conjuracao(engine, ficha) or "inteligencia"
     resultado_ataque = None
     dano = 0
     cura = 0
@@ -2499,7 +2467,7 @@ def conjurar_no_mapa_tatico(
         if geometria.get("resultado") != "permitido":
             raise HTTPException(status_code=422, detail={"motivo": geometria.get("motivo", "magia_bloqueada"), "geometria": geometria})
         mods = ficha.get("modificadores") or {}
-        bonus_ataque = int(ficha.get("bonus_proficiencia", 2)) + int(mods.get("inteligencia", 0))
+        bonus_ataque = int(ficha.get("bonus_proficiencia", 2)) + int(mods.get(atributo_conjuracao, 0))
         rolagem = secrets.randbelow(20) + 1
         rolagens_extra = []
         if geometria.get("estado_jogada") == "vantagem":
@@ -2514,13 +2482,10 @@ def conjurar_no_mapa_tatico(
             resultado_ataque = {**resultado_ataque, "result": "miss", "critical": False, "reason": "natural_1"}
         if resultado_ataque.get("result") == "hit":
             nivel = int(ficha.get("nivel", 1))
-            quantidade, lados = map(int, str(mecanica.get("dados_dano_base", "1d10")).lower().split("d"))
-            if nivel >= 17:
-                quantidade = 4
-            elif nivel >= 11:
-                quantidade = 3
-            elif nivel >= 5:
-                quantidade = 2
+            # O escalonamento (truque escala nos níveis 5, 11 e 17) vem do catálogo.
+            escalada = mecanica_de_magia(nome, nivel_personagem=nivel) or mecanica
+            expressao_dano = str(escalada.get("dados_dano") or escalada.get("dados_dano_base") or "1d10")
+            quantidade, lados = map(int, expressao_dano.lower().split("d"))
             dados = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
             if resultado_ataque.get("critical"):
                 dados += [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
@@ -2532,7 +2497,7 @@ def conjurar_no_mapa_tatico(
         dados_cura = str(mecanica.get("dados_cura") or "2d8")
         quantidade, lados = map(int, dados_cura.lower().split("d"))
         dados = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
-        mod = int((ficha.get("modificadores") or {}).get("inteligencia", 0))
+        mod = int((ficha.get("modificadores") or {}).get(atributo_conjuracao, 0))
         cura = max(0, sum(dados) + mod)
     elif mecanica.get("tipo") == "dano_em_area":
         # A área é centrada no alvo escolhido; resolvemos apenas quando todos
@@ -2629,7 +2594,7 @@ def conjurar_no_mapa_tatico(
                 fichas_alvos[token_area["id"]] = ficha_alvo
         expressao = str(mecanica.get("dados_dano") or mecanica.get("dados_dano_base") or "2d8")
         quantidade, lados = map(int, expressao.lower().split("d"))
-        dc = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get("inteligencia", 0))
+        dc = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get(atributo_conjuracao, 0))
         resultados_area = []
         for token_area in alvos_area:
             ficha_alvo = fichas_alvos[token_area["id"]]
@@ -2754,7 +2719,12 @@ def conjurar_no_mapa_tatico(
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "magia": nome, "resolucao_motor": resolucao_magia,
         "ataque": resultado_ataque, "rolagem": rolagem, "bonus_ataque": bonus_ataque,
+        "rolagens": ([rolagem, *rolagens_extra] if rolagem is not None else []),
         "dano": dano, "cura": cura,
+        "dados_dano": locals().get("dados") or [],
+        "dano_expressao": locals().get("expressao_dano") if resultado_ataque else None,
+        "tipo_dano": (mecanica.get("tipo_dano") if resultado_ataque else None),
+        "ca_alvo": locals().get("ca_alvo"),
         "concentracao_alvo": concentracao_alvo if "concentracao_alvo" in locals() else None,
         "resultados_area": resultados_area if mecanica.get("tipo") == "dano_em_area" else [],
         "espaco_usado": espaco_usado if circulo > 0 else None,

@@ -190,6 +190,54 @@ def _aplicar_escalonamento_mecanico(nome: str, magia: dict[str, Any], aumento: i
     return mecanica
 
 
+def escala_de_truque(nivel_personagem: int) -> int:
+    """Quantos dados de dano um truque tem no nível do personagem.
+
+    O Livro do Jogador 2024 aumenta o dano dos truques nos níveis 5, 11 e 17;
+    o texto do catálogo registra os mesmos marcos ("escala nos níveis 5, 11 e
+    17"). O nível é o do personagem, não o do espaço de magia: truque não gasta
+    espaço.
+    """
+    if nivel_personagem >= 17:
+        return 4
+    if nivel_personagem >= 11:
+        return 3
+    if nivel_personagem >= 5:
+        return 2
+    return 1
+
+
+def mecanica_de_magia(
+    nome: object,
+    *,
+    nivel_personagem: int = 1,
+    aumento: int = 0,
+) -> dict[str, Any] | None:
+    """Mecânica estruturada da magia, com o escalonamento já aplicado.
+
+    Magias de círculo 1 ou superior escalam pelo espaço usado (``aumento``);
+    truques escalam pelo nível do personagem (5, 11 e 17). Devolve ``None``
+    quando a magia não está no catálogo ou ainda não tem mecânica estruturada —
+    nesse caso o motor não deve inventar dados de dano.
+    """
+    magia = obter_magia(str(nome or ""))
+    if not magia:
+        return None
+    mecanica = _aplicar_escalonamento_mecanico(magia["nome"], magia, aumento)
+    if mecanica is None:
+        return None
+    if magia.get("circulo") == 0:
+        multiplicador = escala_de_truque(nivel_personagem)
+        base = str(mecanica.get("dados_dano") or mecanica.get("dados_dano_base") or "")
+        casamento = re.fullmatch(r"(\d+)d(\d+)", base)
+        if casamento:
+            quantidade = int(casamento.group(1)) * multiplicador
+            mecanica["dados_dano"] = f"{quantidade}d{casamento.group(2)}"
+            mecanica["dados_dano_base"] = mecanica["dados_dano"]
+            mecanica["escala_truque"] = multiplicador
+    return mecanica
+
+
 def listar_magias(escola: str | None = None, circulo: int | None = None) -> list[dict[str, Any]]:
     resultado = list(MAGIAS.values())
     if escola:
