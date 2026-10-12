@@ -46,7 +46,10 @@ from .economy import comprar_item, consultar_item, resolver_inventario, resolver
 from .tactical import caminho_grade, resolver_ataque_tatico, resolver_flanco, resolver_linha_grade, resolver_terreno
 from .class_features import resolver_caracteristica
 from .bestiary import resolver_bestiario
-from .dice import rolar_d20_auditavel, rolar_ataque_auditavel, rolar_iniciativa_auditavel
+from .dice import (
+    rolar_d20_auditavel, rolar_ataque_auditavel, rolar_iniciativa_auditavel,
+    rolar_salvaguarda_auditavel, rolar_dano_auditavel,
+)
 from .survival import (
     adicionar_exaustao, ajustar_dano, aplicar_dano, curar,
     descanso_curto, descanso_longo, resolver_descanso, salvaguarda_contra_morte, estabilizar,
@@ -181,6 +184,19 @@ def build_default_engine() -> RuleEngine:
         source="D&D 2024 — jogadas de ataque",
     ))
     engine.register(Rule(
+        rule_id="damage.engine-roll",
+        description=(
+            "O motor rola os dados de dano a partir da expressão oficial "
+            "(arma, magia ou truque) e mantém o resultado auditável pela seed."
+        ),
+        priority=110,
+        # Só rola quando existe uma expressão oficial. Ataque desarmado e dano
+        # fixo continuam sem dados e caem nas regras de dano existentes.
+        when=lambda f: f["type"] == "damage" and not f.get("damage_dice") and bool(f.get("damage_expression")),
+        resolve=rolar_dano_auditavel,
+        source="D&D 2024 — dano",
+    ))
+    engine.register(Rule(
         rule_id="damage.critical",
         description="No acerto crítico, os dados de dano são rolados duas vezes; o modificador é somado uma vez.",
         priority=100,
@@ -204,6 +220,14 @@ def build_default_engine() -> RuleEngine:
             "modifier": int(f.get("damage_modifier", 0)),
         },
         source="D&D 2024 — dano",
+    ))
+    engine.register(Rule(
+        rule_id="saving-throw.engine-roll",
+        description="O motor gera o d20 auditável da salvaguarda; a CD pode ser definida pelo MJ.",
+        priority=80,
+        when=lambda f: f["type"] == "saving_throw" and "roll" not in f,
+        resolve=rolar_salvaguarda_auditavel,
+        source="D&D 2024 — salvaguardas; rolagem auditável do motor",
     ))
     engine.register(Rule(
         rule_id="saving-throw.natural-20",

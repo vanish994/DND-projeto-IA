@@ -188,7 +188,8 @@ Módulos principais existentes:
 - `rule_engine/engine.py`: classes `Rule`, `Resolution` e `RuleEngine`.
 - `rule_engine/rules.py`: registro central e prioridades.
 - `rule_engine/core.py`: modificadores, proficiência e d20.
-- `rule_engine/dice.py`: d20 auditável gerado pelo motor.
+- `rule_engine/dice.py`: d20 auditável gerado pelo motor e rolagem auditável de dano (`rolar_dano_auditavel`).
+- `rule_engine/damage.py`: normalização de tipos de dano e aplicação de resistência, vulnerabilidade e imunidade (fonte única do backend e do MJ).
 - `rule_engine/ability_checks.py`: contratos e resoluções estruturadas de testes de habilidade.
 - `rule_engine/survival.py`: PV, dano, cura, resistência, morte e exaustão.
 - `rule_engine/combat_geometry.py`: alcance, distância, cobertura, queda e linha de visão.
@@ -196,7 +197,8 @@ Módulos principais existentes:
 - `rule_engine/combat_special.py`: agarrar, empurrar e ataques de oportunidade.
 - `rule_engine/conditions.py`: condições e efeitos derivados.
 - `rule_engine/magic_equipment.py`: CA, armas, armaduras, conjuração e componentes.
-- `rule_engine/spells.py`: catálogo e resolução de magias representativas.
+- `rule_engine/spells.py`: catálogo e resolução de magias representativas; `mecanica_de_magia` devolve a mecânica já escalonada (truque pelo nível, círculo pelo espaço).
+- `rule_engine/casting.py`: atributo de conjuração por classe, com a ficha tendo precedência.
 - `rule_engine/economy.py`: inventário, economia, itens mágicos e sintonização.
 - `rule_engine/tactical.py`: grade, flanqueamento, terreno e combate tático.
 - `rule_engine/exploration_actions.py`: ações de exploração e interações fora do combate.
@@ -405,6 +407,32 @@ O próximo grande marco de produto é:
 
 > **Uma campanha persistente com personagens, estado mecânico, combate e interface visual, mantendo o MJ livre para narrar e o Rule Engine como árbitro das regras.**
 
+
+## Atualização — magias e Ataque de Sopro resolvidos pelo motor (2026-10-11)
+
+Defeito relatado em mesa real: com o personagem conjurador, o MJ recusava truques
+como ataque ("raio de fogo", "arma de sopro", "bola de fogo"), dizendo que o motor
+não tinha registro da magia. Causas corrigidas:
+
+- `resolver_regra` com `type=attack` e `magia` agora deriva o bônus de ataque do
+  atributo de conjuração da ficha (`rule_engine/casting.py`), confere a CA no
+  bestiário, aplica o escalonamento de truque e rola o dano da magia pelo motor.
+- `resolver_regra` com `type=damage` e `magia` deriva os dados de dano do catálogo
+  (com `espaco`/`aumento` para upcast) e devolve `cd_magia`, `magia_salvaguarda` e
+  `magia_sucesso_metade` para o MJ resolver a área como manda a regra.
+- O Ataque de Sopro do Draconato deixou de ser tratado como arma: resolve por
+  salvaguarda de Destreza do alvo, com CD do traço (8 + Constituição + proficiência),
+  dano por nível (1d10/2d10/3d10/4d10), metade no sucesso, defesas do bloco e usos
+  por descanso longo.
+- `cast_spell`/`spell` deixou de ser exclusivo do Artífice: qualquer classe
+  conjuradora tem a magia validada contra a ficha, gasta o espaço e recebe
+  `resultado=conjurada`; sem espaço, o motor bloqueia com motivo explícito.
+- `/conjurar` usa o catálogo para escalonar o truque e o atributo de conjuração da
+  ficha, e devolve `dados_dano`, `dano_expressao`, `tipo_dano` e `ca_alvo` para a
+  interface animar sem recalcular nada.
+- Tipos de dano do catálogo PT-BR ("ígneo", "gélido", "venenoso") passaram a casar
+  com os tipos do SRD ("fire", "cold", "poison") na aplicação das defesas.
+- Validação: 419 testes aprovados (`python -m unittest discover -s tests`).
 
 ## Atualização de cobertura — motor de regras (2026-10-11)
 

@@ -131,7 +131,7 @@ Até existir login, cada navegador gera um identificador próprio e o envia no c
 | `GET` | `/v1/campanhas/{id}` | Retorna a campanha com o histórico de mensagens |
 | `PATCH` | `/v1/campanhas/{id}` | Renomeia (`{"titulo": "..."}`) |
 | `DELETE` | `/v1/campanhas/{id}` | Apaga a campanha e as mensagens |
-| `POST` | `/v1/campanhas/{id}/mensagens` | Envia uma mensagem ao MJ e salva a troca |
+| `POST` | `/v1/campanhas/{id}/mensagens` | Envia uma mensagem ao MJ, salva a troca e devolve `rolagens` para a interface animar o dado |
 | `GET` | `/v1/catalogo/personagens` | Espécies, classes, antecedentes, escolhas de espécie e ferramentas de antecedente |
 | `GET` | `/v1/catalogo/equipamento` | Armas, armaduras, perícias por atributo e proficiências de arma do catálogo oficial |
 | `GET` | `/v1/catalogo/magias` | Magias do catálogo, com classe e nível para filtrar |
@@ -161,6 +161,14 @@ O endpoint legado `/v1/mj/mensagem` continua funcionando: a `sessao_id` passa a 
 O arquivo `render.yaml` deixa o repositório pronto para o Render Blueprint. No Render, use **New → Blueprint**, conecte o repositório `vanish994/DND-projeto-IA` e selecione a branch `main`. O Render lerá o `render.yaml`, instalará as dependências, iniciará o FastAPI na porta `$PORT` e usará `/v1/status` como health check. Quando o painel solicitar `TOKENHARBOR_API_KEY`, cole a chave diretamente no campo secreto do Render; ela não deve ser adicionada ao GitHub.
 
 A extração local do PDF continua identificada como um catálogo de 232 entradas. O conjunto de 322 registros estruturados é uma fonte de dados separada, com sua própria atribuição CC BY 4.0, usada para completar a camada de dados do motor sem alegar que todas as entradas adicionais constam do PDF local.
+
+### Rolagens do motor na interface
+
+Toda resposta do MJ carrega `rolagens`: a lista de dados que o Rule Engine rolou naquele turno, na ordem de resolução. Cada item traz `tipo` (`ataque`, `iniciativa`, `teste`, `salvaguarda`, `dano`), `dado`, `valor`, `rolagens` (todos os d20 quando há vantagem ou desvantagem), `modificador`, `total`, `dificuldade` com `dificuldade_tipo` (`cd` ou `ca`), `resultado`, `critico`, `vantagem`, `desvantagem`, `rotulo`, `personagem`, `alvo`, `seed` e `origem: rule_engine`.
+
+O navegador não sorteia nada: ele apenas apresenta o que o motor decidiu. Sempre que `rolagens` não está vazio, a interface mostra o dado girando antes da narração e deixa o resumo fixo abaixo da mensagem. As rolagens ficam salvas com a mensagem, então reabrir a campanha devolve o mesmo dado — sem recálculo e sem nova rolagem.
+
+Na API de personagens e de mapa tático a mesma informação aparece em campos próprios: `rolagens`, `rolagem`, `bonus_ataque`, `ca_alvo`, `ataque` e `dados_dano` (todos os dados de dano efetivamente rolagos). A página `/dados-preview.html` demonstra a animação sem precisar de campanha.
 
 ### Testes de habilidade com rolagem do motor
 

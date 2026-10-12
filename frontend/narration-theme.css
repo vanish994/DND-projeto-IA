@@ -1,56 +1,81 @@
-/* Tela de narração: moldura fixa, texto persistente com rolagem interna e composição mobile vertical. */
+/* Ambientação da mesa: mesmo vocabulário visual do painel de campanhas
+   (carvão profundo + âmbar quente), com a conversa como foco de leitura.
+   Só usa tokens de design-tokens.css e as classes base de styles.css. */
 .chat-panel {
-  background: radial-gradient(ellipse at 50% 0%, rgba(35, 52, 76, .5), transparent 42%), #080d15;
-  color: #f2eee5;
+  position: relative;
+  background:
+    radial-gradient(ellipse 120% 60% at 50% -10%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 62%),
+    radial-gradient(ellipse 90% 60% at 100% 110%, color-mix(in srgb, var(--color-arcane) 8%, transparent), transparent 60%),
+    var(--color-bg);
+  color: var(--color-text);
 }
+
 .chat-header {
   flex: none;
-  border-bottom: 1px solid rgba(201, 157, 82, .55);
-  background: linear-gradient(180deg, #111925, #080d15);
-  box-shadow: 0 3px 18px rgba(0,0,0,.28);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 32%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface-raised) 82%, transparent), color-mix(in srgb, var(--color-bg) 88%, transparent));
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
 }
-.chat-heading .eyebrow { color: #cba765; letter-spacing: .16em; text-transform: uppercase; }
-.chat-heading h2 { font-family: Georgia, 'Times New Roman', serif; color: #f7f0df; }
+.chat-heading .eyebrow { color: var(--color-accent); letter-spacing: .18em; text-transform: uppercase; }
+.chat-heading h2 { font-family: var(--font-display); color: var(--color-text); }
 .chat-header .icon-button, .chat-header .text-button {
-  border-color: rgba(201,157,82,.45);
-  color: #e2bd78;
+  border-color: color-mix(in srgb, var(--color-accent) 38%, transparent);
+  color: var(--color-accent-hover);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
+.chat-header .icon-button:hover:not(:disabled), .chat-header .text-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  border-color: var(--color-accent);
+}
+.chat-header .icon-button:disabled, .chat-header .text-button:disabled { background: transparent; }
+
+/* O histórico rola dentro do painel; a vinheta reforça a sensação de mesa. */
 .messages {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-color: #9d793e #0b111b;
+  scrollbar-color: color-mix(in srgb, var(--color-accent) 45%, transparent) transparent;
   padding: clamp(16px, 4vw, 30px);
-  background: linear-gradient(rgba(5,10,17,.2), rgba(5,10,17,.88)), radial-gradient(ellipse at center top, #1c2a3c, #080d15 72%);
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-bg) 20%, transparent), color-mix(in srgb, var(--color-surface-sunken) 70%, transparent));
+  scroll-behavior: smooth;
 }
-.message, .message-bubble, .assistant-message {
-  max-width: 100%;
-}
-.messages > * {
-  animation: narration-arrive .22s ease-out;
-}
-.messages p:not(.empty-state) {
-  line-height: 1.8;
-}
+.messages > * { animation: narration-arrive .24s ease-out; }
+.messages p:not(.empty-state) { line-height: 1.8; }
+.message-mj .bubble { border-left-color: color-mix(in srgb, var(--color-accent) 70%, transparent); }
+.message-mj .bubble > .bubble-text { display: block; }
+
+/* Compositor: última peça da moldura, sempre alcançável. */
 .composer {
   flex: none;
   padding: 12px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
-  border-top: 1px solid rgba(201,157,82,.5);
-  background: #080d15;
+  border-top: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 92%, transparent), color-mix(in srgb, var(--color-bg) 96%, transparent));
 }
 .composer textarea {
-  border-color: rgba(201,157,82,.5);
-  background: #101824;
-  color: #f2eee5;
+  border-color: color-mix(in srgb, var(--color-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--color-surface-sunken) 85%, transparent);
+  color: var(--color-text);
 }
-.composer .primary-button { background: #cba765; color: #17120a; }
-@keyframes narration-arrive { from { opacity: .65; } to { opacity: 1; } }
+.composer textarea:focus-visible { border-color: var(--color-accent); box-shadow: var(--focus-ring); }
+.composer .primary-button { box-shadow: 0 6px 18px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+.composer-hint { color: var(--color-text-muted); }
+
+@keyframes narration-arrive { from { opacity: .68; } to { opacity: 1; } }
+
 @media (max-width: 899px) {
   .chat-panel { height: 100%; min-height: 0; }
   .chat-header { padding-top: max(10px, env(safe-area-inset-top)); }
   .messages { padding-bottom: 24px; }
 }
+
+@media (min-width: 900px) {
+  .composer { padding: var(--space-3) var(--space-4); padding-bottom: var(--space-3); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .messages > * { animation: none; }
+  .messages { scroll-behavior: auto; }
 }

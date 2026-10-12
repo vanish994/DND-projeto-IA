@@ -29,6 +29,8 @@ from sqlalchemy import (
     select,
     update,
     case,
+    inspect,
+    text,
 )
 from sqlalchemy.engine import Engine
 
@@ -53,6 +55,8 @@ mensagens = Table(
     Column("campanha_id", String(64), ForeignKey("campanhas.id", ondelete="CASCADE"), nullable=False, index=True),
     Column("papel", String(16), nullable=False),
     Column("conteudo", Text, nullable=False),
+    # Rolagens do Rule Engine guardadas como JSON para a interface reexibir o dado.
+    Column("rolagens", Text, nullable=True),
     Column("criada_em", DateTime(timezone=True), nullable=False),
 )
 
@@ -88,6 +92,17 @@ def _iso(valor: datetime) -> str:
     return valor.isoformat()
 
 
+def _rolagens_da_linha(valor: str | None) -> list[dict[str, Any]]:
+    """Lê as rolagens salvas em JSON, ignorando registros corrompidos ou vazios."""
+    if not valor:
+        return []
+    try:
+        dados = json.loads(valor)
+    except (TypeError, ValueError):
+        return []
+    return [item for item in dados if isinstance(item, dict)] if isinstance(dados, list) else []
+
+
 def normalizar_url_banco(url: str) -> str:
     """Converte URLs do Render (postgres://) para o driver psycopg 3."""
     if url.startswith("postgres://"):
@@ -116,6 +131,22 @@ class RepositorioCampanhas:
             engine = create_engine(url, **kwargs)
         self.engine = engine
         metadata.create_all(self.engine)
+        self._garantir_coluna_rolagens()
+
+    def _garantir_coluna_rolagens(self) -> None:
+        """Adiciona ``mensagens.rolagens`` em bancos criados antes da animação de dados.
+
+        ``metadata.create_all`` não altera tabelas existentes; sem isso, campanhas
+        antigas em SQLite ou Postgres quebrariam ao gravar uma rolagem.
+        """
+        inspetor = inspect(self.engine)
+        if "mensagens" not in inspetor.get_table_names():
+            return
+        colunas = {coluna["name"] for coluna in inspetor.get_columns("mensagens")}
+        if "rolagens" in colunas:
+            return
+        with self.engine.begin() as conn:
+            conn.execute(text("ALTER TABLE mensagens ADD COLUMN rolagens TEXT"))
 
     def _resumo(self, linha: Any, ultima: str | None, total: int) -> dict[str, Any]:
         return {
@@ -221,7 +252,13 @@ class RepositorioCampanhas:
                 consulta = consulta.limit(limite)
             linhas = list(reversed(conn.execute(consulta).all()))
         return [
-            {"id": l.id, "papel": l.papel, "conteudo": l.conteudo, "criada_em": _iso(l.criada_em)}
+            {
+                "id": l.id,
+                "papel": l.papel,
+                "conteudo": l.conteudo,
+                "rolagens": _rolagens_da_linha(l.rolagens),
+                "criada_em": _iso(l.criada_em),
+            }
             for l in linhas
         ]
 
@@ -229,14 +266,22 @@ class RepositorioCampanhas:
         registros = self.mensagens(jogador_id, campanha_id, limite) or []
         return [{"role": r["papel"], "content": r["conteudo"]} for r in registros]
 
-    def registrar_troca(self, jogador_id: str, campanha_id: str, pergunta: str, resposta: str) -> None:
+    def registrar_troca(
+        self,
+        jogador_id: str,
+        campanha_id: str,
+        pergunta: str,
+        resposta: str,
+        rolagens: list[dict[str, Any]] | None = None,
+    ) -> None:
         agora = _agora()
+        rolagens_json = json.dumps(rolagens, ensure_ascii=False) if rolagens else None
         with self.engine.begin() as conn:
             conn.execute(
                 insert(mensagens),
                 [
-                    {"campanha_id": campanha_id, "papel": "user", "conteudo": pergunta, "criada_em": agora},
-                    {"campanha_id": campanha_id, "papel": "assistant", "conteudo": resposta, "criada_em": agora},
+                    {"campanha_id": campanha_id, "papel": "user", "conteudo": pergunta, "rolagens": None, "criada_em": agora},
+                    {"campanha_id": campanha_id, "papel": "assistant", "conteudo": resposta, "rolagens": rolagens_json, "criada_em": agora},
                 ],
             )
             conn.execute(

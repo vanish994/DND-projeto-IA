@@ -6,6 +6,7 @@ mensagens ficam persistidas em banco (SQLite local ou Postgres via DATABASE_URL)
 """
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 import secrets
@@ -31,7 +32,9 @@ from rule_engine import (
 )
 from rule_engine.feats import DARK_GIFT_FEATS, ORIGIN_FEATS
 from integrations.deepseek_mj import DeepSeekMJ
-from rule_engine.spells import listar_magias, obter_magia, resolver_magia
+from rule_engine.casting import atributo_de_conjuracao
+from rule_engine.damage import aplicar_defesas_monstro, normalizar_tipo_dano
+from rule_engine.spells import listar_magias, mecanica_de_magia, obter_magia, resolver_magia
 from rule_engine.character import FERRAMENTAS_ARTESAO, PERICIAS_CLASSE_OPCOES, QUANTIDADE_PERICIAS_CLASSE, CATEGORIAS_FERRAMENTA_ANTECEDENTE, escolha_ferramenta_do_antecedente
 from rule_engine.spellcasters import CASTING_ABILITY, resolver_progressao_conjuracao
 from rule_engine.species import ESCOLHAS_ESPECIE, HERANCA_DRACONICA, escolha_de_especie
@@ -66,6 +69,7 @@ class MensagemMJ(BaseModel):
 class RespostaMJ(BaseModel):
     sessao_id: str
     resposta: str
+    rolagens: list[Rolagem] = Field(default_factory=list)
     narrativa_fora_do_motor: bool = True
 
 
@@ -90,11 +94,40 @@ class Campanha(BaseModel):
     total_mensagens: int = 0
 
 
+class Rolagem(BaseModel):
+    """Rolagem gerada pelo Rule Engine, pronta para a interface animar o dado."""
+
+    tipo: str
+    dado: str = "d20"
+    lados: int = 20
+    valor: int | None = None
+    rolagens: list[int] = Field(default_factory=list)
+    modificador: int = 0
+    total: int | None = None
+    expressao: str | None = None
+    dificuldade: int | None = None
+    dificuldade_tipo: str | None = None
+    resultado: str = "rolado"
+    sucesso: bool | None = None
+    critico: bool = False
+    natural_1: bool = False
+    vantagem: bool = False
+    desvantagem: bool = False
+    motivo: str | None = None
+    rotulo: str | None = None
+    personagem: str | None = None
+    alvo: str | None = None
+    seed: str | None = None
+    dano: dict | None = None
+    origem: str = "rule_engine"
+
+
 class Mensagem(BaseModel):
     id: int
     papel: str
     conteudo: str
     criada_em: str
+    rolagens: list[Rolagem] = Field(default_factory=list)
 
 
 class CampanhaDetalhe(Campanha):
@@ -104,6 +137,7 @@ class CampanhaDetalhe(Campanha):
 class RespostaCampanha(BaseModel):
     campanha: Campanha
     resposta: str
+    rolagens: list[Rolagem] = Field(default_factory=list)
     narrativa_fora_do_motor: bool = True
 
 
@@ -409,7 +443,21 @@ def _diagnostico_erro_provedor(exc: Exception) -> tuple[str, int | None]:
     return ("Falha temporária ao consultar o provedor. Consulte os logs do serviço no Render e tente novamente.", None)
 
 
-def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str) -> str:
+def _chamar_mj(mj: DeepSeekMJ, texto: str, historico: list[dict], **extras) -> str:
+    """Chama o MJ passando apenas os ganchos que a implementação declara aceitar."""
+    try:
+        parametros = inspect.signature(mj.responder).parameters
+    except (TypeError, ValueError):
+        parametros = {}
+    aceita_extras = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parametros.values())
+    aceitos = {nome: valor for nome, valor in extras.items() if aceita_extras or nome in parametros}
+    return mj.responder(texto, historico, **aceitos)
+
+
+def _responder(
+    mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str,
+) -> tuple[str, list[dict]]:
+    """Responde ao jogador e devolve as rolagens que o motor gerou na resposta."""
     historico = repo.historico_llm(jogador, campanha_id, HISTORICO_MAX)
     # Evita que respostas narrativas excepcionalmente longas façam a requisição
     # crescer sem limite e provoquem HTTP 413 no provedor.
@@ -427,22 +475,27 @@ def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanh
     contexto_personagem = _resumo_grupo(repo, jogador, campanha_id)
     # Contexto autoritativo sempre presente, inclusive quando a campanha ainda não tem ficha.
     historico = [{"role": "system", "content": contexto_personagem}, *historico]
+    rolagens: list[dict] = []
+
+    def registrar_rolagem(rolagem: dict) -> None:
+        rolagens.append(rolagem)
+
+    def salvar_estado_personagem(personagem: dict) -> None:
+        ficha = {
+            k: v for k, v in personagem.items()
+            if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}
+        }
+        repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], ficha)
+
     try:
         personagens = repo.listar_personagens(jogador, campanha_id) or []
-        if isinstance(mj, DeepSeekMJ):
-            def salvar_estado_personagem(personagem: dict) -> None:
-                ficha = {
-                    k: v for k, v in personagem.items()
-                    if k not in {"id", "campanha_id", "entrada", "criado_em", "atualizado_em", "pv_atual"}
-                }
-                repo.atualizar_dados_ficha(jogador, campanha_id, personagem["id"], ficha)
-
-            resposta = mj.responder(
-                texto, historico, personagens=personagens,
-                on_character_update=salvar_estado_personagem,
-            )
-        else:
-            resposta = mj.responder(texto, historico)
+        # Só envia o que o MJ em uso aceita: adaptadores antigos e dublês de teste
+        # continuam funcionando com a assinatura reduzida.
+        resposta = _chamar_mj(
+            mj, texto, historico,
+            personagens=personagens, on_character_update=salvar_estado_personagem,
+            on_roll=registrar_rolagem,
+        )
     except Exception as exc:
         detalhe, status_provedor = _diagnostico_erro_provedor(exc)
         logger.exception(
@@ -450,8 +503,8 @@ def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanh
             type(exc).__name__, status_provedor,
         )
         raise HTTPException(status_code=502, detail=detalhe) from exc
-    repo.registrar_troca(jogador, campanha_id, texto, resposta)
-    return resposta
+    repo.registrar_troca(jogador, campanha_id, texto, resposta, rolagens)
+    return resposta, rolagens
 
 
 @app.get("/v1/status")
@@ -523,8 +576,8 @@ def enviar_mensagem_campanha(
     mj: DeepSeekMJ = Depends(obter_mj),
 ) -> dict:
     _campanha_ou_404(repo, jogador, campanha_id)
-    resposta = _responder(mj, repo, jogador, campanha_id, pedido.mensagem)
-    return {"campanha": repo.obter(jogador, campanha_id), "resposta": resposta}
+    resposta, rolagens = _responder(mj, repo, jogador, campanha_id, pedido.mensagem)
+    return {"campanha": repo.obter(jogador, campanha_id), "resposta": resposta, "rolagens": rolagens}
 
 
 @app.get("/v1/catalogo/personagens")
@@ -874,8 +927,8 @@ def mensagem_mj(
         if repo.existe_em_outro_jogador(jogador, pedido.sessao_id):
             raise HTTPException(status_code=404, detail="Campanha não encontrada")
         repo.criar(jogador, campanha_id=pedido.sessao_id)
-    resposta = _responder(mj, repo, jogador, pedido.sessao_id, pedido.mensagem)
-    return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta)
+    resposta, rolagens = _responder(mj, repo, jogador, pedido.sessao_id, pedido.mensagem)
+    return RespostaMJ(sessao_id=pedido.sessao_id, resposta=resposta, rolagens=rolagens)
 
 
 def _validar_turno_ativo(estado: dict, token_id: str) -> None:
@@ -1748,6 +1801,8 @@ def atacar_token_tatico(
     equipamento = ficha_atacante.get("equipamento") or {}
     nome_arma = pedido.arma or equipamento.get("arma")
     dados_arma: list[int] = []
+    # Preenchido só no acerto; a resposta precisa do campo mesmo em erro/quebra.
+    dados_dano: list[int] = []
     if nome_arma:
         arma = CATALOGO_ARMAS.get(nome_arma)
         if not arma:
@@ -1787,6 +1842,7 @@ def atacar_token_tatico(
     dano = 0
     dano_bruto = 0
     defesas_dano = None
+    modificador_dano = 0
     tipo_dano_ataque = str((CATALOGO_ARMAS.get(nome_arma or "") or {}).get("tipo", "contundente"))
     fortitude = None
     if ataque.get("result") == "hit":
@@ -1848,6 +1904,12 @@ def atacar_token_tatico(
         "arma": nome_arma or "Ataque desarmado",
         "ca_alvo": int(alvo["ac"]),
         "rolagens": [rolagem, *rolagens_extra],
+        # Dados de dano rolagos pelo motor, para a interface animar cada dado.
+        "dados_dano": dados_dano,
+        "dano_expressao": f"{len(dados_dano)}d{str((CATALOGO_ARMAS.get(nome_arma or '') or {}).get('dano', '')).split('d')[-1]}" if dados_dano else None,
+        "tipo_dano": tipo_dano_ataque,
+        # Modificador de dano realmente somado aos dados, para a interface exibir a conta.
+        "dano_modificador": int(modificador_dano),
         "fortitude": fortitude,
         "dano_bruto": dano_bruto if ataque.get("result") == "hit" else 0,
         "defesas_dano": defesas_dano,
@@ -1860,46 +1922,10 @@ def atacar_token_tatico(
 
 
 
-def _normalizar_tipo_dano(tipo: str) -> str:
-    """Mapeia tipos do catálogo PT-BR e do SRD em uma chave comparável."""
-    import unicodedata
-    texto = unicodedata.normalize("NFKD", str(tipo or "").casefold())
-    texto = "".join(c for c in texto if not unicodedata.combining(c)).strip()
-    aliases = {
-        "contundente": "bludgeoning", "bludgeoning": "bludgeoning",
-        "perfurante": "piercing", "piercing": "piercing",
-        "cortante": "slashing", "slashing": "slashing",
-        "acido": "acid", "acid": "acid", "frio": "cold", "cold": "cold",
-        "fogo": "fire", "fire": "fire", "forca": "force", "force": "force",
-        "eletrico": "lightning", "raio": "lightning", "lightning": "lightning",
-        "necrotico": "necrotic", "necrotic": "necrotic",
-        "veneno": "poison", "poison": "poison", "psiquico": "psychic", "psychic": "psychic",
-        "radiante": "radiant", "radiant": "radiant", "trovejante": "thunder", "thunder": "thunder",
-    }
-    return aliases.get(texto, texto)
-
-
-def _aplicar_defesas_monstro(dano: int, tipo_dano: str, monstro: dict) -> dict:
-    """Aplica imunidade, resistência e vulnerabilidade conforme o bloco SRD."""
-    tipo = _normalizar_tipo_dano(tipo_dano)
-    resistencias = {_normalizar_tipo_dano(x) for x in (monstro.get("resistencias_dano") or [])}
-    imunidades = {_normalizar_tipo_dano(x) for x in (monstro.get("imunidades_dano") or [])}
-    vulnerabilidades = {_normalizar_tipo_dano(x) for x in (monstro.get("vulnerabilidades_dano") or [])}
-    if tipo in imunidades:
-        return {"dano": 0, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-                "aplicacao": "imunidade", "fator": 0}
-    # Pela regra de D&D, resistência e vulnerabilidade ao mesmo dano se cancelam.
-    if tipo in resistencias and tipo in vulnerabilidades:
-        return {"dano": max(0, int(dano)), "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-                "aplicacao": "resistencia_e_vulnerabilidade_canceladas", "fator": 1}
-    if tipo in resistencias:
-        return {"dano": max(0, int(dano)) // 2, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-                "aplicacao": "resistencia", "fator": 0.5}
-    if tipo in vulnerabilidades:
-        return {"dano": max(0, int(dano)) * 2, "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-                "aplicacao": "vulnerabilidade", "fator": 2}
-    return {"dano": max(0, int(dano)), "dano_bruto": max(0, int(dano)), "tipo_dano": tipo,
-            "aplicacao": "normal", "fator": 1}
+# Defesas de dano vivem no Rule Engine e são reexportadas aqui para as rotas e
+# os testes existentes. Nada de regra duplicada entre backend e MJ.
+_normalizar_tipo_dano = normalizar_tipo_dano
+_aplicar_defesas_monstro = aplicar_defesas_monstro
 
 
 def _defesas_personagem(ficha: dict) -> dict:
@@ -2344,6 +2370,7 @@ def atacar_com_monstro_tatico(
         "bonus_ataque": selecionado["bonus_ataque"],
         "dados_dano": dados_dano if ataque.get("result") == "hit" else [],
         "dano": dano, "dano_bruto": dano_bruto,
+        "dano_modificador": int(modificador) if ataque.get("result") == "hit" else 0,
         "concentracao": concentracao if "concentracao" in locals() else None,
         "efeitos_condicao": efeitos_condicao_monstro,
         "defesas_dano": defesas_aplicadas,
@@ -2417,6 +2444,8 @@ def conjurar_no_mapa_tatico(
     dy = abs(int(conjurador["y"]) - int(alvo["y"]))
     distancia_pes = max(dx, dy) * 5
     engine = build_default_engine()
+    # Atributo de conjuração vem da ficha, com as regras de classe como reserva.
+    atributo_conjuracao = atributo_de_conjuracao(engine, ficha) or "inteligencia"
     resultado_ataque = None
     dano = 0
     cura = 0
@@ -2438,7 +2467,7 @@ def conjurar_no_mapa_tatico(
         if geometria.get("resultado") != "permitido":
             raise HTTPException(status_code=422, detail={"motivo": geometria.get("motivo", "magia_bloqueada"), "geometria": geometria})
         mods = ficha.get("modificadores") or {}
-        bonus_ataque = int(ficha.get("bonus_proficiencia", 2)) + int(mods.get("inteligencia", 0))
+        bonus_ataque = int(ficha.get("bonus_proficiencia", 2)) + int(mods.get(atributo_conjuracao, 0))
         rolagem = secrets.randbelow(20) + 1
         rolagens_extra = []
         if geometria.get("estado_jogada") == "vantagem":
@@ -2453,13 +2482,10 @@ def conjurar_no_mapa_tatico(
             resultado_ataque = {**resultado_ataque, "result": "miss", "critical": False, "reason": "natural_1"}
         if resultado_ataque.get("result") == "hit":
             nivel = int(ficha.get("nivel", 1))
-            quantidade, lados = map(int, str(mecanica.get("dados_dano_base", "1d10")).lower().split("d"))
-            if nivel >= 17:
-                quantidade = 4
-            elif nivel >= 11:
-                quantidade = 3
-            elif nivel >= 5:
-                quantidade = 2
+            # O escalonamento (truque escala nos níveis 5, 11 e 17) vem do catálogo.
+            escalada = mecanica_de_magia(nome, nivel_personagem=nivel) or mecanica
+            expressao_dano = str(escalada.get("dados_dano") or escalada.get("dados_dano_base") or "1d10")
+            quantidade, lados = map(int, expressao_dano.lower().split("d"))
             dados = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
             if resultado_ataque.get("critical"):
                 dados += [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
@@ -2471,7 +2497,7 @@ def conjurar_no_mapa_tatico(
         dados_cura = str(mecanica.get("dados_cura") or "2d8")
         quantidade, lados = map(int, dados_cura.lower().split("d"))
         dados = [secrets.randbelow(lados) + 1 for _ in range(quantidade)]
-        mod = int((ficha.get("modificadores") or {}).get("inteligencia", 0))
+        mod = int((ficha.get("modificadores") or {}).get(atributo_conjuracao, 0))
         cura = max(0, sum(dados) + mod)
     elif mecanica.get("tipo") == "dano_em_area":
         # A área é centrada no alvo escolhido; resolvemos apenas quando todos
@@ -2568,7 +2594,7 @@ def conjurar_no_mapa_tatico(
                 fichas_alvos[token_area["id"]] = ficha_alvo
         expressao = str(mecanica.get("dados_dano") or mecanica.get("dados_dano_base") or "2d8")
         quantidade, lados = map(int, expressao.lower().split("d"))
-        dc = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get("inteligencia", 0))
+        dc = 8 + int(ficha.get("bonus_proficiencia", 2)) + int((ficha.get("modificadores") or {}).get(atributo_conjuracao, 0))
         resultados_area = []
         for token_area in alvos_area:
             ficha_alvo = fichas_alvos[token_area["id"]]
@@ -2693,7 +2719,12 @@ def conjurar_no_mapa_tatico(
         "mapa": _estado_mapa_normalizado(repo, jogador, campanha_id),
         "magia": nome, "resolucao_motor": resolucao_magia,
         "ataque": resultado_ataque, "rolagem": rolagem, "bonus_ataque": bonus_ataque,
+        "rolagens": ([rolagem, *rolagens_extra] if rolagem is not None else []),
         "dano": dano, "cura": cura,
+        "dados_dano": locals().get("dados") or [],
+        "dano_expressao": locals().get("expressao_dano") if resultado_ataque else None,
+        "tipo_dano": (mecanica.get("tipo_dano") if resultado_ataque else None),
+        "ca_alvo": locals().get("ca_alvo"),
         "concentracao_alvo": concentracao_alvo if "concentracao_alvo" in locals() else None,
         "resultados_area": resultados_area if mecanica.get("tipo") == "dano_em_area" else [],
         "espaco_usado": espaco_usado if circulo > 0 else None,
