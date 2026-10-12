@@ -51,7 +51,7 @@ app = FastAPI(
 _frontend = Path(__file__).resolve().parents[1] / "frontend"
 
 JOGADOR_ANONIMO = "anonimo"
-HISTORICO_MAX = int(os.getenv("MJ_HISTORICO_MAX", "40"))
+HISTORICO_MAX = int(os.getenv("MJ_HISTORICO_MAX", "12"))
 PADRAO_ID = r"^[A-Za-z0-9_-]{1,128}$"
 
 _mj: DeepSeekMJ | None = None
@@ -411,6 +411,19 @@ def _diagnostico_erro_provedor(exc: Exception) -> tuple[str, int | None]:
 
 def _responder(mj: DeepSeekMJ, repo: RepositorioCampanhas, jogador: str, campanha_id: str, texto: str) -> str:
     historico = repo.historico_llm(jogador, campanha_id, HISTORICO_MAX)
+    # Evita que respostas narrativas excepcionalmente longas façam a requisição
+    # crescer sem limite e provoquem HTTP 413 no provedor.
+    historico = [
+        {
+            **mensagem,
+            "content": (
+                mensagem.get("content", "")[-3000:]
+                if isinstance(mensagem.get("content", ""), str)
+                else mensagem.get("content", "")
+            ),
+        }
+        for mensagem in historico
+    ]
     contexto_personagem = _resumo_grupo(repo, jogador, campanha_id)
     # Contexto autoritativo sempre presente, inclusive quando a campanha ainda não tem ficha.
     historico = [{"role": "system", "content": contexto_personagem}, *historico]
