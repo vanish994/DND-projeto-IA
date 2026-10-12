@@ -246,5 +246,23 @@ class TruquesEPrimeiroCirculoTests(unittest.TestCase):
         self.assertEqual(result["mecanica"]["reducao_dano_base"], "1d4")
 
 
+class MagiasPHB2024NomesNovosTests(unittest.TestCase):
+    """Nomes do PHB 2024: Mãos Mágicas (no lugar de Mão Mágica) e Reparar (no lugar de Consertar)."""
+
+    def test_maos_magicas_is_cantrip_with_nine_metre_hand(self):
+        result = resolver_magia({"magia": "mãos mágicas"})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["mover_m"], 9)
+        self.assertEqual(result["mecanica"]["carga_max_kg"], 5)
+        self.assertFalse(result["mecanica"]["pode_atacar"])
+
+    def test_reparar_repairs_up_to_30cm_and_takes_one_minute(self):
+        result = resolver_magia({"magia": "reparar"})
+        self.assertEqual(result["resultado"], "conjurada")
+        self.assertEqual(result["mecanica"]["ruptura_max_cm"], 30)
+        self.assertEqual(result["mecanica"]["tempo_conjuracao"], "1_minuto")
+        self.assertFalse(result["mecanica"]["restaura_magia"])
+
+
 if __name__ == "__main__":
     unittest.main()

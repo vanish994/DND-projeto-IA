@@ -61,6 +61,8 @@ _DETALHADAS = {
     "restauração menor": (2, "abjuração", "V, S", False, "Bônus: remove uma condição (Cego, Envenenado, Paralisado ou Surdo)", {}),
     "proteção contra veneno": (2, "abjuração", "V, S", False, "Encerra Envenenado; Vantagem em salvaguardas contra Envenenado; Resistência a dano Venenoso por 1 hora", {}),
     "proteção contra energia": (3, "abjuração", "V, S", True, "Resistência a Ácido, Elétrico, Gélido, Ígneo ou Trovejante (escolha) por até 1 hora", {}),
+    "mãos mágicas": (0, "invocação", "V, S", False, "Mão espectral manipula objetos e move-se 9 m por uso de Usar Magia; carga de 5 kg; não ataca", {}),
+    "reparar": (0, "transmutação", "V, S, M (duas pedras-ímã)", False, "Repara uma ruptura de até 30 cm em um objeto; conjuração de 1 minuto", {}),
     "acudir os moribundos": (0, "necromancia", "V, S", False, "Criatura com 0 PV e não morta fica Estável; alcance dobra nos níveis 5, 11 e 17", {"alcance": "dobra nos níveis 5, 11 e 17"}),
     "chicote de espinhos": (0, "transmutação", "V, S, M (o caule de uma planta espinhosa)", False, "Ataque mágico corpo a corpo; 1d6 perfurante; puxa alvo Grande ou menor até 3 m", {"dano": "escala nos níveis 5, 11 e 17"}),
     "luz": (0, "evocação", "V, M (um vaga-lume ou musgo fosforescente)", False, "Objeto Grande ou menor emite Luz Plena de 6 m e Meia-luz por mais 6 m por 1 hora", {}),
@@ -88,7 +90,7 @@ for nome, (circulo, escola, componentes, conc, efeito, upcast) in _DETALHADAS.it
 
 # Durações específicas que a regra genérica (concentração ou instantânea) não cobre.
 for _nome, _duracao in {"auxílio": "8 horas", "santuário": "1 minuto", "sono": "concentração, até 1 minuto", "heroísmo": "concentração, até 1 minuto", "comando": "instantânea", "teia": "concentração, até 1 hora", "levitação": "concentração, até 10 minutos", "proteção contra energia": "concentração, até 1 hora", "proteção contra veneno": "1 hora", "queda suave": "1 minuto",
-    "luz": "1 hora", "luzes dançantes": "concentração, até 1 minuto", "mensagem": "1 rodada", "orientação": "concentração, até 1 minuto",
+    "mãos mágicas": "1 minuto", "luz": "1 hora", "luzes dançantes": "concentração, até 1 minuto", "mensagem": "1 rodada", "orientação": "concentração, até 1 minuto",
     "resistência": "concentração, até 1 minuto", "alarme": "8 horas", "detectar magia": "concentração, até 10 minutos",
     "disfarçar-se": "1 hora", "fogo das fadas": "concentração, até 1 minuto", "graxa": "1 minuto",
     "retirada acelerada": "concentração, até 10 minutos", "salto": "1 minuto"}.items():
@@ -280,6 +282,14 @@ MECANICAS_MAGIA: dict[str, dict[str, Any]] = {
     "proteção contra energia": {
         "tipo": "resistencia", "alcance": "toque", "acao": "acao", "concentracao": True,
         "duracao": "ate_1_hora", "tipos_escolha": ["acido", "eletrico", "gelido", "igneo", "trovejante"],
+    },
+    "mãos mágicas": {
+        "tipo": "utilidade_mao_espectral", "alcance_m": 9, "acao": "acao", "duracao": "1_minuto",
+        "mover_m": 9, "carga_max_kg": 5, "pode_atacar": False,
+    },
+    "reparar": {
+        "tipo": "reparo", "alcance": "toque", "tempo_conjuracao": "1_minuto",
+        "ruptura_max_cm": 30, "repara_item_magico_fisicamente": True, "restaura_magia": False,
     },
     "acudir os moribundos": {
         "tipo": "estabilizar", "alcance_m": 4.5, "escala_alcance_truque": True, "acao": "acao",
