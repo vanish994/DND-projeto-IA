@@ -289,5 +289,35 @@ class MagiasForaDoPHB2024Tests(unittest.TestCase):
         self.assertEqual(resolver_magia({"magia": "reparar"})["resultado"], "conjurada")
 
 
+class ArtificerListaBase2024Tests(unittest.TestCase):
+    """Lista base do Artífice conforme Eberron: Forge of the Artificer (2024)."""
+
+    def test_base_list_matches_2024_additions(self):
+        from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS as A
+        self.assertEqual(A["Mãos Mágicas"], 0)
+        self.assertEqual(A["Golpe Certeiro"], 0)
+        self.assertEqual(A["Elementalismo"], 0)
+        self.assertEqual(A["Sopro de Dragão"], 2)
+        self.assertEqual(A["Vigor Arcano"], 2)
+        self.assertEqual(A["Círculo de Poder"], 5)
+
+    def test_subclass_spells_are_not_in_base_list(self):
+        from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS as A
+        self.assertNotIn("Onda Trovejante", A)
+        self.assertNotIn("Transmutar Rocha", A)
+
+    def test_subclass_spells_are_always_prepared_by_level(self):
+        from rule_engine.spellcasting import magias_sempre_preparadas
+        self.assertIn("Onda Trovejante", magias_sempre_preparadas("Armeiro", 3))
+        self.assertNotIn("Relâmpago", magias_sempre_preparadas("Armeiro", 5))
+        self.assertIn("Relâmpago", magias_sempre_preparadas("Armeiro", 9))
+        self.assertEqual(magias_sempre_preparadas(None, 9), [])
+
+    def test_subclass_spell_cannot_be_chosen_as_prepared(self):
+        from rule_engine.spellcasting import validar_escolhas_artifice
+        with self.assertRaisesRegex(ValueError, "sempre preparada"):
+            validar_escolhas_artifice(3, 16, ["Luz"], ["Alarme", "Onda Trovejante"], {"1": 2}, subclasse="Armeiro")
+
+
 if __name__ == "__main__":
     unittest.main()

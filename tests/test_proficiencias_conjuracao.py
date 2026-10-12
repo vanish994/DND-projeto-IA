@@ -78,7 +78,7 @@ class ArtificerSpellValidationTests(unittest.TestCase):
         resultado = validar_escolhas_artifice(
             1, 16,
             ["Luz", "Raio de Gelo"],
-            ["Alarme", "Curar Ferimentos", "Onda Trovejante"],
+            ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"],
             {"1": 2},
         )
         self.assertEqual(resultado["resultado"], "resolvido")
@@ -92,7 +92,7 @@ class ArtificerSpellValidationTests(unittest.TestCase):
 
     def test_bloqueia_quantidade_incorreta_de_truques_e_magias(self):
         with self.assertRaisesRegex(ValueError, "exatamente 2 truques"):
-            validar_escolhas_artifice(1, 16, ["Luz"], ["Alarme", "Curar Ferimentos", "Onda Trovejante"], {"1": 2})
+            validar_escolhas_artifice(1, 16, ["Luz"], ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"], {"1": 2})
         with self.assertRaisesRegex(ValueError, "exatamente 3 magias preparadas"):
             validar_escolhas_artifice(1, 16, ["Luz", "Raio de Gelo"], ["Alarme"], {"1": 2})
 
@@ -100,14 +100,14 @@ class ArtificerSpellValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Não repita truques"):
             validar_escolhas_artifice(
                 1, 16, ["Luz", "Luz"],
-                ["Alarme", "Curar Ferimentos", "Onda Trovejante"], {"1": 2},
+                ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"], {"1": 2},
             )
 
     def test_bloqueia_magias_preparadas_duplicadas(self):
         with self.assertRaisesRegex(ValueError, "Não repita magias preparadas"):
             validar_escolhas_artifice(
                 1, 16, ["Luz", "Raio de Gelo"],
-                ["Alarme", "Alarme", "Onda Trovejante"], {"1": 2},
+                ["Alarme", "Alarme", "Vitalidade Vazia"], {"1": 2},
             )
 
     def test_bloqueia_quantidade_de_espacos_negativa_ou_fracionaria(self):
@@ -116,14 +116,14 @@ class ArtificerSpellValidationTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "inteiro não negativo"):
                     validar_escolhas_artifice(
                         1, 16, ["Luz", "Raio de Gelo"],
-                        ["Alarme", "Curar Ferimentos", "Onda Trovejante"], slots,
+                        ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"], slots,
                     )
 
     def test_bloqueia_total_de_espacos_inventado(self):
         with self.assertRaisesRegex(ValueError, "Espaços de magia incorretos"):
             validar_escolhas_artifice(
                 1, 16, ["Luz", "Raio de Gelo"],
-                ["Alarme", "Curar Ferimentos", "Onda Trovejante"], {"1": 9},
+                ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"], {"1": 9},
             )
 
 
@@ -183,7 +183,7 @@ class BackendProficienciesAndSpellsTests(unittest.TestCase):
         url = f"/v1/campanhas/{self.campaign_id}/personagens/{p['id']}/magias"
         payload = {
             "truques": ["Luz", "Raio de Gelo"],
-            "magias_preparadas": ["Alarme", "Curar Ferimentos", "Onda Trovejante"],
+            "magias_preparadas": ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"],
             "espacos_totais": {"1": 2},
         }
         resposta = self.client.patch(url, json=payload, headers=self.headers)
@@ -198,7 +198,7 @@ class BackendProficienciesAndSpellsTests(unittest.TestCase):
         url = f"/v1/campanhas/{self.campaign_id}/personagens/{p['id']}/magias"
         resposta = self.client.patch(url, json={
             "truques": ["Luz", "Raio de Gelo"],
-            "magias_preparadas": ["Alarme", "Curar Ferimentos", "Onda Trovejante"],
+            "magias_preparadas": ["Alarme", "Curar Ferimentos", "Vitalidade Vazia"],
             "espacos_totais": {"1": 2},
         }, headers=self.headers)
         self.assertEqual(resposta.status_code, 200, resposta.text)

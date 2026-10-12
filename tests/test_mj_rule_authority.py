@@ -95,7 +95,7 @@ class MJRuleAuthorityTests(unittest.TestCase):
             "atributos": {"inteligencia": 16},
             "conjuracao": {
                 "truques": ["Luz", "Raio de Gelo"],
-                "magias_preparadas": ["Curar Ferimentos", "Alarme", "Onda Trovejante"],
+                "magias_preparadas": ["Curar Ferimentos", "Alarme", "Vitalidade Vazia"],
                 "espacos_totais": {"1": 2}, "espacos_restantes": {"1": 2},
             },
         }

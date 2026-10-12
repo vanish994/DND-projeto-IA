@@ -830,6 +830,7 @@ def _validar_conjuracao(personagem: dict, truques: list[str], preparadas: list[s
                 int(personagem.get("nivel", 1)),
                 int((personagem.get("atributos") or {}).get("inteligencia", 10)),
                 truques, preparadas, espacos_totais,
+                subclasse=personagem.get("subclasse") or personagem.get("subclass"),
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
