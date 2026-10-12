@@ -1,0 +1,106 @@
+name: DeepSeek coding agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Tarefa de programação para o agente (não inclua segredos)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: deepseek-agent-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  coding-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout main without persisting credentials
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install project dependencies and Aider
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt httpx aider-chat
+
+      - name: Create isolated working branch
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          BRANCH="agent/deepseek-${RUN_ID}"
+          echo "AGENT_BRANCH=${BRANCH}" >> "$GITHUB_ENV"
+          git switch -c "${BRANCH}"
+
+      - name: Run DeepSeek coding agent
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          TASK: ${{ inputs.task }}
+        run: |
+          if [ -z "${DEEPSEEK_API_KEY}" ]; then
+            echo "::error::Configure o secret DEEPSEEK_API_KEY nas configurações do repositório."
+            exit 1
+          fi
+          aider \
+            --model deepseek/deepseek-chat \
+            --yes \
+            --no-auto-commits \
+            --message "${TASK}"
+
+      - name: Verify changes and run the full test suite
+        run: |
+          git diff --check
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "::error::O agente não produziu alterações."
+            exit 1
+          fi
+          python -m unittest discover -s tests -v
+          node --test tests/*.cjs
+
+      - name: Publish branch and open pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TASK: ${{ inputs.task }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::error::Não há alterações para propor."
+            exit 1
+          fi
+          git commit -m "Propose changes with DeepSeek coding agent"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "${AGENT_BRANCH}"
+          {
+            echo "## Tarefa solicitada"
+            echo
+            printf '%s\n' "${TASK}"
+            echo
+            echo "## Validação"
+            echo "- `git diff --check`"
+            echo "- `python -m unittest discover -s tests -v`"
+            echo "- `node --test tests/*.cjs`"
+            echo
+            echo "O agente não faz merge. Revise o diff e os resultados de CI antes de aprovar."
+          } > /tmp/pr-body.md
+          gh pr create \
+            --base main \
+            --head "${AGENT_BRANCH}" \
+            --title "DeepSeek agent: automated proposal" \
+            --body-file /tmp/pr-body.md
