@@ -18,6 +18,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from backend.limite_taxa import limitador_padrao
 from backend.persistencia import RepositorioCampanhas, ConflitoEstadoCampanha, OperacaoIncompativel
 from rule_engine import (
     build_default_engine,
@@ -369,6 +370,14 @@ def obter_jogador(
     return x_jogador_id or JOGADOR_ANONIMO
 
 
+# Limite de taxa das rotas que chamam o MJ (cada chamada custa uma requisição ao provedor).
+_limitador_mj = limitador_padrao()
+
+
+def limitar_chamadas_mj(jogador: str = Depends(obter_jogador)) -> None:
+    _limitador_mj.verificar(jogador)
+
+
 def _campanha_ou_404(repo: RepositorioCampanhas, jogador: str, campanha_id: str) -> dict:
     campanha = repo.obter(jogador, campanha_id)
     if campanha is None:
@@ -554,7 +563,7 @@ def apagar_campanha(
     return Response(status_code=204)
 
 
-@app.post("/v1/campanhas/{campanha_id}/mensagens", response_model=RespostaCampanha)
+@app.post("/v1/campanhas/{campanha_id}/mensagens", response_model=RespostaCampanha, dependencies=[Depends(limitar_chamadas_mj)])
 def enviar_mensagem_campanha(
     campanha_id: str,
     pedido: MensagemCampanha,
@@ -905,7 +914,7 @@ def apagar_personagem(
     return Response(status_code=204)
 
 
-@app.post("/v1/mj/mensagem", response_model=RespostaMJ)
+@app.post("/v1/mj/mensagem", response_model=RespostaMJ, dependencies=[Depends(limitar_chamadas_mj)])
 def mensagem_mj(
     pedido: MensagemMJ,
     jogador: str = Depends(obter_jogador),
