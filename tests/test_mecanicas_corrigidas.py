@@ -3,6 +3,7 @@ import copy
 import unittest
 
 from integrations.deepseek_mj import DeepSeekMJ
+from orchestrator.preparo import preparar_dano_de_magia
 from rule_engine import build_default_engine
 from rule_engine.economy import resolver_sintonizacao
 from rule_engine.spells import mecanica_de_magia, resolver_magia, suporte_magia
@@ -61,20 +62,20 @@ class MecanicasCorrigidasTests(unittest.TestCase):
 
     def test_dano_sem_magia_registrada_bloqueado(self):
         self.ficha['conjuracao']['magias_preparadas'] = []
-        r = self.mj._preparar_dano_de_magia({'magia': 'Bola de Fogo'}, self.ficha)
+        r = preparar_dano_de_magia(self.mj.engine, {'magia': 'Bola de Fogo'}, self.ficha)
         self.assertEqual(r['motivo'], 'magia_nao_registrada_na_ficha')
 
     def test_dano_sem_ficha_bloqueado(self):
-        r = self.mj._preparar_dano_de_magia({'magia': 'Bola de Fogo'}, None)
+        r = preparar_dano_de_magia(self.mj.engine, {'magia': 'Bola de Fogo'}, None)
         self.assertEqual(r['motivo'], 'personagem_ausente_ou_nao_identificado')
 
     def test_dano_rejeita_espacos_invalidos(self):
         for espaco in [0, 2, 10, 'abc']:
-            r = self.mj._preparar_dano_de_magia({'magia': 'Bola de Fogo', 'espaco': espaco}, self.ficha)
+            r = preparar_dano_de_magia(self.mj.engine, {'magia': 'Bola de Fogo', 'espaco': espaco}, self.ficha)
             self.assertEqual(r['resultado'], 'bloqueado')
-        r = self.mj._preparar_dano_de_magia({'magia': 'Bola de Fogo', 'espaco': 4}, self.ficha)
+        r = preparar_dano_de_magia(self.mj.engine, {'magia': 'Bola de Fogo', 'espaco': 4}, self.ficha)
         self.assertEqual(r['motivo'], 'circulo_indisponivel_na_ficha')
-        r = self.mj._preparar_dano_de_magia({'magia': 'Bola de Fogo', 'espaco': 5, 'aumento': -1}, self.ficha)
+        r = preparar_dano_de_magia(self.mj.engine, {'magia': 'Bola de Fogo', 'espaco': 5, 'aumento': -1}, self.ficha)
         self.assertEqual(r['resultado'], 'bloqueado')
 
     def test_rolagem_nao_afirma_aplicacao_de_dano(self):
@@ -85,7 +86,8 @@ class MecanicasCorrigidasTests(unittest.TestCase):
     def test_imunidade_a_veneno_no_chat_inclui_cartao_zero(self):
         from unittest.mock import patch
         monster = {'nome': 'Alvo de teste', 'ca': 1, 'imunidades_dano': ['poison']}
-        with patch('integrations.deepseek_mj.consultar_monstro', return_value=monster):
+        with patch('orchestrator.preparo.consultar_monstro', return_value=monster), \
+             patch('orchestrator.orquestrador.consultar_monstro', return_value=monster):
             rolls = []
             r = self.mj._tool('resolver_regra', {'fatos': {'type': 'attack', 'magia': 'Rajada de Veneno', 'target_name': monster['nome'], 'roll': 20}}, [self.ficha], on_roll=rolls.append)
         self.assertEqual(r['dano'], 0)
