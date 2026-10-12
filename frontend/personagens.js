@@ -39,7 +39,7 @@
     contundente: 'contundente', cortante: 'cortante', perfurante: 'perfurante',
     leves: 'armaduras leves', medias: 'armaduras médias', pesadas: 'armaduras pesadas', escudos: 'escudos', simples: 'armas simples', marciais: 'armas marciais',
   };
-  const PASSOS = ['Nome', 'Espécie', 'Classe', 'Perícias', 'Antecedente', 'Atributos', 'Magias', 'Revisão'];
+  const PASSOS = ['Classe', 'Antecedente', 'Espécie', 'Atributos', 'Perícias', 'Magias', 'Nome', 'Revisão'];
   const passosAtivos = () => PASSOS.filter((p) => p !== 'Magias' || Boolean(catalogo?.atributo_conjuracao?.[dados?.classe]));
 
   let catalogo = null;
@@ -1222,24 +1222,24 @@
   }
 
   function validarPasso() {
-    if (passo === 0 && !dados.nome.trim()) return 'Dê um nome ao personagem.';
-    if (passo === 1 && !dados.especie) return 'Escolha uma espécie.';
-    if (passo === 1 && catalogo.escolhas_especie?.[dados.especie] && !dados.heranca_draconica) return 'Escolha a herança dracônica.';
-    if (passo === 2 && !dados.classe) return 'Escolha uma classe.';
-    if (passo === 3) {
+    const etapa = passosAtivos()[passo];
+    if (etapa === 'Nome' && !dados.nome.trim()) return 'Dê um nome ao personagem.';
+    if (etapa === 'Classe' && !dados.classe) return 'Escolha uma classe.';
+    if (etapa === 'Espécie' && !dados.especie) return 'Escolha uma espécie.';
+    if (etapa === 'Espécie' && catalogo.escolhas_especie?.[dados.especie] && !dados.heranca_draconica) return 'Escolha a herança dracônica.';
+    if (etapa === 'Perícias') {
       const quantidade = Number(catalogo.quantidade_pericias_classe?.[dados.classe] || 0);
       if ((dados.pericias_classe || []).length !== quantidade) return `Escolha exatamente ${quantidade} perícias de classe.`;
       if (dados.classe === 'artifice' && !dados.ferramenta_artesao) return 'Escolha uma ferramenta de artesão para o Artífice.';
     }
-    if (passo === 4) {
+    if (etapa === 'Antecedente') {
       if (!dados.antecedente) return 'Escolha um antecedente.';
       if (catalogo.antecedentes[dados.antecedente].talento === 'dadiva_sombria' && !dados.talento_antecedente) return 'Escolha uma Dádiva Sombria.';
-      const bg = catalogo.antecedentes[dados.antecedente];
       const ferramenta = catalogo.ferramentas_antecedente?.[dados.antecedente];
       if (ferramenta && !dados.ferramenta_antecedente) return `Escolha ${ferramenta.rotulo} para o antecedente.`;
       if (!dados.equipamento_antecedente) return 'Escolha o pacote de equipamento A ou B.';
     }
-    if (passo === 5) {
+    if (etapa === 'Atributos') {
       if (dados.metodo_atributos === 'matriz_padrao') {
         const usados = ATRIBUTOS.map((a) => Number(dados.atributos[a])).sort((x, y) => y - x);
         if (usados.join() !== catalogo.matriz_padrao.join()) return 'Use cada valor da matriz padrão exatamente uma vez.';
@@ -1248,7 +1248,7 @@
       const b = base(); const au = aumentos();
       if (ATRIBUTOS.some((a) => b[a] + (au[a] || 0) > 20)) return 'Nenhum atributo pode passar de 20.';
     }
-    if (passosAtivos()[passo] === 'Magias' && dados.magias.limites?.validado) {
+    if (etapa === 'Magias' && dados.magias.limites?.validado) {
       if (dados.magias.truques.length !== dados.magias.limites.truques) return `Escolha exatamente ${dados.magias.limites.truques} truques.`;
       if (dados.magias.magias_preparadas.length !== dados.magias.limites.magias_preparadas) return `Escolha exatamente ${dados.magias.limites.magias_preparadas} magia(s).`;
     }
