@@ -21,7 +21,7 @@ from rule_engine import (
 from rule_engine import criar_personagem as criar_personagem_no_motor
 from rule_engine import ficha_personagem, gerar_atributos_compra_pontos, gerar_atributos_matriz_padrao
 from rule_engine.catalog import CATALOGO_ARMADURAS, CATALOGO_ARMAS
-from rule_engine.character import escolha_ferramenta_do_antecedente
+from rule_engine.character import QUANTIDADE_PERICIAS_CLASSE, escolha_ferramenta_do_antecedente
 from rule_engine.species import escolha_de_especie
 from rule_engine.spellcasting import validar_escolhas_artifice
 from rule_engine.spells import obter_magia
@@ -30,7 +30,17 @@ _CAMPOS_PERSISTENCIA = {"id", "campanha_id", "entrada", "criado_em", "atualizado
 
 
 def exigir_escolhas_de_criacao(dados: NovoPersonagem) -> None:
-    """A criação só termina quando a ficha não depende de escolhas pendentes."""
+    """Bloqueia fichas incompletas antes de persistir, usando as exigências do motor."""
+    quantidade = QUANTIDADE_PERICIAS_CLASSE.get(dados.classe)
+    if quantidade is None:
+        raise ErroDeValidacao("Classe inválida")
+    pericias = dados.pericias_classe or []
+    if len(pericias) != quantidade:
+        raise ErroDeValidacao(f"A classe {dados.classe} exige escolher exatamente {quantidade} perícias.")
+    if len({p.strip().lower().replace(" ", "_") for p in pericias}) != len(pericias):
+        raise ErroDeValidacao("Não repita perícias de classe.")
+    if dados.classe == "artifice" and not dados.ferramenta_artesao:
+        raise ErroDeValidacao("Escolha uma ferramenta de artesão para o Artífice.")
     escolha = escolha_de_especie(dados.especie)
     if escolha and not dados.heranca_draconica:
         raise ErroDeValidacao(f"Escolha a {escolha['rotulo']} do {dados.especie}.")

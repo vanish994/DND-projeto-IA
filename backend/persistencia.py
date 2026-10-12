@@ -75,6 +75,18 @@ personagens = Table(
     Column("atualizado_em", DateTime(timezone=True), nullable=False),
 )
 
+fichas_salvas = Table(
+    "fichas_salvas",
+    metadata,
+    Column("id", String(64), primary_key=True),
+    Column("jogador_id", String(128), nullable=False, index=True),
+    Column("nome", String(80), nullable=False),
+    Column("entrada", Text, nullable=False),
+    Column("ficha", Text, nullable=False),
+    Column("criado_em", DateTime(timezone=True), nullable=False),
+    Column("atualizado_em", DateTime(timezone=True), nullable=False),
+)
+
 # Chave única por campanha. Só existe registro para uma operação confirmada;
 # resposta, rolagens, fichas e mensagens participam da mesma transação.
 operacoes_mj = Table(
@@ -411,6 +423,91 @@ class RepositorioCampanhas:
                     return anterior
             raise
         return {"resposta": resposta, "rolagens": rolagens or []}
+
+    def _ficha_salva(self, linha: Any) -> dict[str, Any]:
+        entrada = json.loads(linha.entrada)
+        ficha = json.loads(linha.ficha)
+        return {
+            "id": linha.id,
+            "jogador_id": linha.jogador_id,
+            "nome": linha.nome,
+            **ficha,
+            "entrada": entrada,
+            "criado_em": _iso(linha.criado_em),
+            "atualizado_em": _iso(linha.atualizado_em),
+            "pv_atual": int(ficha.get("pv_maximo", 1)),
+        }
+
+    def criar_ficha_salva(self, jogador_id: str, entrada: dict[str, Any], ficha: dict[str, Any]) -> dict[str, Any]:
+        agora = _agora()
+        registro = {
+            "id": f"ficha-{uuid.uuid4().hex[:12]}",
+            "jogador_id": jogador_id,
+            "nome": str(ficha.get("nome") or entrada.get("nome") or "Personagem").strip(),
+            "entrada": json.dumps(entrada, ensure_ascii=False),
+            "ficha": json.dumps(ficha, ensure_ascii=False),
+            "criado_em": agora,
+            "atualizado_em": agora,
+        }
+        with self.engine.begin() as conn:
+            conn.execute(insert(fichas_salvas).values(**registro))
+        return self.obter_ficha_salva(jogador_id, registro["id"])  # type: ignore[return-value]
+
+    def listar_fichas_salvas(self, jogador_id: str) -> list[dict[str, Any]]:
+        with self.engine.connect() as conn:
+            linhas = conn.execute(
+                select(fichas_salvas)
+                .where(fichas_salvas.c.jogador_id == jogador_id)
+                .order_by(fichas_salvas.c.atualizado_em.desc(), fichas_salvas.c.id)
+            ).all()
+        return [self._ficha_salva(linha) for linha in linhas]
+
+    def obter_ficha_salva(self, jogador_id: str, ficha_id: str) -> dict[str, Any] | None:
+        with self.engine.connect() as conn:
+            linha = conn.execute(
+                select(fichas_salvas).where(
+                    fichas_salvas.c.id == ficha_id,
+                    fichas_salvas.c.jogador_id == jogador_id,
+                )
+            ).first()
+        return self._ficha_salva(linha) if linha else None
+
+    def apagar_ficha_salva(self, jogador_id: str, ficha_id: str) -> bool:
+        with self.engine.begin() as conn:
+            resultado = conn.execute(
+                delete(fichas_salvas).where(
+                    fichas_salvas.c.id == ficha_id,
+                    fichas_salvas.c.jogador_id == jogador_id,
+                )
+            )
+        return resultado.rowcount == 1
+
+    def vincular_ficha_salva(self, jogador_id: str, campanha_id: str, ficha_id: str) -> dict[str, Any] | None:
+        """Copia uma ficha validada da biblioteca para o grupo de uma campanha."""
+        agora = _agora()
+        with self.engine.begin() as conn:
+            if not self._da_campanha(conn, jogador_id, campanha_id):
+                return None
+            salva = conn.execute(
+                select(fichas_salvas).where(
+                    fichas_salvas.c.id == ficha_id,
+                    fichas_salvas.c.jogador_id == jogador_id,
+                )
+            ).first()
+            if salva is None:
+                return None
+            ficha = json.loads(salva.ficha)
+            registro = {
+                "id": f"personagem-{uuid.uuid4().hex[:12]}",
+                "campanha_id": campanha_id,
+                "entrada": salva.entrada,
+                "ficha": salva.ficha,
+                "pv_atual": int(ficha["pv_maximo"]),
+                "criado_em": agora,
+                "atualizado_em": agora,
+            }
+            conn.execute(insert(personagens).values(**registro))
+        return self.obter_personagem(jogador_id, campanha_id, registro["id"])
 
     def _personagem(self, linha: Any) -> dict[str, Any]:
         ficha = json.loads(linha.ficha)

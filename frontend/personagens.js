@@ -1,6 +1,11 @@
 // Grupo, ficha e assistente de criação de personagens.
 // Nenhuma regra é calculada aqui: a interface exibe o bloco devolvido pelo motor.
 (function () {
+  const libraryButton = document.querySelector('#character-library');
+  const libraryDialog = document.querySelector('#library-dialog');
+  const libraryBody = document.querySelector('#library-body');
+  const libraryClose = document.querySelector('#library-close');
+  const libraryNewCharacter = document.querySelector('#library-new-character');
   const groupButton = document.querySelector('#group-button');
   const groupDialog = document.querySelector('#group-dialog');
   const groupBody = document.querySelector('#group-body');
@@ -34,7 +39,7 @@
     contundente: 'contundente', cortante: 'cortante', perfurante: 'perfurante',
     leves: 'armaduras leves', medias: 'armaduras médias', pesadas: 'armaduras pesadas', escudos: 'escudos', simples: 'armas simples', marciais: 'armas marciais',
   };
-  const PASSOS = ['Nome', 'Espécie', 'Classe', 'Perícias', 'Antecedente', 'Atributos', 'Magias', 'Revisão'];
+  const PASSOS = ['Classe', 'Antecedente', 'Espécie', 'Atributos', 'Perícias', 'Magias', 'Nome', 'Revisão'];
   const passosAtivos = () => PASSOS.filter((p) => p !== 'Magias' || Boolean(catalogo?.atributo_conjuracao?.[dados?.classe]));
 
   let catalogo = null;
@@ -43,6 +48,7 @@
   let passo = 0;
   let abaAtiva = 'resumo';
   let personagemCriado = false;
+  let destinoCriacao = 'campanha';
 
   // ---------- utilidades ----------
   const nome = (chave) => NOMES[chave] || String(chave || '').replace(/_/g, ' ').replace(/^./, (l) => l.toUpperCase());
@@ -763,11 +769,13 @@
       modo_aumento: '2-1', aumento2: '', aumento1: '', pericias_classe: [], ferramenta_artesao: '', heranca_draconica: '', ferramenta_antecedente: '', equipamento_antecedente: '', magias: {truques: [], magias_preparadas: [], espacos_totais: {}, limites: null}};
   }
 
-  async function abrirCriacao() {
+  async function abrirCriacao(destino = 'campanha') {
+    destinoCriacao = destino;
     try { await carregarCatalogo(); } catch (erro) { window.alert(`Não foi possível carregar as regras. ${erro.message}`); return; }
     dados = novoRascunho();
     passo = 0;
     if (groupDialog.open) groupDialog.close();
+    if (libraryDialog.open) libraryDialog.close();
     charDialog.showModal();
     render();
   }
@@ -1214,24 +1222,24 @@
   }
 
   function validarPasso() {
-    if (passo === 0 && !dados.nome.trim()) return 'Dê um nome ao personagem.';
-    if (passo === 1 && !dados.especie) return 'Escolha uma espécie.';
-    if (passo === 1 && catalogo.escolhas_especie?.[dados.especie] && !dados.heranca_draconica) return 'Escolha a herança dracônica.';
-    if (passo === 2 && !dados.classe) return 'Escolha uma classe.';
-    if (passo === 3) {
+    const etapa = passosAtivos()[passo];
+    if (etapa === 'Nome' && !dados.nome.trim()) return 'Dê um nome ao personagem.';
+    if (etapa === 'Classe' && !dados.classe) return 'Escolha uma classe.';
+    if (etapa === 'Espécie' && !dados.especie) return 'Escolha uma espécie.';
+    if (etapa === 'Espécie' && catalogo.escolhas_especie?.[dados.especie] && !dados.heranca_draconica) return 'Escolha a herança dracônica.';
+    if (etapa === 'Perícias') {
       const quantidade = Number(catalogo.quantidade_pericias_classe?.[dados.classe] || 0);
       if ((dados.pericias_classe || []).length !== quantidade) return `Escolha exatamente ${quantidade} perícias de classe.`;
       if (dados.classe === 'artifice' && !dados.ferramenta_artesao) return 'Escolha uma ferramenta de artesão para o Artífice.';
     }
-    if (passo === 4) {
+    if (etapa === 'Antecedente') {
       if (!dados.antecedente) return 'Escolha um antecedente.';
       if (catalogo.antecedentes[dados.antecedente].talento === 'dadiva_sombria' && !dados.talento_antecedente) return 'Escolha uma Dádiva Sombria.';
-      const bg = catalogo.antecedentes[dados.antecedente];
       const ferramenta = catalogo.ferramentas_antecedente?.[dados.antecedente];
       if (ferramenta && !dados.ferramenta_antecedente) return `Escolha ${ferramenta.rotulo} para o antecedente.`;
       if (!dados.equipamento_antecedente) return 'Escolha o pacote de equipamento A ou B.';
     }
-    if (passo === 5) {
+    if (etapa === 'Atributos') {
       if (dados.metodo_atributos === 'matriz_padrao') {
         const usados = ATRIBUTOS.map((a) => Number(dados.atributos[a])).sort((x, y) => y - x);
         if (usados.join() !== catalogo.matriz_padrao.join()) return 'Use cada valor da matriz padrão exatamente uma vez.';
@@ -1240,7 +1248,7 @@
       const b = base(); const au = aumentos();
       if (ATRIBUTOS.some((a) => b[a] + (au[a] || 0) > 20)) return 'Nenhum atributo pode passar de 20.';
     }
-    if (passosAtivos()[passo] === 'Magias' && dados.magias.limites?.validado) {
+    if (etapa === 'Magias' && dados.magias.limites?.validado) {
       if (dados.magias.truques.length !== dados.magias.limites.truques) return `Escolha exatamente ${dados.magias.limites.truques} truques.`;
       if (dados.magias.magias_preparadas.length !== dados.magias.limites.magias_preparadas) return `Escolha exatamente ${dados.magias.limites.magias_preparadas} magia(s).`;
     }
@@ -1254,16 +1262,80 @@
     if (passo < passosAtivos().length - 1) { passo += 1; render(); return; }
     nextButton.disabled = true;
     try {
-      await api(url(), {method: 'POST', body: JSON.stringify(payload())});
-      personagemCriado = true;
-      charDialog.close();
-      abrirGrupo();
+      if (destinoCriacao === 'biblioteca') {
+        await api('/v1/personagens', {method: 'POST', body: JSON.stringify(payload())});
+        personagemCriado = true;
+        charDialog.close();
+        await abrirBiblioteca();
+      } else {
+        await api(url(), {method: 'POST', body: JSON.stringify(payload())});
+        personagemCriado = true;
+        charDialog.close();
+        abrirGrupo();
+      }
     } catch (falha) {
       charError.textContent = `O motor de regras recusou a ficha: ${falha.message}`;
     } finally {
       nextButton.disabled = false;
     }
   });
+
+  async function abrirBiblioteca() {
+    libraryBody.replaceChildren(meta('Carregando fichas salvas…'));
+    if (!libraryDialog.open) libraryDialog.showModal();
+    try {
+      const fichas = await api('/v1/personagens');
+      libraryBody.replaceChildren();
+      if (!fichas.length) {
+        libraryBody.append(meta('Sua biblioteca está vazia. Crie uma ficha e ela ficará disponível para suas campanhas futuras.'));
+        return;
+      }
+      const lista = el('ul', {className: 'choice-list'});
+      for (const p of fichas) {
+        const item = el('li', {className: 'painel'});
+        item.append(
+          el('h3', {className: 'cartao-nome', textContent: p.nome}),
+          el('p', {className: 'linha-resumo', textContent: `${nome(p.especie)} · ${nome(p.classe)} · Nível ${p.nivel} · PV ${p.pv_maximo}`}),
+        );
+        const actions = el('div', {className: 'sheet-actions'});
+        const use = el('button', {type: 'button', className: 'primary-button', textContent: state.atual ? 'Adicionar à campanha' : 'Abra uma campanha para usar'});
+        use.disabled = !state.atual;
+        use.addEventListener('click', async () => {
+          if (!state.atual) return;
+          use.disabled = true;
+          try {
+            await api(`/v1/campanhas/${encodeURIComponent(state.atual)}/personagens/salvas/${encodeURIComponent(p.id)}/vincular`, {method: 'POST'});
+            libraryDialog.close();
+            abrirGrupo();
+          } catch (erro) {
+            avisar(`Não foi possível adicionar a ficha: ${erro.message}`);
+            use.disabled = false;
+          }
+        });
+        const remove = el('button', {type: 'button', className: 'text-button', textContent: 'Excluir da biblioteca'});
+        remove.addEventListener('click', async () => {
+          remove.disabled = true;
+          try {
+            await api(`/v1/personagens/${encodeURIComponent(p.id)}`, {method: 'DELETE'});
+            await abrirBiblioteca();
+          } catch (erro) {
+            avisar(`Não foi possível excluir a ficha: ${erro.message}`);
+            remove.disabled = false;
+          }
+        });
+        actions.append(use, remove);
+        item.append(actions);
+        lista.append(item);
+      }
+      libraryBody.append(lista);
+    } catch (erro) {
+      libraryBody.replaceChildren(el('p', {className: 'form-error', textContent: `Não foi possível carregar a biblioteca. ${erro.message}`}));
+    }
+  }
+
+  libraryButton?.addEventListener('click', abrirBiblioteca);
+  libraryClose?.addEventListener('click', () => libraryDialog.close());
+  libraryNewCharacter?.addEventListener('click', () => abrirCriacao('biblioteca'));
 
   prevButton.addEventListener('click', () => { if (passo > 0) { passo -= 1; render(); } });
   document.querySelector('#character-cancel').addEventListener('click', () => charDialog.close());
