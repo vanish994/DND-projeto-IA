@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any
 
 from rule_engine import PERICIAS, build_default_engine
+from rule_engine.catalog import CATALOGO_ARMAS
+from rule_engine.character import PROFICIENCIAS_CLASSE
+from rule_engine.bestiary import consultar_monstro
 from rule_engine.spellcasting import ARTIFICER_SPELL_LEVELS, normalizar_nome_magia, progresso_artifice
 
 
@@ -44,7 +47,7 @@ REGRA PRIORITÁRIA — FICHA E INÍCIO DA CAMPANHA:
 
 REGRA PRIORITÁRIA — RESOLUÇÃO MECÂNICA:
 - Não declare sucesso, falha, dano, cura, gasto de recurso, movimento ou efeito mecânico antes de consultar a ferramenta apropriada.
-- Para ataques, chame resolver_regra com type=attack, modifier (bônus oficial de ataque) e target_ac (CA oficial do alvo); o motor gera o d20 auditável e determina hit/miss/crítico. Consulte o bloco oficial do monstro para sua CA. Para iniciativa, use type=initiative, modifier (modificador de Destreza da ficha) e surprised=true quando a criatura estiver surpresa; em D&D 2024, surpresa impõe desvantagem na iniciativa, não um teste separado. Nunca invente bônus ou CA ausentes.
+- Para ataques, chame resolver_regra com fatos contendo type=attack, character_id (se houver mais de um personagem), weapon (nome exato de uma arma do catálogo) e target_name (nome de um monstro do bestiário). A ferramenta deriva bônus e dano da ficha/classe e da arma e consulta a CA do bestiário; não invente modifier nem target_ac. Se o alvo não for um monstro do bestiário, informe a limitação em vez de adivinhar a CA. O motor gera o d20 auditável e determina hit/miss/crítico. Para iniciativa, use type=initiative, character_id quando necessário e surprised=true quando a criatura estiver surpresa; o motor deriva Destreza da ficha. Em D&D 2024, surpresa impõe desvantagem na iniciativa, não um teste separado.
 - Se a ferramenta disponível não cobrir a ação, diga que a resolução mecânica ainda não está implementada e não simule que o motor a validou. Preserve a escolha do jogador e peça como deseja proceder narrativamente, sem apresentar isso como regra oficial.
 
 As ferramentas devolvem dados normativos. Você decide como apresentar e narrar
@@ -179,6 +182,106 @@ class DeepSeekMJ:
             facts = {"type": "bestiary", "operacao": "bloco_completo", **args}
         elif name == "resolver_regra":
             facts = dict(args["fatos"])
+            if facts.get("type") in {"attack", "initiative"}:
+                grupo = personagens or []
+                personagem_id = facts.get("character_id")
+                personagem = next((p for p in grupo if p.get("id") == personagem_id), None)
+                if personagem is None and not personagem_id and len(grupo) == 1:
+                    personagem = grupo[0]
+                if personagem is None:
+                    return {"resultado": "bloqueado", "motivo": "personagem_ausente_ou_nao_identificado"}
+
+                atributos = personagem.get("atributos") or {}
+                modificadores = personagem.get("modificadores") or {}
+                if facts.get("type") == "initiative":
+                    if "destreza" in modificadores:
+                        modifier = int(modificadores["destreza"])
+                    elif "destreza" in atributos:
+                        modifier = (int(atributos["destreza"]) - 10) // 2
+                    else:
+                        return {"resultado": "bloqueado", "motivo": "destreza_ausente_na_ficha"}
+                    facts["modifier"] = modifier
+                    facts["character_id"] = personagem.get("id")
+                    facts["modifier_source"] = "ficha_autoritativa"
+                else:
+                    nome_arma = str(facts.get("weapon", facts.get("arma", ""))).strip()
+                    nome_canonico = next((k for k in CATALOGO_ARMAS if k.casefold() == nome_arma.casefold()), None)
+                    arma = CATALOGO_ARMAS.get(nome_canonico) if nome_canonico else None
+                    if arma is None:
+                        return {"resultado": "bloqueado", "motivo": "arma_nao_encontrada_no_catalogo", "arma": nome_arma}
+
+                    classe = str(personagem.get("classe", "")).strip().lower()
+                    prof_classe = PROFICIENCIAS_CLASSE.get(classe, {}).get("armas", [])
+                    simples = {
+                        "clava", "clava grande", "adaga", "dardo", "machadinha", "martelo leve",
+                        "maça", "cajado", "funda", "azagaia", "lança", "foice", "besta leve",
+                        "besta de mão", "besta pesada", "arco curto",
+                    }
+                    nome_normalizado = nome_canonico.casefold()
+                    arma_proficiente = ("simples" in prof_classe and nome_normalizado in simples)
+                    arma_proficiente = arma_proficiente or ("marciais" in prof_classe and nome_canonico not in {
+                        next((k for k in CATALOGO_ARMAS if k.casefold() == x), x) for x in simples
+                    })
+                    if not arma_proficiente:
+                        categorias = {
+                            "besta de mão": "bestas_de_mao", "espada longa": "espadas_longas",
+                            "rapieira": "rapieiras", "espada curta": "espadas_curtas",
+                            "besta leve": "bestas_leves", "adaga": "adagas", "dardo": "dardos",
+                            "funda": "fundas", "cajado": "cajados", "azagaia": "azagaias",
+                            "maça": "macas", "clava": "clavas", "foice": "foices",
+                            "lança": "lancas", "cimitarra": "cimitarras",
+                        }
+                        categoria = categorias.get(nome_normalizado)
+                        arma_proficiente = bool(categoria and categoria in prof_classe)
+                    if not arma_proficiente:
+                        return {"resultado": "bloqueado", "motivo": "personagem_sem_proficiencia_na_arma", "arma": nome_canonico, "classe": classe}
+
+                    propriedades = set(arma.get("propriedades", []))
+                    if "acuidade" in propriedades:
+                        if not all(k in atributos or k in modificadores for k in ("forca", "destreza")):
+                            return {"resultado": "bloqueado", "motivo": "atributos_para_arma_ausentes_na_ficha"}
+                        forca = int(modificadores["forca"]) if "forca" in modificadores else (int(atributos["forca"]) - 10) // 2
+                        destreza = int(modificadores["destreza"]) if "destreza" in modificadores else (int(atributos["destreza"]) - 10) // 2
+                        atributo_ataque = "forca" if forca >= destreza else "destreza"
+                        modificador_atributo = max(forca, destreza)
+                    elif "municao" in propriedades:
+                        atributo_ataque = "destreza"
+                        if atributo_ataque in modificadores:
+                            modificador_atributo = int(modificadores[atributo_ataque])
+                        elif atributo_ataque in atributos:
+                            modificador_atributo = (int(atributos[atributo_ataque]) - 10) // 2
+                        else:
+                            return {"resultado": "bloqueado", "motivo": "destreza_ausente_na_ficha"}
+                    else:
+                        atributo_ataque = "forca"
+                        if atributo_ataque in modificadores:
+                            modificador_atributo = int(modificadores[atributo_ataque])
+                        elif atributo_ataque in atributos:
+                            modificador_atributo = (int(atributos[atributo_ataque]) - 10) // 2
+                        else:
+                            return {"resultado": "bloqueado", "motivo": "forca_ausente_na_ficha"}
+
+                    nivel = max(1, int(personagem.get("nivel", 1)))
+                    bonus_proficiencia = int(personagem.get("bonus_proficiencia", 2 + (nivel - 1) // 4))
+                    facts["modifier"] = modificador_atributo + bonus_proficiencia
+                    facts["character_id"] = personagem.get("id")
+                    facts["proficiency_applied"] = bonus_proficiencia
+                    facts["modifier_source"] = "ficha_autoritativa"
+                    facts["weapon"] = nome_canonico
+                    facts["weapon_damage"] = arma["dano"]
+                    facts["damage_type"] = arma["tipo"]
+                    facts["damage_modifier"] = modificador_atributo
+                    facts["attack_ability"] = atributo_ataque
+
+                    alvo_nome = str(facts.get("target_name", facts.get("alvo", ""))).strip()
+                    if facts.get("target_ac") is None and alvo_nome:
+                        alvo = consultar_monstro(alvo_nome)
+                        if alvo is None:
+                            return {"resultado": "bloqueado", "motivo": "monstro_desconhecido_no_bestiario", "alvo": alvo_nome}
+                        facts["target_ac"] = int(alvo["ca"])
+                        facts["target_name"] = alvo["nome"]
+                    if facts.get("target_ac") is None:
+                        return {"resultado": "bloqueado", "motivo": "classe_de_armadura_do_alvo_ausente"}
             if facts.get("type") == "ability_check":
                 grupo = personagens or []
                 personagem_id = facts.get("character_id")
