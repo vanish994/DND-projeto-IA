@@ -550,9 +550,9 @@ class BackendMapaTaticoTests(unittest.TestCase):
         ficha["nivel"] = nivel
         self.repo.atualizar_dados_ficha("jogador-mapa", self.cid, self.hero["id"], ficha)
 
-    def _conjurar_auditoria(self, magia, alvo="inimigo-bandido"):
+    def _conjurar_auditoria(self, magia, alvo="inimigo-bandido", **extra):
         return self.client.post(self.url + "/conjurar", headers=self.headers, json={
-            "atacante_id": "heroi-vex", "alvo_id": alvo, "magia": magia,
+            "atacante_id": "heroi-vex", "alvo_id": alvo, "magia": magia, **extra,
         })
 
     def test_catalogo_expoe_suporte_sem_apagar_escolhas(self):
